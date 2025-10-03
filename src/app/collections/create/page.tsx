@@ -1,0 +1,583 @@
+'use client'
+import { useState } from 'react'
+import { MainLayout } from '@/components/common/layout/MainLayout'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { 
+  Upload,
+  Image as ImageIcon,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  Info,
+  Globe,
+  Twitter,
+  MessageSquare
+} from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { useWallet } from '@/hooks/useWallet'
+import { useRouter } from 'next/navigation'
+
+interface CreateCollectionForm {
+  name: string
+  symbol: string
+  description: string
+  category: string
+  supply: string
+  royaltyPercentage: string
+  website?: string
+  twitter?: string
+  discord?: string
+  explicitContent: boolean
+}
+
+const categories = [
+  'Art',
+  'Music',
+  'Photography',
+  'Gaming',
+  'Sports',
+  'Collectibles',
+  'Virtual Worlds',
+  'Domain Names',
+  'Memes',
+  'Utility',
+]
+
+export default function CreateCollectionPage() {
+  const { account, isConnected } = useWallet()
+  const router = useRouter()
+  const [step, setStep] = useState(1)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [logoImage, setLogoImage] = useState<string | null>(null)
+  const [bannerImage, setBannerImage] = useState<string | null>(null)
+  const [contractType, setContractType] = useState<'ERC721' | 'ERC1155'>('ERC721')
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isValid },
+  } = useForm<CreateCollectionForm>({
+    mode: 'onChange',
+    defaultValues: {
+      royaltyPercentage: '5',
+      explicitContent: false,
+    },
+  })
+
+  const watchedValues = watch()
+
+  if (!isConnected) {
+    return (
+      <MainLayout>
+        <div className="max-w-2xl mx-auto py-20 text-center">
+          <h1 className="text-3xl font-bold mb-4">Create Collection</h1>
+          <p className="text-muted-foreground mb-8">
+            Please connect your wallet to create a new NFT collection.
+          </p>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  const handleImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+    type: 'logo' | 'banner'
+  ) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const result = e.target?.result as string
+        if (type === 'logo') {
+          setLogoImage(result)
+        } else {
+          setBannerImage(result)
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const onSubmit = async (data: CreateCollectionForm) => {
+    setIsSubmitting(true)
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      
+      console.log('Creating collection with data:', {
+        ...data,
+        contractType,
+        logoImage,
+        bannerImage,
+        creator: account,
+      })
+      
+      // Redirect to the new collection (mock address)
+      router.push('/collections/0x123456789abcdef123456789abcdef123456789a')
+    } catch (error) {
+      console.error('Error creating collection:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const progress = (step / 3) * 100
+
+  return (
+    <MainLayout>
+      <div className="max-w-4xl mx-auto py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4">Create New Collection</h1>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Deploy your own NFT collection with custom branding, royalties, and metadata.
+            Your collection will be deployed as a smart contract on the Ethereum blockchain.
+          </p>
+        </div>
+
+        {/* Progress */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground">Step {step} of 3</span>
+            <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)}>
+          {/* Step 1: Basic Information */}
+          {step === 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Info className="h-5 w-5" />
+                  Basic Information
+                </CardTitle>
+                <CardDescription>
+                  Provide the essential details for your NFT collection
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Contract Type */}
+                <div className="space-y-2">
+                  <Label>Contract Type</Label>
+                  <Select value={contractType} onValueChange={(value: 'ERC721' | 'ERC1155') => setContractType(value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ERC721">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">ERC721</span>
+                          <span className="text-xs text-muted-foreground">Unique, one-of-a-kind NFTs</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="ERC1155">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">ERC1155</span>
+                          <span className="text-xs text-muted-foreground">Semi-fungible tokens with multiple copies</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Collection Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Collection Name *</Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g. Cosmic Warriors"
+                    {...register('name', { 
+                      required: 'Collection name is required',
+                      minLength: { value: 3, message: 'Name must be at least 3 characters' }
+                    })}
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.name.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Symbol */}
+                <div className="space-y-2">
+                  <Label htmlFor="symbol">Symbol *</Label>
+                  <Input
+                    id="symbol"
+                    placeholder="e.g. CW"
+                    maxLength={10}
+                    {...register('symbol', { 
+                      required: 'Symbol is required',
+                      pattern: { value: /^[A-Z0-9]+$/, message: 'Symbol must be uppercase letters and numbers only' }
+                    })}
+                  />
+                  {errors.symbol && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.symbol.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description *</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe your collection, its story, and what makes it unique..."
+                    rows={4}
+                    {...register('description', { 
+                      required: 'Description is required',
+                      minLength: { value: 50, message: 'Description must be at least 50 characters' }
+                    })}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    {errors.description && (
+                      <span className="text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.description.message}
+                      </span>
+                    )}
+                    <span>{watchedValues.description?.length || 0} characters</span>
+                  </div>
+                </div>
+
+                {/* Category */}
+                <div className="space-y-2">
+                  <Label>Category *</Label>
+                  <Select onValueChange={(value) => setValue('category', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button 
+                    type="button" 
+                    onClick={() => setStep(2)}
+                    disabled={!watchedValues.name || !watchedValues.symbol || !watchedValues.description || !watchedValues.category}
+                  >
+                    Next: Media & Branding
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 2: Media & Branding */}
+          {step === 2 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Media & Branding
+                </CardTitle>
+                <CardDescription>
+                  Upload images and social links for your collection
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Logo Image */}
+                <div className="space-y-2">
+                  <Label>Logo Image *</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                    {logoImage ? (
+                      <div className="flex items-center gap-4">
+                        <img 
+                          src={logoImage} 
+                          alt="Logo preview" 
+                          className="h-20 w-20 object-cover rounded-lg"
+                        />
+                        <div>
+                          <p className="font-medium">Logo uploaded</p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLogoImage(null)}
+                            className="mt-2"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Recommended: 400x400px, max 10MB
+                        </p>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e, 'logo')}
+                          className="hidden"
+                          id="logo-upload"
+                        />
+                        <Label htmlFor="logo-upload" className="cursor-pointer">
+                          <Button type="button" variant="outline" asChild>
+                            <span>Choose File</span>
+                          </Button>
+                        </Label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Banner Image */}
+                <div className="space-y-2">
+                  <Label>Banner Image (Optional)</Label>
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                    {bannerImage ? (
+                      <div className="space-y-4">
+                        <img 
+                          src={bannerImage} 
+                          alt="Banner preview" 
+                          className="w-full h-32 object-cover rounded-lg"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setBannerImage(null)}
+                        >
+                          Remove Banner
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Recommended: 1400x400px, max 10MB
+                        </p>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e, 'banner')}
+                          className="hidden"
+                          id="banner-upload"
+                        />
+                        <Label htmlFor="banner-upload" className="cursor-pointer">
+                          <Button type="button" variant="outline" asChild>
+                            <span>Choose File</span>
+                          </Button>
+                        </Label>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Social Links */}
+                <div className="space-y-4">
+                  <Label>Social Links (Optional)</Label>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="website" className="flex items-center gap-2">
+                      <Globe className="h-4 w-4" />
+                      Website
+                    </Label>
+                    <Input
+                      id="website"
+                      placeholder="https://yourwebsite.com"
+                      {...register('website')}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="twitter" className="flex items-center gap-2">
+                      <Twitter className="h-4 w-4" />
+                      Twitter
+                    </Label>
+                    <Input
+                      id="twitter"
+                      placeholder="https://twitter.com/yourusername"
+                      {...register('twitter')}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="discord" className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Discord
+                    </Label>
+                    <Input
+                      id="discord"
+                      placeholder="https://discord.gg/yourserver"
+                      {...register('discord')}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <Button type="button" variant="outline" onClick={() => setStep(1)}>
+                    Back
+                  </Button>
+                  <Button 
+                    type="button" 
+                    onClick={() => setStep(3)}
+                    disabled={!logoImage}
+                  >
+                    Next: Collection Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Collection Settings */}
+          {step === 3 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Collection Settings
+                </CardTitle>
+                <CardDescription>
+                  Configure advanced settings for your collection
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Supply */}
+                <div className="space-y-2">
+                  <Label htmlFor="supply">Maximum Supply</Label>
+                  <Input
+                    id="supply"
+                    type="number"
+                    placeholder="e.g. 10000"
+                    {...register('supply', { 
+                      required: 'Supply is required',
+                      min: { value: 1, message: 'Supply must be at least 1' }
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The maximum number of NFTs that can be minted in this collection
+                  </p>
+                  {errors.supply && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.supply.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Royalty Percentage */}
+                <div className="space-y-2">
+                  <Label htmlFor="royaltyPercentage">Royalty Percentage</Label>
+                  <Input
+                    id="royaltyPercentage"
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    placeholder="5"
+                    {...register('royaltyPercentage', { 
+                      required: 'Royalty percentage is required',
+                      min: { value: 0, message: 'Royalty must be at least 0%' },
+                      max: { value: 10, message: 'Royalty cannot exceed 10%' }
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    You'll receive this percentage of secondary sales (0-10%)
+                  </p>
+                  {errors.royaltyPercentage && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.royaltyPercentage.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Explicit Content */}
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Explicit Content</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Mark if your collection contains mature content
+                    </p>
+                  </div>
+                  <Switch
+                    checked={watchedValues.explicitContent}
+                    onCheckedChange={(checked) => setValue('explicitContent', checked)}
+                  />
+                </div>
+
+                {/* Summary */}
+                <div className="border rounded-lg p-4 bg-muted/20">
+                  <h4 className="font-medium mb-3">Collection Summary</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Name:</span>
+                      <span>{watchedValues.name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Symbol:</span>
+                      <span>{watchedValues.symbol}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Type:</span>
+                      <Badge variant="outline">{contractType}</Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Supply:</span>
+                      <span>{watchedValues.supply || 'Not set'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Royalty:</span>
+                      <span>{watchedValues.royaltyPercentage}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between">
+                  <Button type="button" variant="outline" onClick={() => setStep(2)}>
+                    Back
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting || !isValid}
+                    className="min-w-[120px]"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Collection'
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </form>
+      </div>
+    </MainLayout>
+  )
+}
