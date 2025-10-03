@@ -355,7 +355,10 @@ export default function UserManagementPage() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-muted-foreground"
+                    >
                       No users found
                     </TableCell>
                   </TableRow>
@@ -458,4 +461,3 @@ export default function UserManagementPage() {
     </div>
   );
 }
-
