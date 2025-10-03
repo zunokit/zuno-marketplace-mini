@@ -6,7 +6,7 @@
 
 import { ethers } from "ethers";
 import { ERC721_ABI, ERC1155_ABI } from "@/lib/contracts/abis";
-import { contractRegistryService } from "./ContractRegistryService";
+import { getContractRegistryService } from "./ContractRegistryService";
 
 export interface MintParams {
   collection: string;
@@ -49,7 +49,7 @@ export class CollectionService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     try {
       this.isInitialized = true;
       console.log("✅ CollectionService initialized");
@@ -67,7 +67,7 @@ export class CollectionService {
     tokenType: "ERC721" | "ERC1155"
   ): ethers.Contract {
     const abi = tokenType === "ERC721" ? ERC721_ABI : ERC1155_ABI;
-    const signer = contractRegistryService.getSigner();
+    const signer = getContractRegistryService().getSigner();
     return new ethers.Contract(collectionAddress, abi, signer);
   }
 
@@ -78,7 +78,10 @@ export class CollectionService {
     try {
       // Try ERC721 first
       try {
-        const contract = this.getCollectionContract(collectionAddress, "ERC721");
+        const contract = this.getCollectionContract(
+          collectionAddress,
+          "ERC721"
+        );
         const [name, symbol, totalSupply] = await Promise.all([
           contract.name(),
           contract.symbol(),
@@ -94,7 +97,10 @@ export class CollectionService {
         };
       } catch {
         // Try ERC1155
-        const contract = this.getCollectionContract(collectionAddress, "ERC1155");
+        const contract = this.getCollectionContract(
+          collectionAddress,
+          "ERC1155"
+        );
         const [name, symbol] = await Promise.all([
           contract.name(),
           contract.symbol(),
@@ -117,9 +123,14 @@ export class CollectionService {
   /**
    * Mint a new token
    */
-  async mintToken(params: MintParams): Promise<ethers.ContractTransactionResponse> {
+  async mintToken(
+    params: MintParams
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getCollectionContract(params.collection, params.tokenType);
+      const contract = this.getCollectionContract(
+        params.collection,
+        params.tokenType
+      );
 
       if (params.tokenType === "ERC721") {
         const tx = await contract.mint(params.metadataUri || "");
@@ -170,13 +181,18 @@ export class CollectionService {
   /**
    * Transfer a token
    */
-  async transferToken(params: TransferParams): Promise<ethers.ContractTransactionResponse> {
+  async transferToken(
+    params: TransferParams
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getCollectionContract(params.collection, params.tokenType);
+      const contract = this.getCollectionContract(
+        params.collection,
+        params.tokenType
+      );
 
       if (params.tokenType === "ERC721") {
         const tx = await contract.transferFrom(
-          await contractRegistryService.getSigner().getAddress(),
+          await getContractRegistryService().getSigner().getAddress(),
           params.to,
           params.tokenId
         );
@@ -184,7 +200,7 @@ export class CollectionService {
       } else {
         // ERC1155
         const tx = await contract.safeTransferFrom(
-          await contractRegistryService.getSigner().getAddress(),
+          await getContractRegistryService().getSigner().getAddress(),
           params.to,
           params.tokenId,
           params.amount,
@@ -201,9 +217,14 @@ export class CollectionService {
   /**
    * Approve a token for transfer
    */
-  async approveToken(params: ApprovalParams): Promise<ethers.ContractTransactionResponse> {
+  async approveToken(
+    params: ApprovalParams
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getCollectionContract(params.collection, params.tokenType);
+      const contract = this.getCollectionContract(
+        params.collection,
+        params.tokenType
+      );
 
       if (params.tokenType === "ERC721") {
         const tx = await contract.approve(params.to, params.tokenId);
@@ -234,10 +255,12 @@ export class CollectionService {
         return await contract.ownerOf(tokenId);
       } else {
         // For ERC1155, we need to check balance
-        const signer = contractRegistryService.getSigner();
+        const signer = getContractRegistryService().getSigner();
         const userAddress = await signer.getAddress();
         const balance = await contract.balanceOf(userAddress, tokenId);
-        return balance > 0 ? userAddress : "0x0000000000000000000000000000000000000000";
+        return balance > 0
+          ? userAddress
+          : "0x0000000000000000000000000000000000000000";
       }
     } catch (error) {
       console.error("Error getting token owner:", error);
@@ -338,8 +361,12 @@ export class CollectionService {
 
         for (let i = 0; i < balance; i++) {
           const tokenId = await contract.tokenOfOwnerByIndex(userAddress, i);
-          const uri = await this.getTokenURI(collection, tokenId.toString(), tokenType);
-          
+          const uri = await this.getTokenURI(
+            collection,
+            tokenId.toString(),
+            tokenType
+          );
+
           tokens.push({
             tokenId: tokenId.toString(),
             balance: "1",

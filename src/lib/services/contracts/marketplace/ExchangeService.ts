@@ -1,22 +1,22 @@
-import { BaseContractService } from '../core/BaseContractService'
-import { NFT_EXCHANGE_ABI } from '@/lib/contracts/abis'
-import { getContractAddress } from '@/lib/contracts/addresses'
-import { ethers } from 'ethers'
+import { BaseContractService } from "../core/BaseContractService";
+import { NFT_EXCHANGE_ABI } from "@/lib/contracts/abis";
+import { getContractAddress } from "@/lib/contracts/addresses";
+import { ethers } from "ethers";
 
 export interface Listing {
-  id: string
-  seller: string
-  tokenContract: string
-  tokenId: string
-  price: string
-  currency: string
-  active: boolean
+  id: string;
+  seller: string;
+  tokenContract: string;
+  tokenId: string;
+  price: string;
+  currency: string;
+  active: boolean;
 }
 
 export class ExchangeService extends BaseContractService {
   constructor(chainId: number = 31337) {
-    const contractAddress = getContractAddress('ERC721_EXCHANGE', chainId)
-    super(contractAddress, NFT_EXCHANGE_ABI)
+    const contractAddress = getContractAddress("LISTING_MANAGER", chainId);
+    super(contractAddress, NFT_EXCHANGE_ABI);
   }
 
   /**
@@ -28,14 +28,14 @@ export class ExchangeService extends BaseContractService {
     price: string,
     currency: string = ethers.ZeroAddress
   ): Promise<ethers.ContractTransactionResponse> {
-    const priceWei = ethers.parseEther(price)
+    const priceWei = ethers.parseEther(price);
     return await this.sendTransaction(
-      'createListing',
+      "createListing",
       tokenContract,
       tokenId,
       priceWei,
       currency
-    )
+    );
   }
 
   /**
@@ -45,17 +45,19 @@ export class ExchangeService extends BaseContractService {
     listingId: string,
     price: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const priceWei = ethers.parseEther(price)
-    return await this.sendTransaction('buyListing', listingId, {
+    const priceWei = ethers.parseEther(price);
+    return await this.sendTransaction("buyListing", listingId, {
       value: priceWei,
-    })
+    });
   }
 
   /**
    * Cancel a listing
    */
-  async cancelListing(listingId: string): Promise<ethers.ContractTransactionResponse> {
-    return await this.sendTransaction('cancelListing', listingId)
+  async cancelListing(
+    listingId: string
+  ): Promise<ethers.ContractTransactionResponse> {
+    return await this.sendTransaction("cancelListing", listingId);
   }
 
   /**
@@ -65,8 +67,12 @@ export class ExchangeService extends BaseContractService {
     listingId: string,
     newPrice: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const priceWei = ethers.parseEther(newPrice)
-    return await this.sendTransaction('updateListingPrice', listingId, priceWei)
+    const priceWei = ethers.parseEther(newPrice);
+    return await this.sendTransaction(
+      "updateListingPrice",
+      listingId,
+      priceWei
+    );
   }
 
   /**
@@ -74,8 +80,8 @@ export class ExchangeService extends BaseContractService {
    */
   async getListing(listingId: string): Promise<Listing | null> {
     try {
-      const result = await this.callMethod('getListing', listingId)
-      if (!result || !result.active) return null
+      const result = await this.callMethod("getListing", listingId);
+      if (!result || !result.active) return null;
 
       return {
         id: listingId,
@@ -85,10 +91,10 @@ export class ExchangeService extends BaseContractService {
         price: ethers.formatEther(result.price),
         currency: result.currency,
         active: result.active,
-      }
+      };
     } catch (error) {
-      console.error('Error getting listing:', error)
-      return null
+      console.error("Error getting listing:", error);
+      return null;
     }
   }
 
@@ -97,10 +103,10 @@ export class ExchangeService extends BaseContractService {
    */
   async getActiveListings(): Promise<string[]> {
     try {
-      return await this.callMethod('getActiveListings')
+      return await this.callMethod("getActiveListings");
     } catch (error) {
-      console.error('Error getting active listings:', error)
-      return []
+      console.error("Error getting active listings:", error);
+      return [];
     }
   }
 
@@ -109,10 +115,10 @@ export class ExchangeService extends BaseContractService {
    */
   async getListingsByUser(userAddress: string): Promise<string[]> {
     try {
-      return await this.callMethod('getListingsByUser', userAddress)
+      return await this.callMethod("getListingsByUser", userAddress);
     } catch (error) {
-      console.error('Error getting user listings:', error)
-      return []
+      console.error("Error getting user listings:", error);
+      return [];
     }
   }
 
@@ -120,56 +126,65 @@ export class ExchangeService extends BaseContractService {
    * Get multiple listings details
    */
   async getMultipleListings(listingIds: string[]): Promise<Listing[]> {
-    const listings: Listing[] = []
-    
+    const listings: Listing[] = [];
+
     for (const id of listingIds) {
-      const listing = await this.getListing(id)
+      const listing = await this.getListing(id);
       if (listing) {
-        listings.push(listing)
+        listings.push(listing);
       }
     }
-    
-    return listings
+
+    return listings;
   }
 
   /**
    * Listen to listing events
    */
-  onListingCreated(callback: (listingId: string, seller: string, tokenContract: string, tokenId: string, price: string) => void): void {
-    this.addEventListener('ListingCreated', (listingId, seller, tokenContract, tokenId, price) => {
-      callback(
-        listingId.toString(),
-        seller,
-        tokenContract,
-        tokenId.toString(),
-        ethers.formatEther(price)
-      )
-    })
+  onListingCreated(
+    callback: (
+      listingId: string,
+      seller: string,
+      tokenContract: string,
+      tokenId: string,
+      price: string
+    ) => void
+  ): void {
+    this.addEventListener(
+      "ListingCreated",
+      (listingId, seller, tokenContract, tokenId, price) => {
+        callback(
+          listingId.toString(),
+          seller,
+          tokenContract,
+          tokenId.toString(),
+          ethers.formatEther(price)
+        );
+      }
+    );
   }
 
-  onListingSold(callback: (listingId: string, buyer: string, price: string) => void): void {
-    this.addEventListener('ListingSold', (listingId, buyer, price) => {
-      callback(
-        listingId.toString(),
-        buyer,
-        ethers.formatEther(price)
-      )
-    })
+  onListingSold(
+    callback: (listingId: string, buyer: string, price: string) => void
+  ): void {
+    this.addEventListener("ListingSold", (listingId, buyer, price) => {
+      callback(listingId.toString(), buyer, ethers.formatEther(price));
+    });
   }
 
   onListingCancelled(callback: (listingId: string) => void): void {
-    this.addEventListener('ListingCancelled', (listingId) => {
-      callback(listingId.toString())
-    })
+    this.addEventListener("ListingCancelled", (listingId) => {
+      callback(listingId.toString());
+    });
   }
 
   /**
    * Remove all event listeners
    */
   removeAllEventListeners(): void {
-    this.removeAllListeners()
+    this.removeAllListeners();
   }
 }
 
 // Singleton instance
-export const exchangeService = new ExchangeService()
+export const exchangeService = new ExchangeService();

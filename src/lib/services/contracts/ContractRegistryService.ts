@@ -6,7 +6,15 @@
 
 import { ethers } from "ethers";
 import { getContractAddresses } from "@/lib/contracts/addresses";
-import { NFTExchangeRegistry_ABI } from "@/lib/contracts/abis";
+import {
+  NFTExchangeRegistry_ABI,
+  AUCTION_FACTORY_ABI,
+  OFFER_MANAGER_ABI,
+  BUNDLE_MANAGER_ABI,
+  COLLECTION_FACTORY_REGISTRY_ABI,
+  ERC721NFTExchange_ABI,
+  ERC1155NFTExchange_ABI,
+} from "@/lib/contracts/abis";
 
 export interface ExchangeAddresses {
   ERC721?: string;
@@ -18,6 +26,16 @@ export class ContractRegistryService {
   private exchangeAddresses: ExchangeAddresses = {};
   private signer: ethers.Signer | null = null;
   private isInitialized = false;
+
+  // ABI mapping for getContractByKey
+  private abiMap: Record<string, any[]> = {
+    NFT_EXCHANGE_REGISTRY: NFTExchangeRegistry_ABI,
+    LISTING_MANAGER: ERC721NFTExchange_ABI,
+    AUCTION_FACTORY: AUCTION_FACTORY_ABI,
+    OFFER_MANAGER: OFFER_MANAGER_ABI,
+    BUNDLE_MANAGER: BUNDLE_MANAGER_ABI,
+    COLLECTION_FACTORY_REGISTRY: COLLECTION_FACTORY_REGISTRY_ABI,
+  };
 
   constructor(signer?: ethers.Signer) {
     this.signer = signer || null;
@@ -40,7 +58,10 @@ export class ContractRegistryService {
       this.isInitialized = true;
       console.log("✅ Contract Registry Service initialized");
     } catch (error) {
-      console.error("❌ Failed to initialize Contract Registry Service:", error);
+      console.error(
+        "❌ Failed to initialize Contract Registry Service:",
+        error
+      );
       throw error;
     }
   }
@@ -57,7 +78,7 @@ export class ContractRegistryService {
     try {
       const addresses = getContractAddresses();
       const registryAddress = addresses.NFT_EXCHANGE_REGISTRY;
-      
+
       if (!registryAddress) {
         throw new Error("NFT_EXCHANGE_REGISTRY address not found");
       }
@@ -70,7 +91,8 @@ export class ContractRegistryService {
       );
 
       // Load exchange addresses dynamically
-      const [erc721Address, erc1155Address] = await this.registry.getExchangeAddresses();
+      const [erc721Address, erc1155Address] =
+        await this.registry.getExchangeAddresses();
 
       this.exchangeAddresses = {
         ERC721: erc721Address,
@@ -82,7 +104,10 @@ export class ContractRegistryService {
         ERC1155: erc1155Address,
       });
     } catch (error) {
-      console.error("❌ Error loading exchange addresses from registry:", error);
+      console.error(
+        "❌ Error loading exchange addresses from registry:",
+        error
+      );
       throw error;
     }
   }
@@ -107,12 +132,18 @@ export class ContractRegistryService {
 
     const exchangeAddress = this.exchangeAddresses[tokenType];
     if (!exchangeAddress) {
-      throw new Error(`Exchange address not found for token type: ${tokenType}`);
+      throw new Error(
+        `Exchange address not found for token type: ${tokenType}`
+      );
     }
 
     // Import ABIs dynamically to avoid circular dependencies
-    const { ERC721NFTExchange_ABI, ERC1155NFTExchange_ABI } = require("@/lib/contracts/abis");
-    const abi = tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+    const {
+      ERC721NFTExchange_ABI,
+      ERC1155NFTExchange_ABI,
+    } = require("@/lib/contracts/abis");
+    const abi =
+      tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
 
     return new ethers.Contract(exchangeAddress, abi, this.signer);
   }
@@ -137,7 +168,7 @@ export class ContractRegistryService {
   /**
    * Check if service is initialized
    */
-  isInitialized(): boolean {
+  getIsInitialized(): boolean {
     return this.isInitialized;
   }
 
@@ -170,13 +201,6 @@ export class ContractRegistryService {
   }
 
   /**
-   * Get all exchange addresses
-   */
-  getExchangeAddresses(): ExchangeAddresses {
-    return { ...this.exchangeAddresses };
-  }
-
-  /**
    * Check if service is initialized
    */
   isServiceInitialized(): boolean {
@@ -199,14 +223,39 @@ export class ContractRegistryService {
     }
 
     // Basic address validation
-    const isValidAddress = (address: string) => {
-      return address && address.length === 42 && address.startsWith('0x');
+    const isValidAddress = (address: string): boolean => {
+      return !!(address && address.length === 42 && address.startsWith("0x"));
     };
 
     return (
       isValidAddress(this.exchangeAddresses.ERC721!) &&
       isValidAddress(this.exchangeAddresses.ERC1155!)
     );
+  }
+
+  /**
+   * Get contract instance by key
+   * @param key Contract key (NFT_EXCHANGE_REGISTRY, LISTING_MANAGER, etc.)
+   * @returns ethers.Contract instance
+   */
+  getContractByKey(key: string): ethers.Contract {
+    if (!this.signer) {
+      throw new Error("ContractRegistryService not initialized with signer");
+    }
+
+    const addresses = getContractAddresses();
+    const address = addresses[key as keyof typeof addresses];
+
+    if (!address) {
+      throw new Error(`Contract address not found for key: ${key}`);
+    }
+
+    const abi = this.abiMap[key];
+    if (!abi) {
+      throw new Error(`ABI not found for key: ${key}`);
+    }
+
+    return new ethers.Contract(address, abi, this.signer);
   }
 }
 
@@ -226,7 +275,9 @@ export function getContractRegistryService(): ContractRegistryService {
 /**
  * Initialize the singleton service
  */
-export async function initializeContractRegistry(signer: ethers.Signer): Promise<ContractRegistryService> {
+export async function initializeContractRegistry(
+  signer: ethers.Signer
+): Promise<ContractRegistryService> {
   const service = getContractRegistryService();
   await service.initialize(signer);
   return service;

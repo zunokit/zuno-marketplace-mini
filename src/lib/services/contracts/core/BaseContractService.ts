@@ -1,26 +1,26 @@
-import { ethers, Contract, Provider, Signer } from 'ethers'
+import { ethers, Contract, Provider, Signer } from "ethers";
 
 export abstract class BaseContractService {
-  protected contract: Contract | null = null
-  protected provider: Provider | null = null
-  protected signer: Signer | null = null
-  protected contractAddress: string
-  protected contractABI: any[]
+  protected contract: Contract | null = null;
+  protected provider: Provider | null = null;
+  protected signer: Signer | null = null;
+  protected contractAddress: string;
+  protected contractABI: any[];
 
   constructor(contractAddress: string, contractABI: any[]) {
-    this.contractAddress = contractAddress
-    this.contractABI = contractABI
+    this.contractAddress = contractAddress;
+    this.contractABI = contractABI;
   }
 
   /**
    * Initialize the contract with provider
    */
   async initialize(provider: Provider, signer?: Signer): Promise<void> {
-    this.provider = provider
-    this.signer = signer || null
+    this.provider = provider;
+    this.signer = signer || null;
 
     if (!this.contractAddress || this.contractAddress === ethers.ZeroAddress) {
-      throw new Error(`Invalid contract address: ${this.contractAddress}`)
+      throw new Error(`Invalid contract address: ${this.contractAddress}`);
     }
 
     try {
@@ -28,9 +28,9 @@ export abstract class BaseContractService {
         this.contractAddress,
         this.contractABI,
         signer || provider
-      )
+      );
     } catch (error) {
-      throw new Error(`Failed to initialize contract: ${error}`)
+      throw new Error(`Failed to initialize contract: ${error}`);
     }
   }
 
@@ -39,7 +39,7 @@ export abstract class BaseContractService {
    */
   protected ensureInitialized(): void {
     if (!this.contract || !this.provider) {
-      throw new Error('Contract not initialized. Call initialize() first.')
+      throw new Error("Contract not initialized. Call initialize() first.");
     }
   }
 
@@ -47,24 +47,24 @@ export abstract class BaseContractService {
    * Get contract instance
    */
   getContract(): Contract {
-    this.ensureInitialized()
-    return this.contract!
+    this.ensureInitialized();
+    return this.contract!;
   }
 
   /**
    * Get contract address
    */
   getAddress(): string {
-    return this.contractAddress
+    return this.contractAddress;
   }
 
   /**
    * Update signer (for transactions)
    */
   updateSigner(signer: Signer): void {
-    this.signer = signer
+    this.signer = signer;
     if (this.contract) {
-      this.contract = this.contract.connect(signer)
+      this.contract = this.contract.connect(signer) as Contract;
     }
   }
 
@@ -72,11 +72,11 @@ export abstract class BaseContractService {
    * Call a read-only contract method
    */
   protected async callMethod(methodName: string, ...args: any[]): Promise<any> {
-    this.ensureInitialized()
+    this.ensureInitialized();
     try {
-      return await this.contract![methodName](...args)
+      return await this.contract![methodName](...args);
     } catch (error) {
-      throw new Error(`Failed to call ${methodName}: ${error}`)
+      throw new Error(`Failed to call ${methodName}: ${error}`);
     }
   }
 
@@ -87,16 +87,16 @@ export abstract class BaseContractService {
     methodName: string,
     ...args: any[]
   ): Promise<ethers.ContractTransactionResponse> {
-    this.ensureInitialized()
+    this.ensureInitialized();
     if (!this.signer) {
-      throw new Error('Signer required for transactions')
+      throw new Error("Signer required for transactions");
     }
 
     try {
-      const tx = await this.contract![methodName](...args)
-      return tx
+      const tx = await this.contract![methodName](...args);
+      return tx;
     } catch (error) {
-      throw new Error(`Failed to send transaction ${methodName}: ${error}`)
+      throw new Error(`Failed to send transaction ${methodName}: ${error}`);
     }
   }
 
@@ -107,8 +107,8 @@ export abstract class BaseContractService {
     eventName: string,
     listener: (...args: any[]) => void
   ): void {
-    this.ensureInitialized()
-    this.contract!.on(eventName, listener)
+    this.ensureInitialized();
+    this.contract!.on(eventName, listener);
   }
 
   /**
@@ -118,16 +118,16 @@ export abstract class BaseContractService {
     eventName: string,
     listener: (...args: any[]) => void
   ): void {
-    this.ensureInitialized()
-    this.contract!.off(eventName, listener)
+    this.ensureInitialized();
+    this.contract!.off(eventName, listener);
   }
 
   /**
    * Remove all event listeners
    */
   protected removeAllListeners(eventName?: string): void {
-    this.ensureInitialized()
-    this.contract!.removeAllListeners(eventName)
+    this.ensureInitialized();
+    this.contract!.removeAllListeners(eventName);
   }
 
   /**
@@ -136,14 +136,14 @@ export abstract class BaseContractService {
   protected async getPastEvents(
     eventName: string,
     fromBlock: number | string = 0,
-    toBlock: number | string = 'latest'
+    toBlock: number | string = "latest"
   ): Promise<any[]> {
-    this.ensureInitialized()
+    this.ensureInitialized();
     try {
-      const filter = this.contract!.filters[eventName]()
-      return await this.contract!.queryFilter(filter, fromBlock, toBlock)
+      const filter = this.contract!.filters[eventName]();
+      return await this.contract!.queryFilter(filter, fromBlock, toBlock);
     } catch (error) {
-      throw new Error(`Failed to get past events ${eventName}: ${error}`)
+      throw new Error(`Failed to get past events ${eventName}: ${error}`);
     }
   }
 }

@@ -5,9 +5,7 @@
  */
 
 import { ethers } from "ethers";
-import { getContractAddresses } from "@/lib/contracts/addresses";
-import { AUCTION_FACTORY_ABI } from "@/lib/contracts/abis";
-import { contractRegistryService } from "./ContractRegistryService";
+import { getContractRegistryService } from "./ContractRegistryService";
 
 export interface EnglishAuctionParams {
   nftContract: string;
@@ -45,12 +43,10 @@ export interface AuctionInfo {
 }
 
 export class AuctionService {
-  private factoryAddress: string;
   private isInitialized = false;
 
   constructor() {
-    const addresses = getContractAddresses();
-    this.factoryAddress = addresses.AUCTION_FACTORY;
+    // No need to store addresses, will get from registry service
   }
 
   /**
@@ -58,7 +54,7 @@ export class AuctionService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     try {
       // Verify factory contract is accessible
       await this.getFactoryContract().getAddress();
@@ -74,13 +70,16 @@ export class AuctionService {
    * Get the auction factory contract instance
    */
   getFactoryContract(): ethers.Contract {
-    return contractRegistryService.getContract("AUCTION_FACTORY_ABI");
+    const registryService = getContractRegistryService();
+    return registryService.getContractByKey("AUCTION_FACTORY");
   }
 
   /**
    * Create an English auction
    */
-  async createEnglishAuction(params: EnglishAuctionParams): Promise<ethers.ContractTransactionResponse> {
+  async createEnglishAuction(
+    params: EnglishAuctionParams
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const factory = this.getFactoryContract();
       const durationInSeconds = params.duration * 60 * 60; // Convert hours to seconds
@@ -104,7 +103,9 @@ export class AuctionService {
   /**
    * Create a Dutch auction
    */
-  async createDutchAuction(params: DutchAuctionParams): Promise<ethers.ContractTransactionResponse> {
+  async createDutchAuction(
+    params: DutchAuctionParams
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const factory = this.getFactoryContract();
       const durationInSeconds = params.duration * 60 * 60; // Convert hours to seconds
@@ -129,7 +130,10 @@ export class AuctionService {
   /**
    * Place a bid on an auction
    */
-  async placeBid(auctionId: string, bidAmount: string): Promise<ethers.ContractTransactionResponse> {
+  async placeBid(
+    auctionId: string,
+    bidAmount: string
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const factory = this.getFactoryContract();
 
@@ -147,7 +151,10 @@ export class AuctionService {
   /**
    * Buy now from a Dutch auction
    */
-  async buyNow(auctionId: string, price: string): Promise<ethers.ContractTransactionResponse> {
+  async buyNow(
+    auctionId: string,
+    price: string
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const factory = this.getFactoryContract();
 
@@ -165,7 +172,9 @@ export class AuctionService {
   /**
    * Cancel an auction
    */
-  async cancelAuction(auctionId: string): Promise<ethers.ContractTransactionResponse> {
+  async cancelAuction(
+    auctionId: string
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const factory = this.getFactoryContract();
 
@@ -180,7 +189,9 @@ export class AuctionService {
   /**
    * Settle an auction
    */
-  async settleAuction(auctionId: string): Promise<ethers.ContractTransactionResponse> {
+  async settleAuction(
+    auctionId: string
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const factory = this.getFactoryContract();
 
@@ -195,7 +206,9 @@ export class AuctionService {
   /**
    * Withdraw bid from an auction
    */
-  async withdrawBid(auctionId: string): Promise<ethers.ContractTransactionResponse> {
+  async withdrawBid(
+    auctionId: string
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const factory = this.getFactoryContract();
 
@@ -243,7 +256,7 @@ export class AuctionService {
     try {
       const factory = this.getFactoryContract();
       const auctions = await factory.getActiveAuctions();
-      
+
       return auctions.map((auction: any, index: number) => ({
         auctionId: index.toString(),
         nftContract: auction.nftContract,
@@ -272,7 +285,7 @@ export class AuctionService {
     try {
       const factory = this.getFactoryContract();
       const auctions = await factory.getUserAuctions(userAddress);
-      
+
       return auctions.map((auction: any, index: number) => ({
         auctionId: index.toString(),
         nftContract: auction.nftContract,

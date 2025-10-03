@@ -10,8 +10,8 @@ interface StoreProviderProps {
 }
 
 export default function StoreProvider({ children }: StoreProviderProps) {
-  const storeRef = useRef<AppStore>();
-  const persistorRef = useRef<any>();
+  const storeRef = useRef<AppStore | undefined>(undefined);
+  const persistorRef = useRef<any>(undefined);
 
   if (!storeRef.current) {
     // Create the store instance the first time this renders

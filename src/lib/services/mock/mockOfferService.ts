@@ -213,6 +213,36 @@ export class MockOfferService {
   }
 
   /**
+   * Create trait offer
+   */
+  async createTraitOffer(data: {
+    collection: string;
+    traits: string[];
+    price: string;
+    expirationTime: number;
+  }): Promise<Offer> {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const offer: Offer = {
+      id: `trait_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      creator: "0x1234567890123456789012345678901234567890", // Mock user
+      nftContract: data.collection,
+      tokenId: "0", // Trait offers don't have specific token IDs
+      offerPrice: data.price,
+      quantity: 1,
+      expiresAt: data.expirationTime,
+      status: OfferStatus.ACTIVE,
+      type: OfferType.TRAIT,
+      collectionName: "Trait Collection", // Mock collection name
+      traits: data.traits.map((trait) => ({ trait_type: trait, value: trait })),
+      createdAt: Date.now(),
+    };
+
+    this.offers.push(offer);
+    return offer;
+  }
+
+  /**
    * Accept offer
    */
   async acceptOffer(offerId: string): Promise<void> {

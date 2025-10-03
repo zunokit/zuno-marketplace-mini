@@ -15,8 +15,8 @@ export const ERC721_ABI = [
   "function safeTransferFrom(address from, address to, uint256 tokenId, bytes data)",
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
   "event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId)",
-  "event ApprovalForAll(address indexed owner, address indexed operator, bool approved)"
-]
+  "event ApprovalForAll(address indexed owner, address indexed operator, bool approved)",
+];
 
 // Basic ERC1155 ABI for collection interaction
 export const ERC1155_ABI = [
@@ -30,8 +30,8 @@ export const ERC1155_ABI = [
   "event TransferSingle(address indexed operator, address indexed from, address indexed to, uint256 id, uint256 value)",
   "event TransferBatch(address indexed operator, address indexed from, address indexed to, uint256[] ids, uint256[] values)",
   "event ApprovalForAll(address indexed account, address indexed operator, bool approved)",
-  "event URI(string value, uint256 indexed id)"
-]
+  "event URI(string value, uint256 indexed id)",
+];
 
 // Collection Factory ABI (simplified)
 export const COLLECTION_FACTORY_ABI = [
@@ -40,8 +40,8 @@ export const COLLECTION_FACTORY_ABI = [
   "function getCollectionsByCreator(address creator) view returns (address[])",
   "function isValidCollection(address collection) view returns (bool)",
   "event ERC721CollectionCreated(address indexed creator, address indexed collection, string name, string symbol)",
-  "event ERC1155CollectionCreated(address indexed creator, address indexed collection, string name, string symbol)"
-]
+  "event ERC1155CollectionCreated(address indexed creator, address indexed collection, string name, string symbol)",
+];
 
 // NFT Exchange ABI (simplified)
 export const NFT_EXCHANGE_ABI = [
@@ -54,8 +54,8 @@ export const NFT_EXCHANGE_ABI = [
   "function getListingsByUser(address user) view returns (uint256[])",
   "event ListingCreated(uint256 indexed listingId, address indexed seller, address indexed tokenContract, uint256 tokenId, uint256 price)",
   "event ListingSold(uint256 indexed listingId, address indexed buyer, uint256 price)",
-  "event ListingCancelled(uint256 indexed listingId)"
-]
+  "event ListingCancelled(uint256 indexed listingId)",
+];
 
 // Auction Factory ABI (simplified)
 export const AUCTION_FACTORY_ABI = [
@@ -66,8 +66,8 @@ export const AUCTION_FACTORY_ABI = [
   "function getAuction(uint256 auctionId) view returns (tuple(address seller, address tokenContract, uint256 tokenId, uint256 startPrice, uint256 currentPrice, uint256 endTime, address highestBidder, bool active))",
   "event AuctionCreated(uint256 indexed auctionId, address indexed seller, address indexed tokenContract, uint256 tokenId, uint256 startPrice)",
   "event BidPlaced(uint256 indexed auctionId, address indexed bidder, uint256 amount)",
-  "event AuctionEnded(uint256 indexed auctionId, address indexed winner, uint256 finalPrice)"
-]
+  "event AuctionEnded(uint256 indexed auctionId, address indexed winner, uint256 finalPrice)",
+];
 
 // Offer Manager ABI (simplified)
 export const OFFER_MANAGER_ABI = [
@@ -79,8 +79,8 @@ export const OFFER_MANAGER_ABI = [
   "function getOffersForToken(address tokenContract, uint256 tokenId) view returns (uint256[])",
   "event OfferMade(uint256 indexed offerId, address indexed offerer, address indexed tokenContract, uint256 tokenId, uint256 price)",
   "event OfferAccepted(uint256 indexed offerId, address indexed acceptor)",
-  "event OfferCancelled(uint256 indexed offerId)"
-]
+  "event OfferCancelled(uint256 indexed offerId)",
+];
 
 // Bundle Manager ABI (simplified)
 export const BUNDLE_MANAGER_ABI = [
@@ -90,8 +90,8 @@ export const BUNDLE_MANAGER_ABI = [
   "function getBundle(uint256 bundleId) view returns (tuple(address seller, address[] tokenContracts, uint256[] tokenIds, uint256[] amounts, uint256 price, bool active))",
   "event BundleCreated(uint256 indexed bundleId, address indexed seller, uint256 price)",
   "event BundleSold(uint256 indexed bundleId, address indexed buyer)",
-  "event BundleCancelled(uint256 indexed bundleId)"
-]
+  "event BundleCancelled(uint256 indexed bundleId)",
+];
 
 // Collection Verifier ABI (simplified)
 export const COLLECTION_VERIFIER_ABI = [
@@ -100,8 +100,8 @@ export const COLLECTION_VERIFIER_ABI = [
   "function isVerified(address collection) view returns (bool)",
   "function getVerificationDetails(address collection) view returns (tuple(bool verified, string metadataURI, uint256 verifiedAt))",
   "event CollectionVerified(address indexed collection, string metadataURI)",
-  "event VerificationRevoked(address indexed collection)"
-]
+  "event VerificationRevoked(address indexed collection)",
+];
 
 // Fee Manager ABI (simplified)
 export const FEE_MANAGER_ABI = [
@@ -111,8 +111,8 @@ export const FEE_MANAGER_ABI = [
   "function getRoyaltyFee() view returns (uint256)",
   "function calculateFees(uint256 price) view returns (uint256 marketplaceFee, uint256 royaltyFee)",
   "event MarketplaceFeeUpdated(uint256 newFee)",
-  "event RoyaltyFeeUpdated(uint256 newFee)"
-]
+  "event RoyaltyFeeUpdated(uint256 newFee)",
+];
 
 // Access Control ABI (simplified)
 export const ACCESS_CONTROL_ABI = [
@@ -124,8 +124,8 @@ export const ACCESS_CONTROL_ABI = [
   "function ADMIN_ROLE() view returns (bytes32)",
   "function VERIFIED_CREATOR_ROLE() view returns (bytes32)",
   "event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)",
-  "event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)"
-]
+  "event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)",
+];
 
 // Emergency Manager ABI (simplified)
 export const EMERGENCY_MANAGER_ABI = [
@@ -139,8 +139,14 @@ export const EMERGENCY_MANAGER_ABI = [
   "event MarketplacePaused()",
   "event MarketplaceUnpaused()",
   "event ContractBlacklisted(address indexed contractAddress)",
-  "event ContractRemovedFromBlacklist(address indexed contractAddress)"
-]
+  "event ContractRemovedFromBlacklist(address indexed contractAddress)",
+];
+
+// Additional exports for services
+export const NFTExchangeRegistry_ABI = NFT_EXCHANGE_ABI;
+export const ERC721NFTExchange_ABI = NFT_EXCHANGE_ABI;
+export const ERC1155NFTExchange_ABI = NFT_EXCHANGE_ABI;
+export const COLLECTION_FACTORY_REGISTRY_ABI = COLLECTION_FACTORY_ABI;
 
 // Export all ABIs as a collection
 export const ABIS = {
@@ -155,4 +161,4 @@ export const ABIS = {
   FEE_MANAGER: FEE_MANAGER_ABI,
   ACCESS_CONTROL: ACCESS_CONTROL_ABI,
   EMERGENCY_MANAGER: EMERGENCY_MANAGER_ABI,
-}
+};

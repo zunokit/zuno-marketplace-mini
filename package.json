@@ -7,14 +7,11 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "setup": "node scripts/dev-setup.js",
-    "check-env": "node scripts/check-environment.js",
     "dev:mock": "NEXT_PUBLIC_USE_MOCK_DATA=true npm run dev",
     "dev:testnet": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111 npm run dev",
     "dev:local": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337 npm run dev",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf .next dist node_modules/.cache",
-    "analyze": "ANALYZE=true npm run build"
+    "clean": "rm -rf .next dist node_modules/.cache"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

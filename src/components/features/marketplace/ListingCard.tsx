@@ -1,11 +1,16 @@
-'use client'
-import { useState } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+"use client";
+import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,49 +21,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { 
-  ShoppingCart, 
-  Edit, 
-  X, 
-  Clock, 
+} from "@/components/ui/alert-dialog";
+import {
+  ShoppingCart,
+  Edit,
+  X,
+  Clock,
   Eye,
   TrendingUp,
-  TrendingDown 
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { formatDistanceToNow } from 'date-fns'
+  TrendingDown,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
 
 export interface ListingCardProps {
   listing: {
-    id: string
-    seller: string
-    tokenContract: string
-    tokenId: string
-    price: string
-    currency: string
-    status: 'ACTIVE' | 'SOLD' | 'CANCELLED'
-    createdAt: number
-    updatedAt: number
+    id: string;
+    seller: string;
+    tokenContract: string;
+    tokenId: string;
+    price: string;
+    currency: string;
+    status: "ACTIVE" | "SOLD" | "CANCELLED";
+    createdAt: number;
+    updatedAt: number;
     nft?: {
-      name: string
-      image: string
+      name?: string;
+      image?: string;
       collection?: {
-        name: string
-        verified?: boolean
-      }
-    }
+        name?: string;
+        verified?: boolean;
+      };
+    };
     priceHistory?: Array<{
-      price: string
-      timestamp: number
-    }>
-  }
-  className?: string
-  isOwner?: boolean
-  onBuy?: () => void
-  onEdit?: () => void
-  onCancel?: () => void
-  onView?: () => void
+      price: string;
+      timestamp: number;
+    }>;
+  };
+  className?: string;
+  isOwner?: boolean;
+  onBuy?: () => void;
+  onEdit?: () => void;
+  onCancel?: () => void;
+  onView?: () => void;
 }
 
 export function ListingCard({
@@ -70,68 +75,75 @@ export function ListingCard({
   onCancel,
   onView,
 }: ListingCardProps) {
-  const [imageLoading, setImageLoading] = useState(true)
-  const [imageError, setImageError] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`
-  }
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   const formatPrice = (price: string) => {
-    const num = parseFloat(price)
-    return num.toFixed(4)
-  }
+    const num = parseFloat(price);
+    return num.toFixed(4);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE':
-        return 'bg-green-500'
-      case 'SOLD':
-        return 'bg-blue-500'
-      case 'CANCELLED':
-        return 'bg-red-500'
+      case "ACTIVE":
+        return "bg-green-500";
+      case "SOLD":
+        return "bg-blue-500";
+      case "CANCELLED":
+        return "bg-red-500";
       default:
-        return 'bg-gray-500'
+        return "bg-gray-500";
     }
-  }
+  };
 
   const getPriceChange = () => {
-    if (!listing.priceHistory || listing.priceHistory.length < 2) return null
-    
-    const currentPrice = parseFloat(listing.price)
-    const previousPrice = parseFloat(listing.priceHistory[listing.priceHistory.length - 2].price)
-    const change = ((currentPrice - previousPrice) / previousPrice) * 100
-    
+    if (!listing.priceHistory || listing.priceHistory.length < 2) return null;
+
+    const currentPrice = parseFloat(listing.price);
+    const previousPrice = parseFloat(
+      listing.priceHistory[listing.priceHistory.length - 2].price
+    );
+    const change = ((currentPrice - previousPrice) / previousPrice) * 100;
+
     return {
       percentage: Math.abs(change).toFixed(1),
       isIncrease: change > 0,
       isDecrease: change < 0,
-    }
-  }
+    };
+  };
 
-  const priceChange = getPriceChange()
+  const priceChange = getPriceChange();
 
   const handleBuy = async () => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
-      await onBuy?.()
+      await onBuy?.();
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   const handleCancel = async () => {
-    setIsProcessing(true)
+    setIsProcessing(true);
     try {
-      await onCancel?.()
+      await onCancel?.();
     } finally {
-      setIsProcessing(false)
+      setIsProcessing(false);
     }
-  }
+  };
 
   return (
-    <Card className={cn("group overflow-hidden transition-all hover:shadow-lg", className)}>
+    <Card
+      className={cn(
+        "group overflow-hidden transition-all hover:shadow-lg",
+        className
+      )}
+    >
       <CardHeader className="p-0">
         {/* Status Badge */}
         <div className="absolute top-3 left-3 z-10">
@@ -141,9 +153,9 @@ export function ListingCard({
         </div>
 
         {/* Price Change Indicator */}
-        {priceChange && listing.status === 'ACTIVE' && (
+        {priceChange && listing.status === "ACTIVE" && (
           <div className="absolute top-3 right-3 z-10">
-            <Badge 
+            <Badge
               variant={priceChange.isIncrease ? "default" : "destructive"}
               className="flex items-center gap-1"
             >
@@ -159,10 +171,10 @@ export function ListingCard({
 
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
-          {listing.nft && !imageError ? (
+          {listing.nft?.image && !imageError ? (
             <Image
               src={listing.nft.image}
-              alt={listing.nft.name || 'NFT'}
+              alt={listing.nft?.name || "NFT"}
               fill
               className={cn(
                 "object-cover transition-transform group-hover:scale-105",
@@ -170,8 +182,8 @@ export function ListingCard({
               )}
               onLoad={() => setImageLoading(false)}
               onError={() => {
-                setImageError(true)
-                setImageLoading(false)
+                setImageError(true);
+                setImageLoading(false);
               }}
             />
           ) : (
@@ -222,7 +234,7 @@ export function ListingCard({
               {listing.seller.slice(2, 4).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <Link 
+          <Link
             href={`/profile/${listing.seller}`}
             className="text-sm hover:text-primary transition-colors"
           >
@@ -235,7 +247,10 @@ export function ListingCard({
           <div>
             <p className="text-sm text-muted-foreground">Price</p>
             <p className="text-lg font-bold">
-              {formatPrice(listing.price)} {listing.currency === '0x0000000000000000000000000000000000000000' ? 'ETH' : listing.currency}
+              {formatPrice(listing.price)}{" "}
+              {listing.currency === "0x0000000000000000000000000000000000000000"
+                ? "ETH"
+                : listing.currency}
             </p>
           </div>
         </div>
@@ -243,12 +258,15 @@ export function ListingCard({
         {/* Listing Time */}
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <Clock className="h-3 w-3" />
-          Listed {formatDistanceToNow(new Date(listing.createdAt), { addSuffix: true })}
+          Listed{" "}
+          {formatDistanceToNow(new Date(listing.createdAt), {
+            addSuffix: true,
+          })}
         </div>
       </CardContent>
 
       <CardFooter className="p-4 pt-0">
-        {listing.status === 'ACTIVE' && (
+        {listing.status === "ACTIVE" && (
           <div className="w-full space-y-2">
             {isOwner ? (
               // Owner Actions
@@ -268,17 +286,18 @@ export function ListingCard({
                     <AlertDialogHeader>
                       <AlertDialogTitle>Cancel Listing</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to cancel this listing? This action cannot be undone.
+                        Are you sure you want to cancel this listing? This
+                        action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Keep Listing</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={handleCancel}
                         disabled={isProcessing}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
-                        {isProcessing ? 'Cancelling...' : 'Cancel Listing'}
+                        {isProcessing ? "Cancelling..." : "Cancel Listing"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -290,21 +309,26 @@ export function ListingCard({
                 <AlertDialogTrigger asChild>
                   <Button className="w-full" disabled={isProcessing}>
                     <ShoppingCart className="mr-2 h-4 w-4" />
-                    {isProcessing ? 'Processing...' : 'Buy Now'}
+                    {isProcessing ? "Processing..." : "Buy Now"}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Purchase</AlertDialogTitle>
                     <AlertDialogDescription>
-                      You are about to purchase "{listing.nft?.name || `#${listing.tokenId}`}" for{' '}
-                      <strong>{formatPrice(listing.price)} ETH</strong>. This action cannot be undone.
+                      You are about to purchase "
+                      {listing.nft?.name || `#${listing.tokenId}`}" for{" "}
+                      <strong>{formatPrice(listing.price)} ETH</strong>. This
+                      action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleBuy} disabled={isProcessing}>
-                      {isProcessing ? 'Processing...' : 'Confirm Purchase'}
+                    <AlertDialogAction
+                      onClick={handleBuy}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? "Processing..." : "Confirm Purchase"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -313,7 +337,7 @@ export function ListingCard({
           </div>
         )}
 
-        {listing.status === 'SOLD' && (
+        {listing.status === "SOLD" && (
           <div className="w-full text-center">
             <Badge variant="secondary" className="w-full justify-center py-2">
               Sold for {formatPrice(listing.price)} ETH
@@ -321,7 +345,7 @@ export function ListingCard({
           </div>
         )}
 
-        {listing.status === 'CANCELLED' && (
+        {listing.status === "CANCELLED" && (
           <div className="w-full text-center">
             <Badge variant="outline" className="w-full justify-center py-2">
               Listing Cancelled
@@ -330,5 +354,5 @@ export function ListingCard({
         )}
       </CardFooter>
     </Card>
-  )
+  );
 }

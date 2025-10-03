@@ -5,8 +5,7 @@
  */
 
 import { ethers } from "ethers";
-import { getContractAddresses } from "@/lib/contracts/addresses";
-import { contractRegistryService } from "./ContractRegistryService";
+import { getContractRegistryService } from "./ContractRegistryService";
 
 export interface BundleItem {
   collection: string;
@@ -47,13 +46,10 @@ export interface BundleInfo {
 }
 
 export class BundleService {
-  private bundleManagerAddress: string;
-  private bundleManagerContract: ethers.Contract | null = null;
   private isInitialized = false;
 
   constructor() {
-    const addresses = getContractAddresses();
-    this.bundleManagerAddress = addresses.BUNDLE_MANAGER;
+    // No need to store addresses, will get from registry service
   }
 
   /**
@@ -61,10 +57,10 @@ export class BundleService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     try {
-      this.bundleManagerContract = contractRegistryService.getContract("BUNDLE_MANAGER_ABI");
-      await this.bundleManagerContract.getAddress();
+      const registryService = getContractRegistryService();
+      await registryService.initialize();
       this.isInitialized = true;
       console.log("✅ BundleService initialized");
     } catch (error) {
@@ -77,10 +73,8 @@ export class BundleService {
    * Get the bundle manager contract instance
    */
   private getBundleManagerContract(): ethers.Contract {
-    if (!this.bundleManagerContract) {
-      throw new Error("BundleService not initialized. Call initialize() first.");
-    }
-    return this.bundleManagerContract;
+    const registryService = getContractRegistryService();
+    return registryService.getContractByKey("BUNDLE_MANAGER");
   }
 
   /**
@@ -89,7 +83,7 @@ export class BundleService {
   async createBundle(params: CreateBundleParams): Promise<string> {
     try {
       const contract = this.getBundleManagerContract();
-      
+
       const bundleItems = params.items.map((item) => ({
         collection: item.collection,
         tokenId: item.tokenId,
@@ -142,13 +136,13 @@ export class BundleService {
     try {
       const contract = this.getBundleManagerContract();
       const priceInWei = ethers.parseEther(newPrice);
-      
+
       const tx = await contract.updateBundlePrice(
         bundleId,
         priceInWei,
         newDiscount * 100 // Convert to basis points
       );
-      
+
       return tx;
     } catch (error) {
       console.error("Error updating bundle price:", error);
@@ -179,7 +173,7 @@ export class BundleService {
   async getBundle(bundleId: string): Promise<BundleInfo> {
     try {
       const contract = this.getBundleManagerContract();
-      
+
       const [bundle, timing, metadata, items] = await Promise.all([
         contract.bundles(bundleId),
         contract.bundleTiming(bundleId),
@@ -221,7 +215,9 @@ export class BundleService {
     try {
       const contract = this.getBundleManagerContract();
       const bundleIds = await contract.getUserBundles(userAddress);
-      return Promise.all(bundleIds.map((id: bigint) => this.getBundle(id.toString())));
+      return Promise.all(
+        bundleIds.map((id: bigint) => this.getBundle(id.toString()))
+      );
     } catch (error) {
       console.error("Error getting user bundles:", error);
       throw error;
@@ -237,11 +233,11 @@ export class BundleService {
   ): Promise<ethers.ContractTransactionResponse> {
     try {
       const contract = this.getBundleManagerContract();
-      
+
       const tx = await contract.purchaseBundle(bundleId, {
         value: ethers.parseEther(price),
       });
-      
+
       return tx;
     } catch (error) {
       console.error("Error purchasing bundle:", error);
@@ -252,7 +248,9 @@ export class BundleService {
   /**
    * Cancels a bundle
    */
-  async cancelBundle(bundleId: string): Promise<ethers.ContractTransactionResponse> {
+  async cancelBundle(
+    bundleId: string
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const contract = this.getBundleManagerContract();
       const tx = await contract.cancelBundle(bundleId);
@@ -270,7 +268,9 @@ export class BundleService {
     try {
       const contract = this.getBundleManagerContract();
       const bundleIds = await contract.getActiveBundles();
-      return Promise.all(bundleIds.map((id: bigint) => this.getBundle(id.toString())));
+      return Promise.all(
+        bundleIds.map((id: bigint) => this.getBundle(id.toString()))
+      );
     } catch (error) {
       console.error("Error getting active bundles:", error);
       throw error;
@@ -284,7 +284,9 @@ export class BundleService {
     try {
       const contract = this.getBundleManagerContract();
       const bundleIds = await contract.getBundlesByCollection(collection);
-      return Promise.all(bundleIds.map((id: bigint) => this.getBundle(id.toString())));
+      return Promise.all(
+        bundleIds.map((id: bigint) => this.getBundle(id.toString()))
+      );
     } catch (error) {
       console.error("Error getting bundles by collection:", error);
       throw error;
@@ -298,7 +300,9 @@ export class BundleService {
     try {
       const contract = this.getBundleManagerContract();
       const bundleIds = await contract.getUserPurchasedBundles(userAddress);
-      return Promise.all(bundleIds.map((id: bigint) => this.getBundle(id.toString())));
+      return Promise.all(
+        bundleIds.map((id: bigint) => this.getBundle(id.toString()))
+      );
     } catch (error) {
       console.error("Error getting user purchased bundles:", error);
       throw error;
@@ -321,8 +325,15 @@ export class BundleService {
   /**
    * Get bundle status from status code
    */
-  private getBundleStatus(statusCode: number): "ACTIVE" | "SOLD" | "CANCELLED" | "EXPIRED" | "UNKNOWN" {
-    const statuses = ["ACTIVE", "SOLD", "CANCELLED", "EXPIRED"];
+  private getBundleStatus(
+    statusCode: number
+  ): "ACTIVE" | "SOLD" | "CANCELLED" | "EXPIRED" | "UNKNOWN" {
+    const statuses: ("ACTIVE" | "SOLD" | "CANCELLED" | "EXPIRED")[] = [
+      "ACTIVE",
+      "SOLD",
+      "CANCELLED",
+      "EXPIRED",
+    ];
     return statuses[statusCode] || "UNKNOWN";
   }
 

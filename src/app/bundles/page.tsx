@@ -33,6 +33,7 @@ import {
   BundleStatus,
 } from "@/lib/services/mock/mockBundleService";
 import { bundleService } from "@/lib/services/contracts/BundleService";
+import { RealTimeEventsService } from "@/lib/services/contracts/RealTimeEvents";
 import { isMockMode } from "@/lib/config/env";
 import {
   AlertCircle,
@@ -49,7 +50,7 @@ export default function BundlesPage() {
 
   // Redux state
   const { account, isConnected } = useAppSelector((state) => state.wallet);
-  const nfts = useAppSelector((state) => state.nfts.nfts);
+  const nfts = useAppSelector((state) => state.nfts.items);
 
   // Local state
   const [activeBundles, setActiveBundles] = useState<Bundle[]>([]);
@@ -67,13 +68,40 @@ export default function BundlesPage() {
   });
 
   /**
-   * Load bundles on mount
+   * Load bundles and subscribe to events
    */
   useEffect(() => {
     if (account) {
       loadBundles();
+
+      // Subscribe to real-time events if not in mock mode
+      if (!useMockData) {
+        const realTimeEvents = new RealTimeEventsService();
+        realTimeEvents.initialize().then(() => {
+          // Subscribe to bundle events
+          realTimeEvents.subscribeToBundleEvents({
+            onBundleCreated: () => {
+              console.log("📦 New bundle created, refreshing bundles...");
+              loadBundles();
+            },
+            onBundlePurchased: () => {
+              console.log("💰 Bundle purchased, refreshing bundles...");
+              loadBundles();
+            },
+            onBundleCancelled: () => {
+              console.log("❌ Bundle cancelled, refreshing bundles...");
+              loadBundles();
+            },
+          });
+        });
+
+        // Cleanup on unmount
+        return () => {
+          realTimeEvents.unsubscribeAll();
+        };
+      }
     }
-  }, [account]);
+  }, [account, useMockData]);
 
   /**
    * Load bundles from service
@@ -98,8 +126,24 @@ export default function BundlesPage() {
           bundleService.getActiveBundles(),
           bundleService.getUserBundles(account),
         ]);
-        setActiveBundles(active);
-        setUserBundles(user);
+
+        // Convert BundleInfo to Bundle format for compatibility
+        const convertBundleInfo = (bundleInfo: any) => ({
+          id: bundleInfo.id,
+          status: bundleInfo.status,
+          creator: bundleInfo.seller,
+          name: `Bundle ${bundleInfo.id}`,
+          description: bundleInfo.description,
+          items: bundleInfo.items,
+          bundlePrice: bundleInfo.totalPrice,
+          totalValue: bundleInfo.totalPrice,
+          discountPercentage: bundleInfo.discountPercentage,
+          createdAt: bundleInfo.createdAt,
+          expiresAt: bundleInfo.endTime,
+        });
+
+        setActiveBundles(active.map(convertBundleInfo));
+        setUserBundles(user.map(convertBundleInfo));
       }
     } catch (error) {
       console.error("Error loading bundles:", error);
@@ -140,12 +184,12 @@ export default function BundlesPage() {
    */
   const getSuggestedPrice = (): string => {
     if (selectedNFTs.length === 0) return "0";
-    
+
     // Mock calculation - in real app, fetch actual NFT prices
     const avgPrice = 1.5;
     const totalValue = selectedNFTs.length * avgPrice;
     const discountedPrice = totalValue * 0.9; // 10% discount
-    
+
     return discountedPrice.toFixed(2);
   };
 
@@ -175,7 +219,7 @@ export default function BundlesPage() {
     try {
       if (useMockData) {
         const mockService = getMockBundleService();
-        
+
         // Mock NFT data
         const items = selectedNFTs.map((nftId) => ({
           nftContract: "0xMockContract",
@@ -208,10 +252,10 @@ export default function BundlesPage() {
       } else {
         // Real contract interaction
         await bundleService.initialize();
-        
+
         // Convert selected NFTs to bundle items
         const items = selectedNFTs.map((nftId) => {
-          const nft = nfts.find(n => n.id === nftId);
+          const nft = nfts.find((n) => n.id === nftId);
           return {
             collection: nft?.contractAddress || "0xMockContract",
             tokenId: nftId,
@@ -266,7 +310,7 @@ export default function BundlesPage() {
       if (useMockData) {
         const mockService = getMockBundleService();
         await mockService.buyBundle(bundleId);
-        
+
         toast({
           title: "Bundle Purchased!",
           description: `Successfully bought bundle for ${price} ETH`,
@@ -277,7 +321,7 @@ export default function BundlesPage() {
         // Real contract interaction
         await bundleService.initialize();
         await bundleService.purchaseBundle(bundleId, price);
-        
+
         toast({
           title: "Bundle Purchased!",
           description: `Successfully bought bundle for ${price} ETH`,
@@ -306,7 +350,7 @@ export default function BundlesPage() {
       if (useMockData) {
         const mockService = getMockBundleService();
         await mockService.cancelBundle(bundleId);
-        
+
         toast({
           title: "Bundle Cancelled",
           description: "Your bundle has been cancelled",
@@ -317,7 +361,7 @@ export default function BundlesPage() {
         // Real contract interaction
         await bundleService.initialize();
         await bundleService.cancelBundle(bundleId);
-        
+
         toast({
           title: "Bundle Cancelled",
           description: "Your bundle has been cancelled",
@@ -506,14 +550,18 @@ export default function BundlesPage() {
                     {/* Time remaining */}
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>Expires in {formatTimeRemaining(bundle.expiresAt)}</span>
+                      <span>
+                        Expires in {formatTimeRemaining(bundle.expiresAt)}
+                      </span>
                     </div>
                   </CardContent>
 
                   <CardFooter>
                     <Button
                       className="w-full"
-                      onClick={() => handleBuyBundle(bundle.id, bundle.bundlePrice)}
+                      onClick={() =>
+                        handleBuyBundle(bundle.id, bundle.bundlePrice)
+                      }
                       disabled={loading}
                     >
                       Buy Bundle
@@ -536,7 +584,8 @@ export default function BundlesPage() {
               <Package className="h-4 w-4" />
               <AlertTitle>No Bundles Created</AlertTitle>
               <AlertDescription>
-                You haven't created any bundles yet. Go to the Create Bundle tab!
+                You haven't created any bundles yet. Go to the Create Bundle
+                tab!
               </AlertDescription>
             </Alert>
           ) : (
@@ -547,7 +596,9 @@ export default function BundlesPage() {
                     <div className="flex items-start justify-between mb-4">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">{bundle.name}</h3>
+                          <h3 className="font-semibold text-lg">
+                            {bundle.name}
+                          </h3>
                           {getStatusBadge(bundle.status)}
                         </div>
                         <p className="text-sm text-muted-foreground">
@@ -569,15 +620,21 @@ export default function BundlesPage() {
                     <div className="grid grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Items</p>
-                        <p className="font-semibold">{bundle.items.length} NFTs</p>
+                        <p className="font-semibold">
+                          {bundle.items.length} NFTs
+                        </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Price</p>
-                        <p className="font-semibold">{bundle.bundlePrice} ETH</p>
+                        <p className="font-semibold">
+                          {bundle.bundlePrice} ETH
+                        </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Discount</p>
-                        <p className="font-semibold">{bundle.discountPercentage}%</p>
+                        <p className="font-semibold">
+                          {bundle.discountPercentage}%
+                        </p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Created</p>
@@ -624,7 +681,10 @@ export default function BundlesPage() {
                     placeholder="Describe your bundle..."
                     value={bundleForm.description}
                     onChange={(e) =>
-                      setBundleForm({ ...bundleForm, description: e.target.value })
+                      setBundleForm({
+                        ...bundleForm,
+                        description: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -654,7 +714,10 @@ export default function BundlesPage() {
                       placeholder="0.00"
                       value={bundleForm.bundlePrice}
                       onChange={(e) =>
-                        setBundleForm({ ...bundleForm, bundlePrice: e.target.value })
+                        setBundleForm({
+                          ...bundleForm,
+                          bundlePrice: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -668,7 +731,10 @@ export default function BundlesPage() {
                       max="30"
                       value={bundleForm.duration}
                       onChange={(e) =>
-                        setBundleForm({ ...bundleForm, duration: e.target.value })
+                        setBundleForm({
+                          ...bundleForm,
+                          duration: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -680,8 +746,8 @@ export default function BundlesPage() {
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      NFT selection UI will be enhanced in next iteration. For now,
-                      use mock NFT IDs.
+                      NFT selection UI will be enhanced in next iteration. For
+                      now, use mock NFT IDs.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -715,7 +781,9 @@ export default function BundlesPage() {
                     <span className="font-semibold">{selectedNFTs.length}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Estimated Value</span>
+                    <span className="text-muted-foreground">
+                      Estimated Value
+                    </span>
                     <span className="font-semibold">
                       {(selectedNFTs.length * 1.5).toFixed(2)} ETH
                     </span>
@@ -739,4 +807,3 @@ export default function BundlesPage() {
     </div>
   );
 }
-

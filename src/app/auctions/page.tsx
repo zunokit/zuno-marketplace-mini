@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Auctions Page  
+ * Auctions Page
  * Migrated from frontend-foundry/src/components/Auction.jsx
  * Supports English Auction (price increases) & Dutch Auction (price decreases)
  */
@@ -33,7 +33,9 @@ import {
   AuctionStatus,
 } from "@/lib/services/mock/mockAuctionService";
 import { auctionService } from "@/lib/services/contracts/AuctionService";
+import { RealTimeEventsService } from "@/lib/services/contracts/RealTimeEvents";
 import { isMockMode } from "@/lib/config/env";
+import { ethers } from "ethers";
 import {
   AlertCircle,
   Loader2,
@@ -58,14 +60,93 @@ export default function AuctionsPage() {
   const [useMockData] = useState(isMockMode());
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Map on-chain AuctionInfo to UI Auction shape
+  const mapAuctionInfoToAuction = (
+    info: import("@/lib/services/contracts/AuctionService").AuctionInfo
+  ): Auction => {
+    const toEthString = (value: bigint) => {
+      try {
+        return ethers.formatEther(value);
+      } catch {
+        return "0";
+      }
+    };
+
+    // Map status codes: on-chain 0=Active,1=Ended,2=Cancelled → UI enum
+    const statusCode = Number(info.status);
+    const status =
+      statusCode === 0
+        ? AuctionStatus.ACTIVE
+        : statusCode === 1
+        ? AuctionStatus.ENDED
+        : statusCode === 2
+        ? AuctionStatus.CANCELLED
+        : AuctionStatus.INACTIVE;
+
+    const type =
+      Number(info.auctionType) === 0 ? AuctionType.ENGLISH : AuctionType.DUTCH;
+
+    const endTimeMs = Number(info.endTime) * 1000;
+    const startTimeMs = Number(info.startTime) * 1000;
+
+    return {
+      id: info.auctionId,
+      type,
+      status,
+      nftContract: info.nftContract,
+      tokenId: info.tokenId,
+      seller: info.highestBidder || "",
+      nftName: `NFT #${info.tokenId}`,
+      nftImage: `https://picsum.photos/seed/${info.tokenId}/400/400`,
+      collectionName: "Collection",
+      startPrice: toEthString(info.startPrice),
+      currentPrice: toEthString(info.currentPrice),
+      reservePrice: toEthString(info.reservePrice),
+      priceDropPerHour: undefined,
+      startTime: startTimeMs,
+      endTime: endTimeMs,
+      highestBid: info.highestBid ? toEthString(info.highestBid) : undefined,
+      highestBidder: info.highestBidder || undefined,
+      totalBids: 0,
+      amount: info.amount,
+    };
+  };
+
   /**
-   * Load auctions
+   * Load auctions and subscribe to events
    */
   useEffect(() => {
     if (account) {
       loadAuctions();
+
+      // Subscribe to real-time events if not in mock mode
+      if (!useMockData) {
+        const realTimeEvents = new RealTimeEventsService();
+        realTimeEvents.initialize().then(() => {
+          // Subscribe to auction events
+          realTimeEvents.subscribeToAuctionEvents({
+            onAuctionCreated: () => {
+              console.log("🏆 New auction created, refreshing auctions...");
+              loadAuctions();
+            },
+            onBidPlaced: () => {
+              console.log("💰 Bid placed, refreshing auctions...");
+              loadAuctions();
+            },
+            onAuctionEnded: () => {
+              console.log("🏁 Auction ended, refreshing auctions...");
+              loadAuctions();
+            },
+          });
+        });
+
+        // Cleanup on unmount
+        return () => {
+          realTimeEvents.unsubscribeAll();
+        };
+      }
     }
-  }, [account, refreshKey]);
+  }, [account, refreshKey, useMockData]);
 
   /**
    * Auto-refresh every 30 seconds
@@ -103,8 +184,8 @@ export default function AuctionsPage() {
           auctionService.getActiveAuctions(),
           auctionService.getUserAuctions(account),
         ]);
-        setActiveAuctions(active);
-        setUserAuctions(user);
+        setActiveAuctions(active.map(mapAuctionInfoToAuction));
+        setUserAuctions(user.map(mapAuctionInfoToAuction));
       }
     } catch (error) {
       console.error("Error loading auctions:", error);
@@ -212,7 +293,8 @@ export default function AuctionsPage() {
     } catch (error) {
       toast({
         title: "Bid Failed",
-        description: error instanceof Error ? error.message : "Failed to place bid",
+        description:
+          error instanceof Error ? error.message : "Failed to place bid",
         variant: "destructive",
       });
     }
@@ -365,12 +447,15 @@ export default function AuctionsPage() {
                           {auction.currentPrice} ETH
                         </span>
                       </div>
-                      {auction.type === AuctionType.ENGLISH && auction.totalBids > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total Bids</span>
-                          <span>{auction.totalBids}</span>
-                        </div>
-                      )}
+                      {auction.type === AuctionType.ENGLISH &&
+                        auction.totalBids > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Total Bids
+                            </span>
+                            <span>{auction.totalBids}</span>
+                          </div>
+                        )}
                     </div>
 
                     <Separator />
@@ -378,7 +463,9 @@ export default function AuctionsPage() {
                     {/* Time Remaining */}
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>Ends in {formatTimeRemaining(auction.endTime)}</span>
+                      <span>
+                        Ends in {formatTimeRemaining(auction.endTime)}
+                      </span>
                     </div>
                   </CardContent>
 
@@ -423,8 +510,8 @@ export default function AuctionsPage() {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>No Auctions Created</AlertTitle>
               <AlertDescription>
-                You haven't created any auctions yet. Go to the Create tab to get
-                started!
+                You haven't created any auctions yet. Go to the Create tab to
+                get started!
               </AlertDescription>
             </Alert>
           ) : (
@@ -460,10 +547,14 @@ export default function AuctionsPage() {
                         <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <p className="text-muted-foreground">Start Price</p>
-                            <p className="font-semibold">{auction.startPrice} ETH</p>
+                            <p className="font-semibold">
+                              {auction.startPrice} ETH
+                            </p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Current Price</p>
+                            <p className="text-muted-foreground">
+                              Current Price
+                            </p>
                             <p className="font-semibold">
                               {auction.currentPrice} ETH
                             </p>
@@ -490,8 +581,8 @@ export default function AuctionsPage() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Create Auction</AlertTitle>
             <AlertDescription>
-              Auction creation form will be implemented next. This will allow you to
-              create English or Dutch auctions for your NFTs.
+              Auction creation form will be implemented next. This will allow
+              you to create English or Dutch auctions for your NFTs.
             </AlertDescription>
           </Alert>
         </TabsContent>
@@ -499,4 +590,3 @@ export default function AuctionsPage() {
     </div>
   );
 }
-

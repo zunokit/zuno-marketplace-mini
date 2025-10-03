@@ -5,13 +5,11 @@
  */
 
 import { ethers } from "ethers";
-import { getContractAddresses } from "@/lib/contracts/addresses";
-import { 
-  NFTExchangeRegistry_ABI, 
-  ERC721NFTExchange_ABI, 
-  ERC1155NFTExchange_ABI 
+import { getContractRegistryService } from "./ContractRegistryService";
+import {
+  ERC721NFTExchange_ABI,
+  ERC1155NFTExchange_ABI,
 } from "@/lib/contracts/abis";
-import { contractRegistryService } from "./ContractRegistryService";
 
 export interface ListingParams {
   contractAddress: string;
@@ -32,13 +30,11 @@ export interface BatchListingParams {
 }
 
 export class ExchangeService {
-  private registryAddress: string;
-  private exchangeAddresses: { ERC721?: string; ERC1155?: string } = {};
   private isInitialized = false;
+  private exchangeAddresses: { ERC721?: string; ERC1155?: string } = {};
 
   constructor() {
-    const addresses = getContractAddresses();
-    this.registryAddress = addresses.NFT_EXCHANGE_REGISTRY;
+    // No need to store addresses, will get from registry service
   }
 
   /**
@@ -46,7 +42,7 @@ export class ExchangeService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     try {
       await this.loadExchangeAddresses();
       this.isInitialized = true;
@@ -62,8 +58,12 @@ export class ExchangeService {
    */
   private async loadExchangeAddresses(): Promise<void> {
     try {
-      const registry = contractRegistryService.getContract("NFTExchangeRegistry_ABI");
-      const [erc721Address, erc1155Address] = await registry.getExchangeAddresses();
+      const registryService = getContractRegistryService();
+      const registry = registryService.getContractByKey(
+        "NFT_EXCHANGE_REGISTRY"
+      );
+      const [erc721Address, erc1155Address] =
+        await registry.getExchangeAddresses();
 
       this.exchangeAddresses = {
         ERC721: erc721Address,
@@ -75,7 +75,10 @@ export class ExchangeService {
         ERC1155: erc1155Address,
       });
     } catch (error) {
-      console.error("❌ Error loading exchange addresses from registry:", error);
+      console.error(
+        "❌ Error loading exchange addresses from registry:",
+        error
+      );
       this.exchangeAddresses = {};
       throw error;
     }
@@ -85,7 +88,8 @@ export class ExchangeService {
    * Get the registry contract instance
    */
   getRegistryContract(): ethers.Contract {
-    return contractRegistryService.getContract("NFTExchangeRegistry_ABI");
+    const registryService = getContractRegistryService();
+    return registryService.getContractByKey("NFT_EXCHANGE_REGISTRY");
   }
 
   /**
@@ -104,11 +108,14 @@ export class ExchangeService {
   /**
    * Create a listing using the unified registry
    */
-  async createListing(params: ListingParams): Promise<ethers.ContractTransactionResponse> {
+  async createListing(
+    params: ListingParams
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
       const registry = this.getRegistryContract();
       const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
-      const amount = params.tokenType === "ERC1155" ? (params.amount || "1") : "1";
+      const amount =
+        params.tokenType === "ERC1155" ? params.amount || "1" : "1";
 
       const tx = await registry.listNFT(
         params.contractAddress,
@@ -128,7 +135,9 @@ export class ExchangeService {
   /**
    * Create batch listing using individual exchange contracts
    */
-  async createBatchListing(params: BatchListingParams): Promise<ethers.ContractTransactionResponse[]> {
+  async createBatchListing(
+    params: BatchListingParams
+  ): Promise<ethers.ContractTransactionResponse[]> {
     try {
       console.log("🏷️ Creating batch listing:", {
         contractAddress: params.contractAddress,
@@ -140,18 +149,25 @@ export class ExchangeService {
 
       const exchangeAddress = this.exchangeAddresses[params.tokenType];
       if (!exchangeAddress) {
-        throw new Error(`Exchange address not found for token type: ${params.tokenType}`);
+        throw new Error(
+          `Exchange address not found for token type: ${params.tokenType}`
+        );
       }
 
-      const exchangeABI = params.tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
-      const exchange = contractRegistryService.getContract("NFTExchangeRegistry_ABI"); // Use registry for batch operations
+      const exchangeABI =
+        params.tokenType === "ERC721"
+          ? ERC721NFTExchange_ABI
+          : ERC1155NFTExchange_ABI;
+      const exchange = getContractRegistryService().getContractByKey(
+        "NFTExchangeRegistry_ABI"
+      ); // Use registry for batch operations
 
       const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
       const tx = await exchange.batchListNFTs(
         params.contractAddress,
         params.tokenIds,
-        params.tokenType === "ERC1155" ? (params.amounts || []) : [],
-        params.prices.map(price => ethers.parseEther(price)),
+        params.tokenType === "ERC1155" ? params.amounts || [] : [],
+        params.prices.map((price) => ethers.parseEther(price)),
         durationInSeconds
       );
 
@@ -174,14 +190,21 @@ export class ExchangeService {
     try {
       const exchangeAddress = this.exchangeAddresses[tokenType];
       if (!exchangeAddress) {
-        throw new Error(`Exchange address not found for token type: ${tokenType}`);
+        throw new Error(
+          `Exchange address not found for token type: ${tokenType}`
+        );
       }
 
-      const exchangeABI = tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
-      const exchange = new ethers.Contract(exchangeAddress, exchangeABI, contractRegistryService.getSigner());
+      const exchangeABI =
+        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+      const exchange = new ethers.Contract(
+        exchangeAddress,
+        exchangeABI,
+        getContractRegistryService().getSigner()
+      );
 
       const tx = await exchange.buyNFT(contractAddress, tokenId, amount, {
-        value: await this.getListingPrice(contractAddress, tokenId, tokenType)
+        value: await this.getListingPrice(contractAddress, tokenId, tokenType),
       });
 
       return tx;
@@ -202,11 +225,18 @@ export class ExchangeService {
     try {
       const exchangeAddress = this.exchangeAddresses[tokenType];
       if (!exchangeAddress) {
-        throw new Error(`Exchange address not found for token type: ${tokenType}`);
+        throw new Error(
+          `Exchange address not found for token type: ${tokenType}`
+        );
       }
 
-      const exchangeABI = tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
-      const exchange = new ethers.Contract(exchangeAddress, exchangeABI, contractRegistryService.getSigner());
+      const exchangeABI =
+        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+      const exchange = new ethers.Contract(
+        exchangeAddress,
+        exchangeABI,
+        getContractRegistryService().getSigner()
+      );
 
       const tx = await exchange.cancelListing(contractAddress, tokenId);
       return tx;
@@ -227,11 +257,18 @@ export class ExchangeService {
     try {
       const exchangeAddress = this.exchangeAddresses[tokenType];
       if (!exchangeAddress) {
-        throw new Error(`Exchange address not found for token type: ${tokenType}`);
+        throw new Error(
+          `Exchange address not found for token type: ${tokenType}`
+        );
       }
 
-      const exchangeABI = tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
-      const exchange = new ethers.Contract(exchangeAddress, exchangeABI, contractRegistryService.getSigner());
+      const exchangeABI =
+        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+      const exchange = new ethers.Contract(
+        exchangeAddress,
+        exchangeABI,
+        getContractRegistryService().getSigner()
+      );
 
       const listing = await exchange.getListing(contractAddress, tokenId);
       return listing.price;
@@ -251,11 +288,18 @@ export class ExchangeService {
     try {
       const exchangeAddress = this.exchangeAddresses[tokenType];
       if (!exchangeAddress) {
-        throw new Error(`Exchange address not found for token type: ${tokenType}`);
+        throw new Error(
+          `Exchange address not found for token type: ${tokenType}`
+        );
       }
 
-      const exchangeABI = tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
-      const exchange = new ethers.Contract(exchangeAddress, exchangeABI, contractRegistryService.getSigner());
+      const exchangeABI =
+        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+      const exchange = new ethers.Contract(
+        exchangeAddress,
+        exchangeABI,
+        getContractRegistryService().getSigner()
+      );
 
       const listings = await exchange.getCollectionListings(contractAddress);
       return listings;
@@ -275,6 +319,26 @@ export class ExchangeService {
       return listings;
     } catch (error) {
       console.error("Error getting user listings:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update listing price
+   */
+  async updateListingPrice(
+    listingId: string,
+    newPrice: string
+  ): Promise<ethers.ContractTransactionResponse> {
+    try {
+      const registry = this.getRegistryContract();
+      const tx = await registry.updateListingPrice(
+        listingId,
+        ethers.parseEther(newPrice)
+      );
+      return tx;
+    } catch (error) {
+      console.error("Error updating listing price:", error);
       throw error;
     }
   }

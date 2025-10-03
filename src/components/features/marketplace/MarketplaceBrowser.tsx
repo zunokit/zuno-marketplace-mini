@@ -87,7 +87,7 @@ export function MarketplaceBrowser() {
 
   // Filter and sort listings
   const filteredAndSortedListings = useMemo(() => {
-    let filtered = listings.filter(listing => {
+    const filtered = listings.filter(listing => {
       // Status filter
       if (filters.status !== 'all' && listing.status !== filters.status) {
         return false

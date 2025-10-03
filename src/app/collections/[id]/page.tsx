@@ -1,14 +1,20 @@
-'use client'
-import { useState } from 'react'
-import { useParams } from 'next/navigation'
-import { MainLayout } from '@/components/common/layout/MainLayout'
-import { NFTCard } from '@/components/features/nft/NFTCard'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
+"use client";
+import { useState } from "react";
+import { useParams } from "next/navigation";
+import { MainLayout } from "@/components/common/layout/MainLayout";
+import { CollectionNFTs } from "@/components/features/nft/CollectionNFTs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
   Heart,
   Share2,
   ExternalLink,
@@ -19,103 +25,104 @@ import {
   Verified,
   Globe,
   Twitter,
-  MessageSquare
-} from 'lucide-react'
-import Link from 'next/link'
-import Image from 'next/image'
+  MessageSquare,
+} from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
 
 // Mock collection data
 const getCollectionData = (id: string) => ({
   address: id,
-  name: 'Cosmic Warriors',
-  symbol: 'CW',
-  description: 'A collection of 10,000 unique cosmic warriors ready for battle across the metaverse. Each warrior possesses unique traits and abilities, forged in the depths of space and time.',
+  name: "Cosmic Warriors",
+  symbol: "CW",
+  description:
+    "A collection of 10,000 unique cosmic warriors ready for battle across the metaverse. Each warrior possesses unique traits and abilities, forged in the depths of space and time.",
   longDescription: `The Cosmic Warriors collection represents the finest digital art in the NFT space. Each piece is carefully crafted with attention to detail, featuring over 200 unique traits across multiple categories including backgrounds, armor, weapons, and special effects.
 
 Created by renowned digital artist @CosmicCreator, this collection has become a cornerstone of the NFT community, with holders gaining access to exclusive events, merchandise, and future collections.`,
-  image: 'https://picsum.photos/200/200?random=1',
-  bannerImage: 'https://picsum.photos/1200/300?random=1',
-  creator: '0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c',
+  image: "https://picsum.photos/200/200?random=1",
+  bannerImage: "https://picsum.photos/1200/300?random=1",
+  creator: "0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c",
   verified: true,
-  type: 'ERC721' as const,
+  type: "ERC721" as const,
   stats: {
     totalSupply: 10000,
     totalOwners: 5432,
-    floorPrice: '1.2',
-    totalVolume: '12500.5',
+    floorPrice: "1.2",
+    totalVolume: "12500.5",
     listed: 234,
-    volumeChange: '+12.5%',
-    floorChange: '+8.2%',
-    ownersChange: '+156',
+    volumeChange: "+12.5%",
+    floorChange: "+8.2%",
+    ownersChange: "+156",
   },
   socialLinks: {
-    website: 'https://cosmicwarriors.io',
-    twitter: 'https://twitter.com/cosmicwarriors',
-    discord: 'https://discord.gg/cosmicwarriors',
+    website: "https://cosmicwarriors.io",
+    twitter: "https://twitter.com/cosmicwarriors",
+    discord: "https://discord.gg/cosmicwarriors",
   },
   createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000,
-})
+});
 
 // Mock NFTs in collection
 const collectionNFTs = [
   {
-    id: '1',
-    tokenId: '1234',
-    contractAddress: '0x123...',
-    name: 'Cosmic Warrior #1234',
-    image: 'https://picsum.photos/400/400?random=1',
-    price: '2.5',
-    currency: 'ETH',
-    owner: '0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c',
-    rarity: 'rare' as const,
+    id: "1",
+    tokenId: "1234",
+    contractAddress: "0x123...",
+    name: "Cosmic Warrior #1234",
+    image: "https://picsum.photos/400/400?random=1",
+    price: "2.5",
+    currency: "ETH",
+    owner: "0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c",
+    rarity: "rare" as const,
     isListed: true,
     traits: [
-      { trait_type: 'Background', value: 'Nebula' },
-      { trait_type: 'Armor', value: 'Quantum Steel' },
-      { trait_type: 'Weapon', value: 'Plasma Sword' },
+      { trait_type: "Background", value: "Nebula" },
+      { trait_type: "Armor", value: "Quantum Steel" },
+      { trait_type: "Weapon", value: "Plasma Sword" },
     ],
   },
   {
-    id: '2',
-    tokenId: '5678',
-    contractAddress: '0x123...',
-    name: 'Cosmic Warrior #5678',
-    image: 'https://picsum.photos/400/400?random=2',
-    price: '1.8',
-    currency: 'ETH',
-    owner: '0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c',
-    rarity: 'epic' as const,
+    id: "2",
+    tokenId: "5678",
+    contractAddress: "0x123...",
+    name: "Cosmic Warrior #5678",
+    image: "https://picsum.photos/400/400?random=2",
+    price: "1.8",
+    currency: "ETH",
+    owner: "0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c",
+    rarity: "epic" as const,
     isListed: true,
     traits: [
-      { trait_type: 'Background', value: 'Void' },
-      { trait_type: 'Armor', value: 'Crystal Plate' },
-      { trait_type: 'Weapon', value: 'Energy Lance' },
+      { trait_type: "Background", value: "Void" },
+      { trait_type: "Armor", value: "Crystal Plate" },
+      { trait_type: "Weapon", value: "Energy Lance" },
     ],
   },
   // Add more NFTs...
-]
+];
 
 export default function CollectionDetailPage() {
-  const params = useParams()
-  const collectionId = params.id as string
-  const collection = getCollectionData(collectionId)
-  
-  const [isFollowing, setIsFollowing] = useState(false)
-  const [activeTab, setActiveTab] = useState('items')
+  const params = useParams();
+  const collectionId = params.id as string;
+  const collection = getCollectionData(collectionId);
+
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [activeTab, setActiveTab] = useState("items");
 
   const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`
-  }
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
 
   const formatNumber = (num: number) => {
     if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`
+      return `${(num / 1000000).toFixed(1)}M`;
     }
     if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`
+      return `${(num / 1000).toFixed(1)}K`;
     }
-    return num.toString()
-  }
+    return num.toString();
+  };
 
   return (
     <MainLayout>
@@ -162,7 +169,7 @@ export default function CollectionDetailPage() {
                     {collection.creator.slice(2, 4).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <Link 
+                <Link
                   href={`/profile/${collection.creator}`}
                   className="hover:text-primary transition-colors"
                 >
@@ -178,7 +185,11 @@ export default function CollectionDetailPage() {
               <div className="flex items-center gap-3">
                 {collection.socialLinks.website && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={collection.socialLinks.website} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={collection.socialLinks.website}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Globe className="mr-2 h-4 w-4" />
                       Website
                     </a>
@@ -186,7 +197,11 @@ export default function CollectionDetailPage() {
                 )}
                 {collection.socialLinks.twitter && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={collection.socialLinks.twitter} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={collection.socialLinks.twitter}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <Twitter className="mr-2 h-4 w-4" />
                       Twitter
                     </a>
@@ -194,7 +209,11 @@ export default function CollectionDetailPage() {
                 )}
                 {collection.socialLinks.discord && (
                   <Button variant="outline" size="sm" asChild>
-                    <a href={collection.socialLinks.discord} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={collection.socialLinks.discord}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Discord
                     </a>
@@ -208,21 +227,23 @@ export default function CollectionDetailPage() {
         {/* Action Buttons */}
         <div className="flex flex-col gap-3 lg:w-48">
           <Button
-            variant={isFollowing ? 'outline' : 'default'}
+            variant={isFollowing ? "outline" : "default"}
             onClick={() => setIsFollowing(!isFollowing)}
             className="w-full"
           >
-            <Heart className={`mr-2 h-4 w-4 ${isFollowing ? 'fill-current' : ''}`} />
-            {isFollowing ? 'Following' : 'Follow'}
+            <Heart
+              className={`mr-2 h-4 w-4 ${isFollowing ? "fill-current" : ""}`}
+            />
+            {isFollowing ? "Following" : "Follow"}
           </Button>
-          
+
           <Button variant="outline" className="w-full">
             <Share2 className="mr-2 h-4 w-4" />
             Share
           </Button>
-          
+
           <Button variant="outline" className="w-full" asChild>
-            <a 
+            <a
               href={`https://etherscan.io/address/${collection.address}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -261,7 +282,9 @@ export default function CollectionDetailPage() {
             <div className="text-2xl font-bold">
               {formatNumber(collection.stats.totalOwners)}
             </div>
-            <p className="text-xs text-green-600">{collection.stats.ownersChange}</p>
+            <p className="text-xs text-green-600">
+              {collection.stats.ownersChange}
+            </p>
           </CardContent>
         </Card>
 
@@ -276,7 +299,9 @@ export default function CollectionDetailPage() {
             <div className="text-2xl font-bold">
               {collection.stats.floorPrice} ETH
             </div>
-            <p className="text-xs text-green-600">{collection.stats.floorChange}</p>
+            <p className="text-xs text-green-600">
+              {collection.stats.floorChange}
+            </p>
           </CardContent>
         </Card>
 
@@ -291,7 +316,9 @@ export default function CollectionDetailPage() {
             <div className="text-2xl font-bold">
               {collection.stats.totalVolume} ETH
             </div>
-            <p className="text-xs text-green-600">{collection.stats.volumeChange}</p>
+            <p className="text-xs text-green-600">
+              {collection.stats.volumeChange}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -299,31 +326,25 @@ export default function CollectionDetailPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="items">Items ({collection.stats.listed})</TabsTrigger>
+          <TabsTrigger value="items">
+            Items ({collection.stats.listed})
+          </TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {collectionNFTs.map((nft) => (
-              <NFTCard
-                key={nft.id}
-                nft={nft}
-                onLike={() => console.log('Like NFT:', nft.id)}
-                onBuy={() => console.log('Buy NFT:', nft.id)}
-                onMakeOffer={() => console.log('Make offer:', nft.id)}
-              />
-            ))}
-          </div>
+          <CollectionNFTs nfts={collectionNFTs} />
         </TabsContent>
 
         <TabsContent value="activity" className="mt-6">
           <Card>
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest transactions and events for this collection</CardDescription>
+              <CardDescription>
+                Latest transactions and events for this collection
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
@@ -337,7 +358,9 @@ export default function CollectionDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle>Collection Analytics</CardTitle>
-              <CardDescription>Detailed stats and market trends</CardDescription>
+              <CardDescription>
+                Detailed stats and market trends
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
@@ -353,11 +376,13 @@ export default function CollectionDetailPage() {
               <CardTitle>About {collection.name}</CardTitle>
             </CardHeader>
             <CardContent className="prose dark:prose-invert max-w-none">
-              <p className="whitespace-pre-line">{collection.longDescription}</p>
+              <p className="whitespace-pre-line">
+                {collection.longDescription}
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </MainLayout>
-  )
+  );
 }

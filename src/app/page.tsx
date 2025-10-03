@@ -1,133 +1,139 @@
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { MainLayout } from '@/components/common/layout/MainLayout'
-import { NFTCard } from '@/components/features/nft/NFTCard'
-import { CollectionCard } from '@/components/features/collection/CollectionCard'
-import { 
-  ArrowRight, 
-  TrendingUp, 
-  Users, 
-  Palette, 
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MainLayout } from "@/components/common/layout/MainLayout";
+import { FeaturedNFTs } from "@/components/features/nft/FeaturedNFTs";
+import { TrendingCollections } from "@/components/features/collection/TrendingCollections";
+import {
+  ArrowRight,
+  TrendingUp,
+  Users,
+  Palette,
   Gavel,
   Star,
   Activity,
-  Volume2
-} from 'lucide-react'
+  Volume2,
+} from "lucide-react";
 
 // Mock data for demo
 const featuredNFTs = [
   {
-    id: '1',
-    tokenId: '1234',
-    contractAddress: '0x123...',
-    name: 'Cosmic Warrior #1234',
-    image: 'https://picsum.photos/400/400?random=1',
-    price: '2.5',
-    currency: 'ETH',
-    owner: '0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c',
+    id: "1",
+    tokenId: "1234",
+    contractAddress: "0x123...",
+    name: "Cosmic Warrior #1234",
+    image: "https://picsum.photos/400/400?random=1",
+    price: "2.5",
+    currency: "ETH",
+    owner: "0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c",
     collection: {
-      name: 'Cosmic Warriors',
+      name: "Cosmic Warriors",
       verified: true,
     },
-    rarity: 'rare' as const,
+    rarity: "rare" as const,
     isListed: true,
   },
   {
-    id: '2',
-    tokenId: '5678',
-    contractAddress: '0x456...',
-    name: 'Digital Dreams #5678',
-    image: 'https://picsum.photos/400/400?random=2',
-    price: '1.8',
-    currency: 'ETH',
-    owner: '0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c',
+    id: "2",
+    tokenId: "5678",
+    contractAddress: "0x456...",
+    name: "Digital Dreams #5678",
+    image: "https://picsum.photos/400/400?random=2",
+    price: "1.8",
+    currency: "ETH",
+    owner: "0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c",
     collection: {
-      name: 'Digital Dreams',
+      name: "Digital Dreams",
       verified: false,
     },
-    rarity: 'epic' as const,
+    rarity: "epic" as const,
     isListed: true,
   },
   {
-    id: '3',
-    tokenId: '9012',
-    contractAddress: '0x789...',
-    name: 'Neon Nights #9012',
-    image: 'https://picsum.photos/400/400?random=3',
-    price: '0.8',
-    currency: 'ETH',
-    owner: '0x964f57ed8cc7e9d5f6c0e9d6c4d5b3a1f9e7d0c6c',
+    id: "3",
+    tokenId: "9012",
+    contractAddress: "0x789...",
+    name: "Neon Nights #9012",
+    image: "https://picsum.photos/400/400?random=3",
+    price: "0.8",
+    currency: "ETH",
+    owner: "0x964f57ed8cc7e9d5f6c0e9d6c4d5b3a1f9e7d0c6c",
     isListed: true,
   },
-]
+];
 
 const trendingCollections = [
   {
-    address: '0x123...',
-    name: 'Cosmic Warriors',
-    symbol: 'CW',
-    image: 'https://picsum.photos/100/100?random=4',
-    creator: '0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c',
+    address: "0x123...",
+    name: "Cosmic Warriors",
+    symbol: "CW",
+    image: "https://picsum.photos/100/100?random=4",
+    creator: "0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c",
     verified: true,
-    type: 'ERC721' as const,
+    type: "ERC721" as const,
     stats: {
       totalSupply: 10000,
       totalOwners: 5432,
-      floorPrice: '1.2',
-      totalVolume: '12500.5',
+      floorPrice: "1.2",
+      totalVolume: "12500.5",
       listed: 234,
     },
   },
   {
-    address: '0x456...',
-    name: 'Digital Dreams',
-    symbol: 'DD',
-    image: 'https://picsum.photos/100/100?random=5',
-    creator: '0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c',
+    address: "0x456...",
+    name: "Digital Dreams",
+    symbol: "DD",
+    image: "https://picsum.photos/100/100?random=5",
+    creator: "0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c",
     verified: false,
-    type: 'ERC721' as const,
+    type: "ERC721" as const,
     stats: {
       totalSupply: 5000,
       totalOwners: 2876,
-      floorPrice: '0.8',
-      totalVolume: '8750.2',
+      floorPrice: "0.8",
+      totalVolume: "8750.2",
       listed: 156,
     },
   },
-]
+];
 
 const stats = [
   {
-    title: 'Total Volume',
-    value: '1.2M ETH',
-    description: 'All time trading volume',
+    title: "Total Volume",
+    value: "1.2M ETH",
+    description: "All time trading volume",
     icon: Volume2,
-    trend: '+12.5%',
+    trend: "+12.5%",
   },
   {
-    title: 'Active Users',
-    value: '150K+',
-    description: 'Monthly active traders',
+    title: "Active Users",
+    value: "150K+",
+    description: "Monthly active traders",
     icon: Users,
-    trend: '+8.2%',
+    trend: "+8.2%",
   },
   {
-    title: 'Collections',
-    value: '25K+',
-    description: 'Verified collections',
+    title: "Collections",
+    value: "25K+",
+    description: "Verified collections",
     icon: Palette,
-    trend: '+15.1%',
+    trend: "+15.1%",
   },
   {
-    title: 'Live Auctions',
-    value: '1.8K',
-    description: 'Currently active',
+    title: "Live Auctions",
+    value: "1.8K",
+    description: "Currently active",
     icon: Gavel,
-    trend: '+3.7%',
+    trend: "+3.7%",
   },
-]
+];
 
 export default function Home() {
   return (
@@ -140,16 +146,17 @@ export default function Home() {
             <Star className="mr-1 h-3 w-3" />
             The Premier NFT Marketplace
           </Badge>
-          
+
           <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-6">
             Discover, Create & Trade Extraordinary NFTs
           </h1>
-          
+
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join the world's largest digital marketplace for crypto collectibles and non-fungible tokens. 
-            Buy, sell, and discover exclusive digital items.
+            Join the world's largest digital marketplace for crypto collectibles
+            and non-fungible tokens. Buy, sell, and discover exclusive digital
+            items.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" asChild>
               <Link href="/marketplace">
@@ -158,9 +165,7 @@ export default function Home() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/collections/create">
-                Create Collection
-              </Link>
+              <Link href="/collections/create">Create Collection</Link>
             </Button>
           </div>
         </div>
@@ -199,9 +204,7 @@ export default function Home() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold mb-2">Featured NFTs</h2>
-            <p className="text-muted-foreground">
-              Handpicked by our curators
-            </p>
+            <p className="text-muted-foreground">Handpicked by our curators</p>
           </div>
           <Button variant="outline" asChild>
             <Link href="/marketplace">
@@ -210,18 +213,8 @@ export default function Home() {
             </Link>
           </Button>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredNFTs.map((nft) => (
-            <NFTCard
-              key={nft.id}
-              nft={nft}
-              onLike={() => console.log('Like NFT:', nft.id)}
-              onBuy={() => console.log('Buy NFT:', nft.id)}
-              onMakeOffer={() => console.log('Make offer:', nft.id)}
-            />
-          ))}
-        </div>
+
+        <FeaturedNFTs nfts={featuredNFTs} />
       </section>
 
       {/* Trending Collections */}
@@ -240,18 +233,8 @@ export default function Home() {
             </Link>
           </Button>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {trendingCollections.map((collection) => (
-            <CollectionCard
-              key={collection.address}
-              collection={collection}
-              variant="featured"
-              onFollow={() => console.log('Follow collection:', collection.address)}
-              onView={() => console.log('View collection:', collection.address)}
-            />
-          ))}
-        </div>
+
+        <TrendingCollections collections={trendingCollections} />
       </section>
 
       {/* How It Works */}
@@ -262,7 +245,7 @@ export default function Home() {
             Get started with Zuno in just a few simple steps
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <Card className="text-center">
             <CardHeader>
@@ -273,7 +256,8 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Connect your crypto wallet to start buying, selling, and creating NFTs on our platform.
+                Connect your crypto wallet to start buying, selling, and
+                creating NFTs on our platform.
               </CardDescription>
             </CardContent>
           </Card>
@@ -287,7 +271,8 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Upload your artwork, create collections, or browse and collect amazing NFTs from artists worldwide.
+                Upload your artwork, create collections, or browse and collect
+                amazing NFTs from artists worldwide.
               </CardDescription>
             </CardContent>
           </Card>
@@ -301,12 +286,13 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <CardDescription>
-                List your NFTs for sale, participate in auctions, and earn from your digital art and collectibles.
+                List your NFTs for sale, participate in auctions, and earn from
+                your digital art and collectibles.
               </CardDescription>
             </CardContent>
           </Card>
         </div>
       </section>
     </MainLayout>
-  )
+  );
 }

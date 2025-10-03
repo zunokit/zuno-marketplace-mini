@@ -5,11 +5,7 @@
  */
 
 import { ethers } from "ethers";
-import { contractRegistryService } from "./ContractRegistryService";
-import { exchangeService } from "./ExchangeService";
-import { offerService } from "./OfferService";
-import { auctionService } from "./AuctionService";
-import { bundleService } from "./BundleService";
+import { getContractRegistryService } from "./ContractRegistryService";
 
 export interface EventSubscription {
   id: string;
@@ -45,16 +41,11 @@ export class RealTimeEventsService {
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) return;
-    
+
     try {
-      // Initialize all services
-      await Promise.all([
-        exchangeService.initialize(),
-        offerService.initialize(),
-        auctionService.initialize(),
-        bundleService.initialize(),
-      ]);
-      
+      const registryService = getContractRegistryService();
+      await registryService.initialize();
+
       this.isInitialized = true;
       console.log("✅ RealTimeEventsService initialized");
     } catch (error) {
@@ -68,7 +59,10 @@ export class RealTimeEventsService {
    */
   async subscribeToListingEvents(handlers: EventHandler): Promise<void> {
     try {
-      const registry = exchangeService.getRegistryContract();
+      const registryService = getContractRegistryService();
+      const registry = registryService.getContractByKey(
+        "NFT_EXCHANGE_REGISTRY"
+      );
 
       // ListingCreated event
       if (handlers.onListingCreated) {
@@ -76,7 +70,7 @@ export class RealTimeEventsService {
           console.log("📝 ListingCreated event:", event);
           handlers.onListingCreated!(event);
         });
-        
+
         this.subscriptions.set("ListingCreated", {
           id: "ListingCreated",
           contract: registry,
@@ -92,7 +86,7 @@ export class RealTimeEventsService {
           console.log("💰 ListingPurchased event:", event);
           handlers.onListingPurchased!(event);
         });
-        
+
         this.subscriptions.set("ListingPurchased", {
           id: "ListingPurchased",
           contract: registry,
@@ -108,7 +102,7 @@ export class RealTimeEventsService {
           console.log("❌ ListingCancelled event:", event);
           handlers.onListingCancelled!(event);
         });
-        
+
         this.subscriptions.set("ListingCancelled", {
           id: "ListingCancelled",
           contract: registry,
@@ -128,7 +122,8 @@ export class RealTimeEventsService {
    */
   async subscribeToOfferEvents(handlers: EventHandler): Promise<void> {
     try {
-      const offerManager = offerService.getOfferManagerContract();
+      const registryService = getContractRegistryService();
+      const offerManager = registryService.getContractByKey("OFFER_MANAGER");
 
       // OfferCreated event
       if (handlers.onOfferCreated) {
@@ -136,7 +131,7 @@ export class RealTimeEventsService {
           console.log("🎯 OfferCreated event:", event);
           handlers.onOfferCreated!(event);
         });
-        
+
         this.subscriptions.set("OfferCreated", {
           id: "OfferCreated",
           contract: offerManager,
@@ -152,7 +147,7 @@ export class RealTimeEventsService {
           console.log("✅ OfferAccepted event:", event);
           handlers.onOfferAccepted!(event);
         });
-        
+
         this.subscriptions.set("OfferAccepted", {
           id: "OfferAccepted",
           contract: offerManager,
@@ -168,7 +163,7 @@ export class RealTimeEventsService {
           console.log("❌ OfferCancelled event:", event);
           handlers.onOfferCancelled!(event);
         });
-        
+
         this.subscriptions.set("OfferCancelled", {
           id: "OfferCancelled",
           contract: offerManager,
@@ -188,7 +183,8 @@ export class RealTimeEventsService {
    */
   async subscribeToAuctionEvents(handlers: EventHandler): Promise<void> {
     try {
-      const factory = auctionService.getFactoryContract();
+      const registryService = getContractRegistryService();
+      const factory = registryService.getContractByKey("AUCTION_FACTORY");
 
       // AuctionCreated event
       if (handlers.onAuctionCreated) {
@@ -196,7 +192,7 @@ export class RealTimeEventsService {
           console.log("🏆 AuctionCreated event:", event);
           handlers.onAuctionCreated!(event);
         });
-        
+
         this.subscriptions.set("AuctionCreated", {
           id: "AuctionCreated",
           contract: factory,
@@ -212,7 +208,7 @@ export class RealTimeEventsService {
           console.log("💰 BidPlaced event:", event);
           handlers.onBidPlaced!(event);
         });
-        
+
         this.subscriptions.set("BidPlaced", {
           id: "BidPlaced",
           contract: factory,
@@ -228,7 +224,7 @@ export class RealTimeEventsService {
           console.log("🏁 AuctionEnded event:", event);
           handlers.onAuctionEnded!(event);
         });
-        
+
         this.subscriptions.set("AuctionEnded", {
           id: "AuctionEnded",
           contract: factory,
@@ -248,7 +244,8 @@ export class RealTimeEventsService {
    */
   async subscribeToBundleEvents(handlers: EventHandler): Promise<void> {
     try {
-      const bundleManager = bundleService.getBundleManagerContract();
+      const registryService = getContractRegistryService();
+      const bundleManager = registryService.getContractByKey("BUNDLE_MANAGER");
 
       // BundleCreated event
       if (handlers.onBundleCreated) {
@@ -256,7 +253,7 @@ export class RealTimeEventsService {
           console.log("📦 BundleCreated event:", event);
           handlers.onBundleCreated!(event);
         });
-        
+
         this.subscriptions.set("BundleCreated", {
           id: "BundleCreated",
           contract: bundleManager,
@@ -272,7 +269,7 @@ export class RealTimeEventsService {
           console.log("💰 BundlePurchased event:", event);
           handlers.onBundlePurchased!(event);
         });
-        
+
         this.subscriptions.set("BundlePurchased", {
           id: "BundlePurchased",
           contract: bundleManager,
@@ -288,7 +285,7 @@ export class RealTimeEventsService {
           console.log("❌ BundleCancelled event:", event);
           handlers.onBundleCancelled!(event);
         });
-        
+
         this.subscriptions.set("BundleCancelled", {
           id: "BundleCancelled",
           contract: bundleManager,
@@ -314,7 +311,7 @@ export class RealTimeEventsService {
         this.subscribeToAuctionEvents(handlers),
         this.subscribeToBundleEvents(handlers),
       ]);
-      
+
       console.log("✅ Subscribed to all events");
     } catch (error) {
       console.error("Error subscribing to all events:", error);

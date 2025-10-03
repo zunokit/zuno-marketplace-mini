@@ -1,72 +1,72 @@
-'use client'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { 
-  Palette, 
-  Twitter, 
-  Github, 
-  Discord, 
+"use client";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Palette,
+  Twitter,
+  Github,
+  Disc,
   Mail,
   ExternalLink,
-  Heart
-} from 'lucide-react'
+  Heart,
+} from "lucide-react";
 
 const footerLinks = {
   marketplace: [
-    { label: 'Browse', href: '/marketplace' },
-    { label: 'Collections', href: '/collections' },
-    { label: 'Auctions', href: '/auctions' },
-    { label: 'Analytics', href: '/analytics' },
+    { label: "Browse", href: "/marketplace" },
+    { label: "Collections", href: "/collections" },
+    { label: "Auctions", href: "/auctions" },
+    { label: "Analytics", href: "/analytics" },
   ],
   create: [
-    { label: 'Create Collection', href: '/collections/create' },
-    { label: 'Mint NFT', href: '/nft/mint' },
-    { label: 'Start Auction', href: '/auctions/create' },
-    { label: 'Create Bundle', href: '/bundles/create' },
+    { label: "Create Collection", href: "/collections/create" },
+    { label: "Mint NFT", href: "/nft/mint" },
+    { label: "Start Auction", href: "/auctions/create" },
+    { label: "Create Bundle", href: "/bundles/create" },
   ],
   resources: [
-    { label: 'Documentation', href: '/docs' },
-    { label: 'API Reference', href: '/api-docs' },
-    { label: 'Help Center', href: '/help' },
-    { label: 'Blog', href: '/blog' },
+    { label: "Documentation", href: "/docs" },
+    { label: "API Reference", href: "/api-docs" },
+    { label: "Help Center", href: "/help" },
+    { label: "Blog", href: "/blog" },
   ],
   company: [
-    { label: 'About Us', href: '/about' },
-    { label: 'Careers', href: '/careers' },
-    { label: 'Press Kit', href: '/press' },
-    { label: 'Contact', href: '/contact' },
+    { label: "About Us", href: "/about" },
+    { label: "Careers", href: "/careers" },
+    { label: "Press Kit", href: "/press" },
+    { label: "Contact", href: "/contact" },
   ],
   legal: [
-    { label: 'Terms of Service', href: '/terms' },
-    { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Cookie Policy', href: '/cookies' },
-    { label: 'DMCA', href: '/dmca' },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Cookie Policy", href: "/cookies" },
+    { label: "DMCA", href: "/dmca" },
   ],
-}
+};
 
 const socialLinks = [
   {
-    name: 'Twitter',
-    href: 'https://twitter.com/zuno',
+    name: "Twitter",
+    href: "https://twitter.com/zuno",
     icon: Twitter,
   },
   {
-    name: 'Discord',
-    href: 'https://discord.gg/zuno',
-    icon: Discord,
+    name: "Discord",
+    href: "https://discord.gg/zuno",
+    icon: Disc,
   },
   {
-    name: 'GitHub',
-    href: 'https://github.com/zuno',
+    name: "GitHub",
+    href: "https://github.com/zuno",
     icon: Github,
   },
   {
-    name: 'Email',
-    href: 'mailto:hello@zuno.io',
+    name: "Email",
+    href: "mailto:hello@zuno.io",
     icon: Mail,
   },
-]
+];
 
 export function Footer() {
   return (
@@ -82,12 +82,12 @@ export function Footer() {
               </div>
               <span className="font-bold text-xl">Zuno</span>
             </div>
-            
+
             <p className="text-muted-foreground mb-6 max-w-sm">
-              The premier destination for discovering, creating, and trading extraordinary NFTs. 
-              Built on Ethereum with love for the community.
+              The premier destination for discovering, creating, and trading
+              extraordinary NFTs. Built on Ethereum with love for the community.
             </p>
-            
+
             {/* Social Links */}
             <div className="flex items-center space-x-2">
               {socialLinks.map((social) => (
@@ -190,7 +190,8 @@ export function Footer() {
             <span>© 2024 Zuno. All rights reserved.</span>
             <span>•</span>
             <span className="flex items-center gap-1">
-              Made with <Heart className="h-3 w-3 text-red-500 fill-current" /> for the NFT community
+              Made with <Heart className="h-3 w-3 text-red-500 fill-current" />{" "}
+              for the NFT community
             </span>
           </div>
 
@@ -219,12 +220,12 @@ export function Footer() {
               <p className="font-medium mb-1">Network Status</p>
               <p>Ethereum Mainnet • All systems operational</p>
             </div>
-            
+
             <div>
               <p className="font-medium mb-1">Gas Tracker</p>
               <p>Standard: ~15 gwei • Fast: ~20 gwei</p>
             </div>
-            
+
             <div>
               <p className="font-medium mb-1">Floor Prices</p>
               <p>Updated every 5 minutes</p>
@@ -233,5 +234,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }
