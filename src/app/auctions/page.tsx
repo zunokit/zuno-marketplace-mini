@@ -32,6 +32,8 @@ import {
   AuctionType,
   AuctionStatus,
 } from "@/lib/services/mock/mockAuctionService";
+import { auctionService } from "@/lib/services/contracts/AuctionService";
+import { isMockMode } from "@/lib/config/env";
 import {
   AlertCircle,
   Loader2,
@@ -53,7 +55,7 @@ export default function AuctionsPage() {
   const [activeAuctions, setActiveAuctions] = useState<Auction[]>([]);
   const [userAuctions, setUserAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState(false);
-  const [useMockData] = useState(isMockDataEnabled());
+  const [useMockData] = useState(isMockMode());
   const [refreshKey, setRefreshKey] = useState(0);
 
   /**
@@ -96,16 +98,13 @@ export default function AuctionsPage() {
         setUserAuctions(user);
       } else {
         // Real blockchain data
-        // TODO: Fetch from AuctionFactory contract
-        // const auctionFactory = getContract(AUCTION_FACTORY_ADDRESS, AUCTION_FACTORY_ABI)
-        // const activeAuctionIds = await auctionFactory.getActiveAuctions()
-        // const auctions = await Promise.all(activeAuctionIds.map(id => auctionFactory.getAuction(id)))
-        
-        toast({
-          title: "Blockchain Integration",
-          description: "Real auction system coming soon",
-          variant: "default",
-        });
+        await auctionService.initialize();
+        const [active, user] = await Promise.all([
+          auctionService.getActiveAuctions(),
+          auctionService.getUserAuctions(account),
+        ]);
+        setActiveAuctions(active);
+        setUserAuctions(user);
       }
     } catch (error) {
       console.error("Error loading auctions:", error);
@@ -202,13 +201,13 @@ export default function AuctionsPage() {
         handleRefresh();
       } else {
         // Real contract interaction
-        // const auctionFactory = getContract(...)
-        // await auctionFactory.placeBid(auctionId, { value: parseEther(bidAmount) })
+        await auctionService.initialize();
+        await auctionService.placeBid(auctionId, bidAmount);
         toast({
-          title: "Contract Integration",
-          description: "Real bidding coming soon",
-          variant: "default",
+          title: "Bid Placed!",
+          description: `Successfully placed bid of ${bidAmount} ETH`,
         });
+        handleRefresh();
       }
     } catch (error) {
       toast({
@@ -234,12 +233,13 @@ export default function AuctionsPage() {
         handleRefresh();
       } else {
         // Real contract interaction
-        // await auctionFactory.buy(auctionId, { value: parseEther(price) })
+        await auctionService.initialize();
+        await auctionService.buyNow(auctionId, price);
         toast({
-          title: "Contract Integration",
-          description: "Real purchase coming soon",
-          variant: "default",
+          title: "Purchase Successful!",
+          description: `Successfully bought NFT for ${price} ETH`,
         });
+        handleRefresh();
       }
     } catch (error) {
       toast({

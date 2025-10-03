@@ -32,6 +32,8 @@ import {
   Bundle,
   BundleStatus,
 } from "@/lib/services/mock/mockBundleService";
+import { bundleService } from "@/lib/services/contracts/BundleService";
+import { isMockMode } from "@/lib/config/env";
 import {
   AlertCircle,
   Loader2,
@@ -53,7 +55,7 @@ export default function BundlesPage() {
   const [activeBundles, setActiveBundles] = useState<Bundle[]>([]);
   const [userBundles, setUserBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(false);
-  const [useMockData] = useState(isMockDataEnabled());
+  const [useMockData] = useState(isMockMode());
 
   // Create bundle form state
   const [selectedNFTs, setSelectedNFTs] = useState<string[]>([]);
@@ -91,15 +93,13 @@ export default function BundlesPage() {
         setUserBundles(user);
       } else {
         // Real blockchain data
-        // TODO: Fetch from BundleManager contract
-        // const bundleManager = getContract(BUNDLE_MANAGER_ADDRESS, BUNDLE_MANAGER_ABI)
-        // const bundles = await bundleManager.getActiveBundles()
-        
-        toast({
-          title: "Blockchain Integration",
-          description: "Real bundle system coming soon",
-          variant: "default",
-        });
+        await bundleService.initialize();
+        const [active, user] = await Promise.all([
+          bundleService.getActiveBundles(),
+          bundleService.getUserBundles(account),
+        ]);
+        setActiveBundles(active);
+        setUserBundles(user);
       }
     } catch (error) {
       console.error("Error loading bundles:", error);
@@ -207,16 +207,43 @@ export default function BundlesPage() {
         loadBundles();
       } else {
         // Real contract interaction
-        // TODO: Implement with BundleManager
-        // 1. Approve all NFTs for BundleManager
-        // 2. Call bundleManager.createBundle(nftContracts, tokenIds, amounts, price, duration, name, desc)
-        // 3. Wait for transaction and extract bundleId from events
+        await bundleService.initialize();
         
-        toast({
-          title: "Contract Integration",
-          description: "Real bundle creation coming soon",
-          variant: "default",
+        // Convert selected NFTs to bundle items
+        const items = selectedNFTs.map((nftId) => {
+          const nft = nfts.find(n => n.id === nftId);
+          return {
+            collection: nft?.contractAddress || "0xMockContract",
+            tokenId: nftId,
+            amount: "1",
+            tokenType: "ERC721" as const,
+          };
         });
+
+        await bundleService.createBundle({
+          items,
+          totalPrice: bundleForm.bundlePrice,
+          discountPercentage: 0,
+          duration: parseInt(bundleForm.duration) * 24 * 60 * 60, // Convert days to seconds
+          description: bundleForm.description,
+          imageUrl: "",
+        });
+
+        toast({
+          title: "Bundle Created!",
+          description: `Successfully created bundle "${bundleForm.name}"`,
+        });
+
+        // Reset form
+        setSelectedNFTs([]);
+        setBundleForm({
+          name: "",
+          description: "",
+          bundlePrice: "",
+          duration: "7",
+        });
+
+        loadBundles();
       }
     } catch (error) {
       toast({
@@ -248,13 +275,15 @@ export default function BundlesPage() {
         loadBundles();
       } else {
         // Real contract interaction
-        // await bundleManager.buyBundle(bundleId, { value: parseEther(price) })
+        await bundleService.initialize();
+        await bundleService.purchaseBundle(bundleId, price);
         
         toast({
-          title: "Contract Integration",
-          description: "Real bundle purchase coming soon",
-          variant: "default",
+          title: "Bundle Purchased!",
+          description: `Successfully bought bundle for ${price} ETH`,
         });
+
+        loadBundles();
       }
     } catch (error) {
       toast({
@@ -286,13 +315,15 @@ export default function BundlesPage() {
         loadBundles();
       } else {
         // Real contract interaction
-        // await bundleManager.cancelBundle(bundleId)
+        await bundleService.initialize();
+        await bundleService.cancelBundle(bundleId);
         
         toast({
-          title: "Contract Integration",
-          description: "Real bundle cancellation coming soon",
-          variant: "default",
+          title: "Bundle Cancelled",
+          description: "Your bundle has been cancelled",
         });
+
+        loadBundles();
       }
     } catch (error) {
       toast({

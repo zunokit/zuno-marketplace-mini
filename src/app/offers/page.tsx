@@ -31,6 +31,8 @@ import {
   OfferType,
   OfferStatus,
 } from "@/lib/services/mock/mockOfferService";
+import { offerService } from "@/lib/services/contracts/OfferService";
+import { isMockMode } from "@/lib/config/env";
 import {
   AlertCircle,
   Loader2,
@@ -50,7 +52,7 @@ export default function OffersPage() {
   const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
   const [userOffers, setUserOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(false);
-  const [useMockData] = useState(isMockDataEnabled());
+  const [useMockData] = useState(isMockMode());
 
   /**
    * Load offers
@@ -79,15 +81,13 @@ export default function OffersPage() {
         setUserOffers(user);
       } else {
         // Real blockchain data
-        // TODO: Fetch from OfferManager contract
-        // const offerManager = getContract(OFFER_MANAGER_ADDRESS, OFFER_MANAGER_ABI)
-        // const offers = await offerManager.getActiveOffers()
-
-        toast({
-          title: "Blockchain Integration",
-          description: "Real offer system coming soon",
-          variant: "default",
-        });
+        await offerService.initialize();
+        const [active, user] = await Promise.all([
+          offerService.getActiveOffers(),
+          offerService.getUserOffers(account),
+        ]);
+        setActiveOffers(active);
+        setUserOffers(user);
       }
     } catch (error) {
       console.error("Error loading offers:", error);
@@ -180,12 +180,13 @@ export default function OffersPage() {
         loadOffers();
       } else {
         // Real contract interaction
-        // await offerManager.acceptOffer(offerId)
+        await offerService.initialize();
+        await offerService.acceptOffer(offerId);
         toast({
-          title: "Contract Integration",
-          description: "Real offer acceptance coming soon",
-          variant: "default",
+          title: "Offer Accepted!",
+          description: "You have successfully accepted the offer",
         });
+        loadOffers();
       }
     } catch (error) {
       toast({
@@ -212,12 +213,13 @@ export default function OffersPage() {
         loadOffers();
       } else {
         // Real contract interaction
-        // await offerManager.cancelOffer(offerId)
+        await offerService.initialize();
+        await offerService.cancelOffer(offerId);
         toast({
-          title: "Contract Integration",
-          description: "Real offer cancellation coming soon",
-          variant: "default",
+          title: "Offer Cancelled",
+          description: "Your offer has been cancelled",
         });
+        loadOffers();
       }
     } catch (error) {
       toast({

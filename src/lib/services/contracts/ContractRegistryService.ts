@@ -98,6 +98,50 @@ export class ContractRegistryService {
   }
 
   /**
+   * Get exchange contract for specific token type
+   */
+  getExchangeContract(tokenType: "ERC721" | "ERC1155"): ethers.Contract {
+    if (!this.signer) {
+      throw new Error("Signer not initialized. Call initialize() first.");
+    }
+
+    const exchangeAddress = this.exchangeAddresses[tokenType];
+    if (!exchangeAddress) {
+      throw new Error(`Exchange address not found for token type: ${tokenType}`);
+    }
+
+    // Import ABIs dynamically to avoid circular dependencies
+    const { ERC721NFTExchange_ABI, ERC1155NFTExchange_ABI } = require("@/lib/contracts/abis");
+    const abi = tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+
+    return new ethers.Contract(exchangeAddress, abi, this.signer);
+  }
+
+  /**
+   * Get signer instance
+   */
+  getSigner(): ethers.Signer {
+    if (!this.signer) {
+      throw new Error("Signer not initialized. Call initialize() first.");
+    }
+    return this.signer;
+  }
+
+  /**
+   * Get exchange addresses
+   */
+  getExchangeAddresses(): ExchangeAddresses {
+    return { ...this.exchangeAddresses };
+  }
+
+  /**
+   * Check if service is initialized
+   */
+  isInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
    * Get exchange address for a specific NFT contract
    * Ported from frontend-foundry ExchangeService.getExchangeForNFT()
    */
