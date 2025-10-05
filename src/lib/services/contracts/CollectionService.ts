@@ -1,16 +1,29 @@
 /**
  * Collection Service
- * Handles basic ERC721/ERC1155 collection operations
- * Provides helpers for minting, approval, and transfer operations
+ * Handles ERC721/ERC1155 collection creation and operations
+ * Uses MarketplaceHub for factory address discovery
  */
 
 import { ethers } from "ethers";
-import { ERC721_ABI, ERC1155_ABI } from "@/lib/contracts/abis";
-import { getContractRegistryService } from "./ContractRegistryService";
+import { marketplaceHubService } from "./MarketplaceHubService";
+import {
+  ERC721Collection_ABI,
+  ERC1155Collection_ABI,
+  ERC721CollectionFactory_ABI,
+  ERC1155CollectionFactory_ABI,
+} from "@/lib/contracts/abis";
+
+export interface CreateCollectionParams {
+  name: string;
+  symbol: string;
+  baseURI: string;
+  tokenType: "ERC721" | "ERC1155";
+}
 
 export interface MintParams {
   collection: string;
-  tokenId?: string; // For ERC721, auto-generated if not provided
+  to: string;
+  tokenId?: string; // For ERC721
   amount?: string; // For ERC1155, default 1
   tokenType: "ERC721" | "ERC1155";
   metadataUri?: string;
@@ -24,13 +37,6 @@ export interface TransferParams {
   to: string;
 }
 
-export interface ApprovalParams {
-  collection: string;
-  tokenId: string;
-  tokenType: "ERC721" | "ERC1155";
-  to: string;
-}
-
 export interface CollectionInfo {
   address: string;
   name: string;
@@ -40,22 +46,83 @@ export interface CollectionInfo {
 }
 
 export class CollectionService {
-  private isInitialized = false;
-
-  constructor() {}
+  private provider: ethers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
 
   /**
-   * Initialize the collection service
+   * Initialize collection service
    */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
 
+    console.log("✅ CollectionService initialized");
+  }
+
+  /**
+   * Get collection factory for token type
+   */
+  private async getFactoryContract(
+    tokenType: "ERC721" | "ERC1155"
+  ): Promise<ethers.Contract> {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+
+    const factoryAddress = await marketplaceHubService.getCollectionFactory(
+      tokenType
+    );
+
+    const abi =
+      tokenType === "ERC721"
+        ? ERC721CollectionFactory_ABI
+        : ERC1155CollectionFactory_ABI;
+
+    return new ethers.Contract(factoryAddress, abi, this.signer);
+  }
+
+  /**
+   * Create a new collection
+   */
+  async createCollection(
+    params: CreateCollectionParams
+  ): Promise<{ tx: ethers.ContractTransactionResponse; address: string }> {
     try {
-      this.isInitialized = true;
-      console.log("✅ CollectionService initialized");
+      const factory = await this.getFactoryContract(params.tokenType);
+
+      const tx = await factory.createCollection(
+        params.name,
+        params.symbol,
+        params.baseURI
+      );
+
+      const receipt = await tx.wait();
+
+      // Find CollectionCreated event
+      const event = receipt.logs.find((log: any) => {
+        try {
+          const parsed = factory.interface.parseLog(log);
+          return parsed?.name === "CollectionCreated";
+        } catch {
+          return false;
+        }
+      });
+
+      if (event) {
+        const parsed = factory.interface.parseLog(event);
+        return {
+          tx,
+          address: parsed?.args.collection,
+        };
+      }
+
+      throw new Error("CollectionCreated event not found");
     } catch (error) {
-      console.error("❌ Failed to initialize CollectionService:", error);
-      throw error;
+      console.error("Error creating collection:", error);
+      throw this.formatTransactionError(error);
     }
   }
 
@@ -63,57 +130,131 @@ export class CollectionService {
    * Get collection contract instance
    */
   private getCollectionContract(
-    collectionAddress: string,
+    address: string,
     tokenType: "ERC721" | "ERC1155"
   ): ethers.Contract {
-    const abi = tokenType === "ERC721" ? ERC721_ABI : ERC1155_ABI;
-    const signer = getContractRegistryService().getSigner();
-    return new ethers.Contract(collectionAddress, abi, signer);
+    if (!this.provider) {
+      throw new Error("Provider not available");
+    }
+
+    const abi =
+      tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
+
+    return new ethers.Contract(
+      address,
+      abi,
+      this.signer || this.provider
+    );
   }
 
   /**
-   * Get collection information
+   * Mint NFT
    */
-  async getCollectionInfo(collectionAddress: string): Promise<CollectionInfo> {
+  async mint(
+    params: MintParams
+  ): Promise<ethers.ContractTransactionResponse> {
     try {
-      // Try ERC721 first
-      try {
-        const contract = this.getCollectionContract(
-          collectionAddress,
-          "ERC721"
-        );
-        const [name, symbol, totalSupply] = await Promise.all([
-          contract.name(),
-          contract.symbol(),
-          contract.totalSupply(),
-        ]);
-
-        return {
-          address: collectionAddress,
-          name,
-          symbol,
-          totalSupply: totalSupply.toString(),
-          tokenType: "ERC721",
-        };
-      } catch {
-        // Try ERC1155
-        const contract = this.getCollectionContract(
-          collectionAddress,
-          "ERC1155"
-        );
-        const [name, symbol] = await Promise.all([
-          contract.name(),
-          contract.symbol(),
-        ]);
-
-        return {
-          address: collectionAddress,
-          name,
-          symbol,
-          totalSupply: "0", // ERC1155 doesn't have totalSupply
-          tokenType: "ERC1155",
-        };
+      if (!this.signer) {
+        throw new Error("Signer not available - connect wallet first");
       }
+
+      const collection = this.getCollectionContract(
+        params.collection,
+        params.tokenType
+      );
+
+      if (params.tokenType === "ERC721") {
+        const tokenId = params.tokenId || Date.now().toString();
+        const uri = params.metadataUri || "";
+        return await collection.mint(params.to, tokenId, uri);
+      } else {
+        const amount = params.amount || "1";
+        const uri = params.metadataUri || "";
+        return await collection.mint(params.to, amount, uri);
+      }
+    } catch (error) {
+      console.error("Error minting NFT:", error);
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Set approval for exchange
+   */
+  async setApprovalForAll(
+    collection: string,
+    operator: string,
+    approved: boolean,
+    tokenType: "ERC721" | "ERC1155"
+  ): Promise<ethers.ContractTransactionResponse> {
+    try {
+      if (!this.signer) {
+        throw new Error("Signer not available - connect wallet first");
+      }
+
+      const collectionContract = this.getCollectionContract(
+        collection,
+        tokenType
+      );
+
+      return await collectionContract.setApprovalForAll(operator, approved);
+    } catch (error) {
+      console.error("Error setting approval:", error);
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Check if operator is approved
+   */
+  async isApprovedForAll(
+    collection: string,
+    owner: string,
+    operator: string,
+    tokenType: "ERC721" | "ERC1155"
+  ): Promise<boolean> {
+    try {
+      const collectionContract = this.getCollectionContract(
+        collection,
+        tokenType
+      );
+
+      return await collectionContract.isApprovedForAll(owner, operator);
+    } catch (error) {
+      console.error("Error checking approval:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Get collection info
+   */
+  async getCollectionInfo(
+    address: string,
+    tokenType: "ERC721" | "ERC1155"
+  ): Promise<CollectionInfo> {
+    try {
+      const collection = this.getCollectionContract(address, tokenType);
+
+      const [name, symbol] = await Promise.all([
+        collection.name(),
+        collection.symbol(),
+      ]);
+
+      let totalSupply = "0";
+      try {
+        totalSupply = (await collection.totalSupply()).toString();
+      } catch {
+        // Some collections may not have totalSupply
+      }
+
+      return {
+        address,
+        name,
+        symbol,
+        totalSupply,
+        tokenType,
+      };
     } catch (error) {
       console.error("Error getting collection info:", error);
       throw error;
@@ -121,147 +262,19 @@ export class CollectionService {
   }
 
   /**
-   * Mint a new token
-   */
-  async mintToken(
-    params: MintParams
-  ): Promise<ethers.ContractTransactionResponse> {
-    try {
-      const contract = this.getCollectionContract(
-        params.collection,
-        params.tokenType
-      );
-
-      if (params.tokenType === "ERC721") {
-        const tx = await contract.mint(params.metadataUri || "");
-        return tx;
-      } else {
-        // ERC1155
-        const amount = params.amount || "1";
-        const tx = await contract.mint(
-          params.tokenId || "0", // Use provided tokenId or default to 0
-          amount,
-          params.metadataUri || ""
-        );
-        return tx;
-      }
-    } catch (error) {
-      console.error("Error minting token:", error);
-      throw this.formatTransactionError(error);
-    }
-  }
-
-  /**
-   * Batch mint tokens
-   */
-  async batchMintTokens(
-    collection: string,
-    tokenIds: string[],
-    amounts: string[],
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<ethers.ContractTransactionResponse> {
-    try {
-      const contract = this.getCollectionContract(collection, tokenType);
-
-      if (tokenType === "ERC721") {
-        // For ERC721, mint each token individually
-        const tx = await contract.batchMint(tokenIds);
-        return tx;
-      } else {
-        // For ERC1155, batch mint
-        const tx = await contract.batchMint(tokenIds, amounts);
-        return tx;
-      }
-    } catch (error) {
-      console.error("Error batch minting tokens:", error);
-      throw this.formatTransactionError(error);
-    }
-  }
-
-  /**
-   * Transfer a token
-   */
-  async transferToken(
-    params: TransferParams
-  ): Promise<ethers.ContractTransactionResponse> {
-    try {
-      const contract = this.getCollectionContract(
-        params.collection,
-        params.tokenType
-      );
-
-      if (params.tokenType === "ERC721") {
-        const tx = await contract.transferFrom(
-          await getContractRegistryService().getSigner().getAddress(),
-          params.to,
-          params.tokenId
-        );
-        return tx;
-      } else {
-        // ERC1155
-        const tx = await contract.safeTransferFrom(
-          await getContractRegistryService().getSigner().getAddress(),
-          params.to,
-          params.tokenId,
-          params.amount,
-          "0x" // Empty data
-        );
-        return tx;
-      }
-    } catch (error) {
-      console.error("Error transferring token:", error);
-      throw this.formatTransactionError(error);
-    }
-  }
-
-  /**
-   * Approve a token for transfer
-   */
-  async approveToken(
-    params: ApprovalParams
-  ): Promise<ethers.ContractTransactionResponse> {
-    try {
-      const contract = this.getCollectionContract(
-        params.collection,
-        params.tokenType
-      );
-
-      if (params.tokenType === "ERC721") {
-        const tx = await contract.approve(params.to, params.tokenId);
-        return tx;
-      } else {
-        // ERC1155 - set approval for all
-        const tx = await contract.setApprovalForAll(params.to, true);
-        return tx;
-      }
-    } catch (error) {
-      console.error("Error approving token:", error);
-      throw this.formatTransactionError(error);
-    }
-  }
-
-  /**
-   * Get token owner
+   * Get token owner (ERC721 only)
    */
   async getTokenOwner(
     collection: string,
-    tokenId: string,
-    tokenType: "ERC721" | "ERC1155"
+    tokenId: string
   ): Promise<string> {
     try {
-      const contract = this.getCollectionContract(collection, tokenType);
+      const collectionContract = this.getCollectionContract(
+        collection,
+        "ERC721"
+      );
 
-      if (tokenType === "ERC721") {
-        return await contract.ownerOf(tokenId);
-      } else {
-        // For ERC1155, we need to check balance
-        const signer = getContractRegistryService().getSigner();
-        const userAddress = await signer.getAddress();
-        const balance = await contract.balanceOf(userAddress, tokenId);
-        return balance > 0
-          ? userAddress
-          : "0x0000000000000000000000000000000000000000";
-      }
+      return await collectionContract.ownerOf(tokenId);
     } catch (error) {
       console.error("Error getting token owner:", error);
       throw error;
@@ -269,121 +282,34 @@ export class CollectionService {
   }
 
   /**
-   * Get token balance
+   * Get token balance (ERC1155 only)
    */
   async getTokenBalance(
     collection: string,
-    tokenId: string,
-    userAddress: string,
-    tokenType: "ERC721" | "ERC1155"
+    owner: string,
+    tokenId: string
   ): Promise<string> {
     try {
-      const contract = this.getCollectionContract(collection, tokenType);
+      const collectionContract = this.getCollectionContract(
+        collection,
+        "ERC1155"
+      );
 
-      if (tokenType === "ERC721") {
-        const owner = await contract.ownerOf(tokenId);
-        return owner.toLowerCase() === userAddress.toLowerCase() ? "1" : "0";
-      } else {
-        // ERC1155
-        const balance = await contract.balanceOf(userAddress, tokenId);
-        return balance.toString();
-      }
+      const balance = await collectionContract.balanceOf(owner, tokenId);
+      return balance.toString();
     } catch (error) {
       console.error("Error getting token balance:", error);
-      return "0";
+      throw error;
     }
   }
 
   /**
-   * Check if user is approved for token
+   * Verify collection using Hub
    */
-  async isApprovedForToken(
-    collection: string,
-    tokenId: string,
-    userAddress: string,
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<boolean> {
-    try {
-      const contract = this.getCollectionContract(collection, tokenType);
-
-      if (tokenType === "ERC721") {
-        const approved = await contract.getApproved(tokenId);
-        return approved.toLowerCase() === userAddress.toLowerCase();
-      } else {
-        // ERC1155
-        const owner = await contract.ownerOf(tokenId);
-        const isApproved = await contract.isApprovedForAll(owner, userAddress);
-        return isApproved;
-      }
-    } catch (error) {
-      console.error("Error checking token approval:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Get token URI
-   */
-  async getTokenURI(
-    collection: string,
-    tokenId: string,
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<string> {
-    try {
-      const contract = this.getCollectionContract(collection, tokenType);
-
-      if (tokenType === "ERC721") {
-        return await contract.tokenURI(tokenId);
-      } else {
-        // ERC1155
-        return await contract.uri(tokenId);
-      }
-    } catch (error) {
-      console.error("Error getting token URI:", error);
-      return "";
-    }
-  }
-
-  /**
-   * Get user's tokens
-   */
-  async getUserTokens(
-    userAddress: string,
-    collection: string,
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<Array<{ tokenId: string; balance: string; uri: string }>> {
-    try {
-      const contract = this.getCollectionContract(collection, tokenType);
-
-      if (tokenType === "ERC721") {
-        const balance = await contract.balanceOf(userAddress);
-        const tokens = [];
-
-        for (let i = 0; i < balance; i++) {
-          const tokenId = await contract.tokenOfOwnerByIndex(userAddress, i);
-          const uri = await this.getTokenURI(
-            collection,
-            tokenId.toString(),
-            tokenType
-          );
-
-          tokens.push({
-            tokenId: tokenId.toString(),
-            balance: "1",
-            uri,
-          });
-        }
-
-        return tokens;
-      } else {
-        // For ERC1155, we need to know the token IDs
-        // This is a simplified version - in practice, you'd need to track token IDs
-        return [];
-      }
-    } catch (error) {
-      console.error("Error getting user tokens:", error);
-      return [];
-    }
+  async verifyCollection(
+    collection: string
+  ): Promise<{ isValid: boolean; tokenType: string }> {
+    return await marketplaceHubService.verifyCollection(collection);
   }
 
   /**

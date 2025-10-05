@@ -1,11 +1,15 @@
 /**
  * Auction Service
- * Ported from frontend-foundry/src/services/contracts/auction/AuctionService.js
  * Handles auction creation, bidding, and settlement operations
+ * Now uses MarketplaceHub for address discovery
  */
 
 import { ethers } from "ethers";
-import { getContractRegistryService } from "./ContractRegistryService";
+import { marketplaceHubService } from "./MarketplaceHubService";
+import {
+  EnglishAuction_ABI,
+  DutchAuction_ABI,
+} from "@/lib/contracts/abis";
 
 export interface EnglishAuctionParams {
   nftContract: string;
@@ -43,35 +47,52 @@ export interface AuctionInfo {
 }
 
 export class AuctionService {
-  private isInitialized = false;
+  private provider: ethers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
 
-  constructor() {
-    // No need to store addresses, will get from registry service
+  /**
+   * Initialize auction service
+   */
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
+
+    console.log("✅ AuctionService initialized");
   }
 
   /**
-   * Initialize the auction service
+   * Get English auction contract
    */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
-
-    try {
-      // Verify factory contract is accessible
-      await this.getFactoryContract().getAddress();
-      this.isInitialized = true;
-      console.log("✅ AuctionService initialized");
-    } catch (error) {
-      console.error("❌ Failed to initialize AuctionService:", error);
-      throw error;
+  private getEnglishAuctionContract(): ethers.Contract {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
     }
+
+    const address = marketplaceHubService.getEnglishAuction();
+    return new ethers.Contract(
+      address,
+      EnglishAuction_ABI,
+      this.signer
+    );
   }
 
   /**
-   * Get the auction factory contract instance
+   * Get Dutch auction contract
    */
-  getFactoryContract(): ethers.Contract {
-    const registryService = getContractRegistryService();
-    return registryService.getContractByKey("AUCTION_FACTORY");
+  private getDutchAuctionContract(): ethers.Contract {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+
+    const address = marketplaceHubService.getDutchAuction();
+    return new ethers.Contract(
+      address,
+      DutchAuction_ABI,
+      this.signer
+    );
   }
 
   /**
@@ -81,10 +102,10 @@ export class AuctionService {
     params: EnglishAuctionParams
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const factory = this.getFactoryContract();
-      const durationInSeconds = params.duration * 60 * 60; // Convert hours to seconds
+      const auction = this.getEnglishAuctionContract();
+      const durationInSeconds = params.duration * 60 * 60;
 
-      const tx = await factory.createEnglishAuction(
+      const tx = await auction.createAuction(
         params.nftContract,
         params.tokenId,
         params.amount,
@@ -107,10 +128,10 @@ export class AuctionService {
     params: DutchAuctionParams
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const factory = this.getFactoryContract();
-      const durationInSeconds = params.duration * 60 * 60; // Convert hours to seconds
+      const auction = this.getDutchAuctionContract();
+      const durationInSeconds = params.duration * 60 * 60;
 
-      const tx = await factory.createDutchAuction(
+      const tx = await auction.createAuction(
         params.nftContract,
         params.tokenId,
         params.amount,
@@ -128,16 +149,16 @@ export class AuctionService {
   }
 
   /**
-   * Place a bid on an auction
+   * Place a bid on an English auction
    */
   async placeBid(
     auctionId: string,
     bidAmount: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const factory = this.getFactoryContract();
+      const auction = this.getEnglishAuctionContract();
 
-      const tx = await factory.placeBid(auctionId, {
+      const tx = await auction.placeBid(auctionId, {
         value: ethers.parseEther(bidAmount),
       });
 
@@ -151,198 +172,109 @@ export class AuctionService {
   /**
    * Buy now from a Dutch auction
    */
-  async buyNow(
+  async buyFromDutchAuction(
     auctionId: string,
     price: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const factory = this.getFactoryContract();
+      const auction = this.getDutchAuctionContract();
 
-      const tx = await factory.buyNow(auctionId, {
+      const tx = await auction.buy(auctionId, {
         value: ethers.parseEther(price),
       });
 
       return tx;
     } catch (error) {
-      console.error("Error buying now:", error);
+      console.error("Error buying from Dutch auction:", error);
       throw this.formatTransactionError(error);
     }
   }
 
   /**
-   * Cancel an auction
+   * Cancel an English auction
    */
-  async cancelAuction(
+  async cancelEnglishAuction(
     auctionId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const factory = this.getFactoryContract();
-
-      const tx = await factory.cancelAuction(auctionId);
+      const auction = this.getEnglishAuctionContract();
+      const tx = await auction.cancelAuction(auctionId);
       return tx;
     } catch (error) {
-      console.error("Error canceling auction:", error);
+      console.error("Error canceling English auction:", error);
       throw this.formatTransactionError(error);
     }
   }
 
   /**
-   * Settle an auction
+   * Cancel a Dutch auction
    */
-  async settleAuction(
+  async cancelDutchAuction(
     auctionId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const factory = this.getFactoryContract();
-
-      const tx = await factory.settleAuction(auctionId);
+      const auction = this.getDutchAuctionContract();
+      const tx = await auction.cancelAuction(auctionId);
       return tx;
     } catch (error) {
-      console.error("Error settling auction:", error);
+      console.error("Error canceling Dutch auction:", error);
       throw this.formatTransactionError(error);
     }
   }
 
   /**
-   * Withdraw bid from an auction
+   * End an English auction
    */
-  async withdrawBid(
+  async endEnglishAuction(
     auctionId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const factory = this.getFactoryContract();
-
-      const tx = await factory.withdrawBid(auctionId);
+      const auction = this.getEnglishAuctionContract();
+      const tx = await auction.endAuction(auctionId);
       return tx;
     } catch (error) {
-      console.error("Error withdrawing bid:", error);
+      console.error("Error ending English auction:", error);
       throw this.formatTransactionError(error);
     }
   }
 
   /**
-   * Get auction information
+   * Get English auction information
    */
-  async getAuctionInfo(auctionId: string): Promise<AuctionInfo> {
+  async getEnglishAuctionInfo(auctionId: string): Promise<any> {
     try {
-      const factory = this.getFactoryContract();
-      const auctionInfo = await factory.getAuctionInfo(auctionId);
-
-      return {
-        auctionId,
-        nftContract: auctionInfo.nftContract,
-        tokenId: auctionInfo.tokenId.toString(),
-        amount: auctionInfo.amount.toString(),
-        startPrice: auctionInfo.startPrice,
-        reservePrice: auctionInfo.reservePrice,
-        currentPrice: auctionInfo.currentPrice,
-        highestBid: auctionInfo.highestBid,
-        highestBidder: auctionInfo.highestBidder,
-        startTime: auctionInfo.startTime,
-        endTime: auctionInfo.endTime,
-        status: auctionInfo.status,
-        auctionType: auctionInfo.auctionType,
-      };
+      const auction = this.getEnglishAuctionContract();
+      const auctionInfo = await auction.getAuction(auctionId);
+      return auctionInfo;
     } catch (error) {
-      console.error("Error getting auction info:", error);
+      console.error("Error getting English auction info:", error);
       throw error;
     }
   }
 
   /**
-   * Get all active auctions
+   * Get Dutch auction information
    */
-  async getActiveAuctions(): Promise<AuctionInfo[]> {
+  async getDutchAuctionInfo(auctionId: string): Promise<any> {
     try {
-      const factory = this.getFactoryContract();
-      const auctions = await factory.getActiveAuctions();
-
-      return auctions.map((auction: any) => ({
-        auctionId: auction.auctionId?.toString(),
-        nftContract: auction.nftContract,
-        tokenId: auction.tokenId.toString(),
-        amount: auction.amount.toString(),
-        startPrice: auction.startPrice,
-        reservePrice: auction.reservePrice,
-        currentPrice: auction.currentPrice,
-        highestBid: auction.highestBid,
-        highestBidder: auction.highestBidder,
-        startTime: auction.startTime,
-        endTime: auction.endTime,
-        status: auction.status,
-        auctionType: auction.auctionType,
-      }));
+      const auction = this.getDutchAuctionContract();
+      const auctionInfo = await auction.getAuction(auctionId);
+      return auctionInfo;
     } catch (error) {
-      console.error("Error getting active auctions:", error);
+      console.error("Error getting Dutch auction info:", error);
       throw error;
-    }
-  }
-
-  /**
-   * Get user's auctions
-   */
-  async getUserAuctions(userAddress: string): Promise<AuctionInfo[]> {
-    try {
-      const factory = this.getFactoryContract();
-      const auctions = await factory.getUserAuctions(userAddress);
-
-      return auctions.map((auction: any, index: number) => ({
-        auctionId: index.toString(),
-        nftContract: auction.nftContract,
-        tokenId: auction.tokenId.toString(),
-        amount: auction.amount.toString(),
-        startPrice: auction.startPrice,
-        reservePrice: auction.reservePrice,
-        currentPrice: auction.currentPrice,
-        highestBid: auction.highestBid,
-        highestBidder: auction.highestBidder,
-        startTime: auction.startTime,
-        endTime: auction.endTime,
-        status: auction.status,
-        auctionType: auction.auctionType,
-      }));
-    } catch (error) {
-      console.error("Error getting user auctions:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get user's bids
-   */
-  async getUserBids(userAddress: string): Promise<any[]> {
-    try {
-      const factory = this.getFactoryContract();
-      const bids = await factory.getUserBids(userAddress);
-      return bids;
-    } catch (error) {
-      console.error("Error getting user bids:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Check if auction can be settled
-   */
-  async canSettleAuction(auctionId: string): Promise<boolean> {
-    try {
-      const factory = this.getFactoryContract();
-      return await factory.canSettleAuction(auctionId);
-    } catch (error) {
-      console.error("Error checking if auction can be settled:", error);
-      return false;
     }
   }
 
   /**
    * Get current price for Dutch auction
    */
-  async getCurrentPrice(auctionId: string): Promise<bigint> {
+  async getCurrentDutchPrice(auctionId: string): Promise<bigint> {
     try {
-      const factory = this.getFactoryContract();
-      return await factory.getCurrentPrice(auctionId);
+      const auction = this.getDutchAuctionContract();
+      return await auction.getCurrentPrice(auctionId);
     } catch (error) {
-      console.error("Error getting current price:", error);
+      console.error("Error getting current Dutch price:", error);
       throw error;
     }
   }

@@ -74,32 +74,33 @@ export default function BundlesPage() {
     if (account) {
       loadBundles();
 
-      // Subscribe to real-time events if not in mock mode
-      if (!useMockData) {
-        const realTimeEvents = new RealTimeEventsService();
-        realTimeEvents.initialize().then(() => {
-          // Subscribe to bundle events
-          realTimeEvents.subscribeToBundleEvents({
-            onBundleCreated: () => {
-              console.log("📦 New bundle created, refreshing bundles...");
-              loadBundles();
-            },
-            onBundlePurchased: () => {
-              console.log("💰 Bundle purchased, refreshing bundles...");
-              loadBundles();
-            },
-            onBundleCancelled: () => {
-              console.log("❌ Bundle cancelled, refreshing bundles...");
-              loadBundles();
-            },
-          });
-        });
+      // TODO: Subscribe to real-time events if not in mock mode
+      // Requires provider to be available in component
+      // if (!useMockData) {
+      //   const realTimeEvents = new RealTimeEventsService();
+      //   realTimeEvents.initialize(provider).then(() => {
+      //     // Subscribe to bundle events
+      //     realTimeEvents.subscribeToBundleEvents({
+      //       onBundleCreated: () => {
+      //         console.log("📦 New bundle created, refreshing bundles...");
+      //         loadBundles();
+      //       },
+      //       onBundlePurchased: () => {
+      //         console.log("💰 Bundle purchased, refreshing bundles...");
+      //         loadBundles();
+      //       },
+      //       onBundleCancelled: () => {
+      //         console.log("❌ Bundle cancelled, refreshing bundles...");
+      //         loadBundles();
+      //       },
+      //     });
+      //   });
 
-        // Cleanup on unmount
-        return () => {
-          realTimeEvents.unsubscribeAll();
-        };
-      }
+      //   // Cleanup on unmount
+      //   return () => {
+      //     realTimeEvents.unsubscribeAll();
+      //   };
+      // }
     }
   }, [account, useMockData]);
 
@@ -121,7 +122,6 @@ export default function BundlesPage() {
         setUserBundles(user);
       } else {
         // Real blockchain data
-        await bundleService.initialize();
         const [active, user] = await Promise.all([
           bundleService.getActiveBundles(),
           bundleService.getUserBundles(account),
@@ -251,7 +251,6 @@ export default function BundlesPage() {
         loadBundles();
       } else {
         // Real contract interaction
-        await bundleService.initialize();
 
         // Convert selected NFTs to bundle items
         const items = selectedNFTs.map((nftId) => {
@@ -319,7 +318,6 @@ export default function BundlesPage() {
         loadBundles();
       } else {
         // Real contract interaction
-        await bundleService.initialize();
         await bundleService.purchaseBundle(bundleId, price);
 
         toast({
@@ -359,7 +357,6 @@ export default function BundlesPage() {
         loadBundles();
       } else {
         // Real contract interaction
-        await bundleService.initialize();
         await bundleService.cancelBundle(bundleId);
 
         toast({

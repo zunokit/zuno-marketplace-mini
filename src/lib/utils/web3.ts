@@ -1,12 +1,17 @@
+/**
+ * Web3 Utilities
+ * Centralized Web3/Ethereum utilities using MarketplaceHub pattern
+ */
+
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
-import { getContractRegistryService } from "@/lib/services/contracts/ContractRegistryService";
+import { initializeServices } from "@/lib/services/contracts";
 
 export class Web3Utils {
   private provider: BrowserProvider | JsonRpcProvider | null = null;
   private signer: ethers.Signer | null = null;
 
   /**
-   * Initialize provider
+   * Initialize provider and all contract services
    */
   async initializeProvider(): Promise<void> {
     if (typeof window !== "undefined" && window.ethereum) {
@@ -15,10 +20,12 @@ export class Web3Utils {
         await this.provider.send("eth_requestAccounts", []);
         this.signer = await this.provider.getSigner();
 
-        // Initialize ContractRegistryService with signer
-        const registryService = getContractRegistryService();
-        await registryService.initialize(this.signer);
+        // Initialize all contract services with Hub pattern
+        await initializeServices(this.provider, this.signer);
+
+        console.log("✅ Web3 and contract services initialized");
       } catch (error) {
+        console.error("Failed to initialize Web3 provider:", error);
         throw new Error("Failed to initialize Web3 provider");
       }
     } else {

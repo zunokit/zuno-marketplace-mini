@@ -27,7 +27,6 @@ export const useMarketplace = () => {
       const signer = web3Utils.getSigner();
 
       if (provider) {
-        await exchangeService.initialize();
       }
     } catch (error) {
       console.error("Failed to initialize marketplace service:", error);
@@ -56,7 +55,6 @@ export const useMarketplace = () => {
           throw new Error("Wallet not connected");
         }
 
-        await exchangeService.initialize();
         const tx = await exchangeService.createListing({
           contractAddress: tokenContract,
           tokenId,
@@ -122,7 +120,6 @@ export const useMarketplace = () => {
           throw new Error("Wallet not connected");
         }
 
-        await exchangeService.initialize();
         const tx = await exchangeService.buyNFT(listingId, "1", "1", "ERC721"); // Default to ERC721
 
         dispatch(
@@ -180,7 +177,6 @@ export const useMarketplace = () => {
           throw new Error("Wallet not connected");
         }
 
-        await exchangeService.initialize();
         const tx = await exchangeService.cancelListing(
           listingId,
           "1",
@@ -301,7 +297,6 @@ export const useMarketplace = () => {
   const getUserListings = useCallback(
     async (userAddress?: string) => {
       try {
-        await exchangeService.initialize();
         const address = userAddress || wallet.account;
         if (!address) return [];
 

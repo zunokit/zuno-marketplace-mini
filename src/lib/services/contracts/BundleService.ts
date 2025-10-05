@@ -1,11 +1,12 @@
 /**
  * Bundle Service
- * Ported from frontend-foundry/src/services/contracts/BundleService.js
  * Handles bundle creation, purchasing, and management operations
+ * Now uses MarketplaceHub for address discovery
  */
 
 import { ethers } from "ethers";
-import { getContractRegistryService } from "./ContractRegistryService";
+import { marketplaceHubService } from "./MarketplaceHubService";
+import { BundleManager_ABI } from "@/lib/contracts/abis";
 
 export interface BundleItem {
   collection: string;
@@ -46,35 +47,45 @@ export interface BundleInfo {
 }
 
 export class BundleService {
-  private isInitialized = false;
-
-  constructor() {
-    // No need to store addresses, will get from registry service
-  }
+  private provider: ethers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
+  private bundleManagerAddress: string | null = null;
 
   /**
-   * Initialize the bundle service
+   * Initialize bundle service
    */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
 
-    try {
-      const registryService = getContractRegistryService();
-      await registryService.initialize();
-      this.isInitialized = true;
-      console.log("✅ BundleService initialized");
-    } catch (error) {
-      console.error("❌ Failed to initialize BundleService:", error);
-      throw error;
-    }
+    // Get bundle manager from hub addresses
+    const addresses = marketplaceHubService.getAddresses();
+    // Note: BundleManager might not be in hub.getAllAddresses()
+    // You may need to add it or fetch it separately
+    // For now, we'll assume it needs to be added to the hub
+
+    console.log("✅ BundleService initialized");
   }
 
   /**
    * Get the bundle manager contract instance
    */
   private getBundleManagerContract(): ethers.Contract {
-    const registryService = getContractRegistryService();
-    return registryService.getContractByKey("BUNDLE_MANAGER");
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+
+    // TODO: Add BundleManager to MarketplaceHub.getAllAddresses()
+    // For now, this will need to be fetched from env or added to hub
+    const address = process.env.NEXT_PUBLIC_BUNDLE_MANAGER_ADDRESS;
+    if (!address) {
+      throw new Error("BundleManager address not configured");
+    }
+
+    return new ethers.Contract(address, BundleManager_ABI, this.signer);
   }
 
   /**
@@ -172,7 +183,20 @@ export class BundleService {
    */
   async getBundle(bundleId: string): Promise<BundleInfo> {
     try {
-      const contract = this.getBundleManagerContract();
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const address = process.env.NEXT_PUBLIC_BUNDLE_MANAGER_ADDRESS;
+      if (!address) {
+        throw new Error("BundleManager address not configured");
+      }
+
+      const contract = new ethers.Contract(
+        address,
+        BundleManager_ABI,
+        this.provider
+      );
 
       const [bundle, timing, metadata, items] = await Promise.all([
         contract.bundles(bundleId),

@@ -1,254 +1,327 @@
-# Zuno Marketplace Mini
+# 🎨 Zuno Marketplace
 
-A modern marketplace application built with Next.js, TypeScript, and Tailwind CSS.
+A modern, production-ready NFT marketplace built with Next.js 15, TypeScript, and smart contract integration.
 
-## Features
+[![Next.js](https://img.shields.io/badge/Next.js-15.5.4-black)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-- 🎨 Modern UI components with shadcn/ui
-- 🌙 Dark mode support
-- 📱 Responsive design
-- ⚡ Fast development with Turbopack
-- 🔧 TypeScript for type safety
-- 🎭 Web3 integration with MetaMask SDK
-- 📊 Chart components with Recharts
-- 🔄 State management with Redux Toolkit
-- 🏪 NFT Marketplace with listings, auctions, offers, and bundles
-- 🎭 Mock data mode for development and testing
-- ⛓️ Real blockchain integration with smart contracts
-- 📈 Analytics dashboard with platform metrics
-- 👑 Admin panel for marketplace management
+## ✨ Features
 
-## Tech Stack
+### Core Functionality
 
-- **Framework**: Next.js 15.5.4
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4
-- **UI Components**: Radix UI primitives with shadcn/ui
-- **Icons**: Lucide React
-- **Web3**: MetaMask SDK, Ethers.js
-- **Charts**: Recharts
-- **State Management**: Redux Toolkit
-- **Form Handling**: React Hook Form with Zod validation
+- 🏪 **NFT Trading** - List, buy, and sell ERC721/ERC1155 NFTs
+- 🎯 **Auctions** - English & Dutch auction support
+- 🎁 **Bundles** - Create and trade NFT bundles
+- 💎 **Offers** - Make offers on individual NFTs or entire collections
+- 🏗️ **Collection Management** - Create and manage NFT collections
 
-## Getting Started
+### Technical Features
+
+- ⚡ **MarketplaceHub Pattern** - Single address for all contracts
+- 🔐 **Type-Safe** - Full TypeScript with auto-generated types
+- 🎭 **Mock Mode** - Develop without deploying contracts
+- 📱 **Responsive Design** - Mobile-first UI with dark mode
+- 🔄 **Real-Time Updates** - Live blockchain event listening
+- 📊 **Analytics Dashboard** - Platform metrics and insights
+- 👑 **Admin Panel** - Marketplace management and controls
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ 
-- pnpm (recommended) or npm
+- Node.js 18+
+- npm or pnpm
+- MetaMask (for blockchain features)
 
 ### Installation
 
-1. Clone the repository:
 ```bash
+# Clone repository
 git clone <repository-url>
 cd zuno-marketplace-mini
-```
 
-2. Install dependencies:
-```bash
-pnpm install
-# or
+# Install dependencies
 npm install
-```
 
-3. Set up environment variables:
-```bash
-# Copy the example environment file
+# Setup environment
 cp .env.example .env.local
 
-# Edit .env.local with your configuration
-```
-
-4. Run the development server:
-```bash
-pnpm dev
-# or
+# Start development server
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Environment Configuration
+## 🔧 Configuration
 
-### Mock Data Mode (Development)
+### Development Mode (Mock Data)
 
-The application supports a single environment variable to switch between mock data and real blockchain interactions:
+Perfect for UI development without contracts:
 
 ```bash
 # .env.local
-NEXT_PUBLIC_USE_MOCK_DATA=true  # Use mock data for development
-NEXT_PUBLIC_USE_MOCK_DATA=false # Use real blockchain contracts
+NEXT_PUBLIC_USE_MOCK_DATA=true
 ```
 
-### Real Blockchain Mode (Production)
-
-When `NEXT_PUBLIC_USE_MOCK_DATA=false`, the application connects to real smart contracts. Configure the following environment variables:
-
-#### Local Development Network
 ```bash
-# Local Anvil/Hardhat network (default)
-NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
-NEXT_PUBLIC_NFT_EXCHANGE_REGISTRY_LOCAL=0xa722bda6968f50778b973ae2701e90200c564b49
-NEXT_PUBLIC_COLLECTION_FACTORY_REGISTRY_LOCAL=0x942ed2fa862887dc698682cc6a86355324f0f01e
-NEXT_PUBLIC_LISTING_MANAGER_LOCAL=0x0fe4223ad99df788a6dcad148eb4086e6389ceb6
-NEXT_PUBLIC_AUCTION_FACTORY_LOCAL=0xc7cdb7a2e5dda1b7a0e792fe1ef08ed20a6f56d4
-NEXT_PUBLIC_OFFER_MANAGER_LOCAL=0x71a0b8a2245a9770a4d887ce1e4ecc6c1d4ff28c
-NEXT_PUBLIC_BUNDLE_MANAGER_LOCAL=0xb185e9f6531ba9877741022c92ce858cdcc5760e
+npm run dev
 ```
 
-#### Sepolia Testnet
+### Production Mode (Real Contracts)
+
+#### Local Network
+
 ```bash
-# Sepolia testnet configuration
-NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
-NEXT_PUBLIC_NFT_EXCHANGE_REGISTRY_SEPOLIA=your_sepolia_address
-NEXT_PUBLIC_COLLECTION_FACTORY_REGISTRY_SEPOLIA=your_sepolia_address
-# ... (add other contract addresses for Sepolia)
+# Terminal 1 - Start Anvil
+anvil --port 8545
+
+# Terminal 2 - Deploy contracts
+cd ../zuno-marketplace-contracts
+make deploy-all-local
+
+# Copy MarketplaceHub address from output
+# Update .env.local
+NEXT_PUBLIC_USE_MOCK_DATA=false
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
+
+# Extract ABIs
+node scripts/extract-abis.js
+
+# Start app
+npm run dev
 ```
 
-### Required Environment Variables
+#### Testnet (Sepolia)
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `NEXT_PUBLIC_USE_MOCK_DATA` | Enable mock data mode | `true` | No |
-| `NEXT_PUBLIC_DEFAULT_CHAIN_ID` | Default blockchain network | `31337` | No |
-| `NEXT_PUBLIC_*_LOCAL` | Local network contract addresses | See addresses.ts | For local |
-| `NEXT_PUBLIC_*_SEPOLIA` | Sepolia network contract addresses | `""` | For Sepolia |
+```bash
+# Deploy contracts
+cd ../zuno-marketplace-contracts
+forge script script/deploy/DeployAll.s.sol \
+  --rpc-url $SEPOLIA_RPC_URL \
+  --broadcast \
+  --verify
 
-## Smart Contract Integration
+# Update .env.local
+NEXT_PUBLIC_USE_MOCK_DATA=false
+NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x...
 
-The application integrates with the following smart contracts:
+# Extract ABIs
+node scripts/extract-abis.js
 
-### Core Contracts
-- **NFTExchangeRegistry**: Central registry for all NFT exchanges
-- **CollectionFactoryRegistry**: Factory for creating new NFT collections
-- **ListingManager**: Manages NFT listings and purchases
-
-### Advanced Features
-- **AuctionFactory**: Creates and manages English/Dutch auctions
-- **OfferManager**: Handles NFT offers (individual, collection, trait-based)
-- **BundleManager**: Manages NFT bundles for bulk transactions
-
-### Admin Contracts
-- **FeeManager**: Platform fee management
-- **AccessControl**: User role and permission management
-- **EmergencyManager**: Emergency pause/unpause functionality
-- **CollectionVerifier**: Collection verification system
-
-## Development Workflow
-
-### Mock Data Mode
-1. Set `NEXT_PUBLIC_USE_MOCK_DATA=true`
-2. Start development server
-3. All blockchain interactions use mock data
-4. No wallet connection required
-5. Perfect for UI development and testing
-
-### Real Contract Mode
-1. Set `NEXT_PUBLIC_USE_MOCK_DATA=false`
-2. Deploy contracts to local network (Anvil/Hardhat)
-3. Configure contract addresses in `.env.local`
-4. Connect MetaMask to local network
-5. Test with real blockchain interactions
-
-## Contract Services
-
-The application includes specialized services for each contract type:
-
-- **ExchangeService**: NFT listing, buying, and cancellation
-- **AuctionService**: Auction creation, bidding, and settlement
-- **OfferService**: Offer creation, acceptance, and cancellation
-- **BundleService**: Bundle creation, purchasing, and management
-- **CollectionService**: Basic ERC721/ERC1155 operations
-- **RealTimeEventsService**: Blockchain event subscriptions
-
-## API Documentation
-
-### Service Methods
-
-#### ExchangeService
-```typescript
-await exchangeService.createListing(params)
-await exchangeService.buyNFT(contractAddress, tokenId, amount, tokenType)
-await exchangeService.cancelListing(contractAddress, tokenId, tokenType)
+# Deploy
+npm run build
+vercel deploy
 ```
 
-#### AuctionService
-```typescript
-await auctionService.createEnglishAuction(params)
-await auctionService.createDutchAuction(params)
-await auctionService.placeBid(auctionId, bidAmount)
-await auctionService.buyNow(auctionId, price)
-```
-
-#### OfferService
-```typescript
-await offerService.createNFTOffer(params)
-await offerService.createCollectionOffer(params)
-await offerService.acceptOffer(offerId)
-await offerService.cancelOffer(offerId)
-```
-
-#### BundleService
-```typescript
-await bundleService.createBundle(params)
-await bundleService.purchaseBundle(bundleId, price)
-await bundleService.cancelBundle(bundleId)
-```
-
-## Scripts
-
-- `pnpm dev` - Start development server with Turbopack
-- `pnpm build` - Build for production
-- `pnpm start` - Start production server
-- `pnpm lint` - Run ESLint
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 src/
-├── app/                 # Next.js App Router
-│   ├── globals.css     # Global styles
-│   ├── layout.tsx      # Root layout
-│   └── page.tsx        # Home page
-├── components/         # React components
-│   └── ui/            # shadcn/ui components
-├── hooks/             # Custom React hooks
-└── lib/               # Utility functions
+├── app/                    # Next.js App Router pages
+├── components/
+│   ├── common/            # Shared components
+│   ├── features/          # Feature-specific components
+│   └── ui/                # shadcn/ui components
+├── lib/
+│   ├── contracts/         # Smart contract integration
+│   │   ├── abis/         # Auto-generated ABIs
+│   │   └── addresses.ts  # Contract addresses
+│   ├── services/
+│   │   ├── contracts/    # Contract services
+│   │   └── mock/         # Mock services
+│   ├── hooks/            # Custom React hooks
+│   ├── utils/            # Utility functions
+│   ├── constants/        # App constants
+│   ├── store/            # Redux store
+│   └── config/           # Configuration
+├── types/                 # TypeScript types
+└── styles/               # Global styles
 ```
 
-## Development
+## 🛠️ Tech Stack
 
-This project uses:
-- **Turbopack** for fast development builds
-- **shadcn/ui** for consistent UI components
-- **Tailwind CSS v4** for styling
-- **TypeScript** for type safety
+### Frontend
 
-### Adding New Components
+- **Framework:** Next.js 15.5.4 with App Router
+- **Language:** TypeScript 5.0
+- **Styling:** Tailwind CSS v4
+- **UI Components:** Radix UI + shadcn/ui
+- **State Management:** Redux Toolkit
+- **Form Handling:** React Hook Form + Zod
 
-To add new shadcn/ui components:
+### Blockchain
+
+- **Web3 Library:** Ethers.js v6
+- **Wallet:** MetaMask SDK
+- **Contract Pattern:** MarketplaceHub (single entry point)
+- **Standards:** ERC721, ERC1155, EIP-2981
+
+### Development
+
+- **Build Tool:** Turbopack
+- **Type Safety:** TypeScript strict mode
+- **Code Quality:** ESLint + Prettier
+- **Icons:** Lucide React
+- **Charts:** Recharts
+
+## 📚 Documentation
+
+- [**Setup Guide**](./docs/SETUP_GUIDE.md) - Detailed setup instructions
+- [**Contract Integration**](./docs/CONTRACT_INTEGRATION.md) - Smart contract integration guide
+- [**Code Structure**](./docs/CODE_STRUCTURE.md) - Architecture and patterns
+- [**Contract Summary**](./docs/README_CONTRACT.md) - Contract integration overview
+
+## 🎯 Key Concepts
+
+### MarketplaceHub Pattern
+
+```typescript
+// Only 1 address needed per network
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
+
+// Hub automatically provides:
+// ✅ ERC721/ERC1155 Exchanges
+// ✅ Auction contracts (English/Dutch)
+// ✅ Collection factories
+// ✅ Fee & royalty registries
+```
+
+### Auto-Generated ABIs
 
 ```bash
-npx shadcn@latest add [component-name]
+# After deploying contracts
+node scripts/extract-abis.js
+
+# Automatically:
+# ✅ Extracts 18+ contract ABIs
+# ✅ Generates TypeScript exports
+# ✅ Updates type definitions
 ```
 
-## Deployment
+### Type-Safe Services
 
-The easiest way to deploy is using [Vercel](https://vercel.com/new):
+```typescript
+import { initializeServices, exchangeService } from "@/lib/services/contracts";
 
-1. Push your code to GitHub
-2. Import your repository in Vercel
-3. Deploy automatically
+// Initialize once
+await initializeServices(provider, signer);
 
-## Contributing
+// Use anywhere with full type safety
+const tx = await exchangeService.createListing({
+  contractAddress: "0x...",
+  tokenId: "1",
+  price: "1.0",
+  duration: "7",
+  tokenType: "ERC721",
+});
+```
+
+## 🧪 Development Workflow
+
+### Adding a New Feature
+
+1. Create component in `components/features/`
+2. Add service in `lib/services/contracts/` (if needed)
+3. Define types in `types/`
+4. Add Redux slice (if global state needed)
+5. Create page in `app/`
+
+### Updating Contracts
+
+1. Deploy new contracts
+2. Copy MarketplaceHub address
+3. Update `.env.local`
+4. Run `node scripts/extract-abis.js`
+5. Restart dev server
+
+## 📝 Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**"Hub not initialized"**
+
+```typescript
+import { initializeServices } from "@/lib/services/contracts";
+await initializeServices(provider, signer);
+```
+
+**"Contract address not found"**
+
+```bash
+# Check .env.local
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
+
+# Verify correct network
+# Local = 31337, Sepolia = 11155111
+```
+
+**"Transaction reverted: Not approved"**
+
+```typescript
+// Approve NFT before listing
+await collectionService.setApprovalForAll(
+  nftContract,
+  exchangeAddress,
+  true,
+  tokenType
+);
+```
+
+**"ABIs outdated"**
+
+```bash
+node scripts/extract-abis.js
+npm run dev
+```
+
+## 🔐 Security
+
+⚠️ **Important Security Notes:**
+
+- Smart contracts are **NOT audited**
+- Use only on **testnets** (Sepolia, etc.)
+- Do **NOT** deploy to mainnet without professional audit
+- Never use **real funds** during testing
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and linting
-5. Submit a pull request
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Next.js](https://nextjs.org/) - React framework
+- [shadcn/ui](https://ui.shadcn.com/) - UI components
+- [Ethers.js](https://docs.ethers.org/) - Ethereum library
+- [Radix UI](https://www.radix-ui.com/) - Primitives
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+
+## 📞 Support
+
+For issues and questions:
+
+- 📖 Check [documentation](./docs/)
+- 🐛 Open an [issue](../../issues)
+- 💬 Start a [discussion](../../discussions)
+
+---
+
+**Built with ❤️ using Next.js and Ethereum**
