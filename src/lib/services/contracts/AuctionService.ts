@@ -257,8 +257,8 @@ export class AuctionService {
       const factory = this.getFactoryContract();
       const auctions = await factory.getActiveAuctions();
 
-      return auctions.map((auction: any, index: number) => ({
-        auctionId: index.toString(),
+      return auctions.map((auction: any) => ({
+        auctionId: auction.auctionId?.toString(),
         nftContract: auction.nftContract,
         tokenId: auction.tokenId.toString(),
         amount: auction.amount.toString(),
