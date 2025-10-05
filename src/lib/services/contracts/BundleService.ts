@@ -61,13 +61,11 @@ export class BundleService {
     this.provider = provider;
     this.signer = signer || null;
 
-    // Get bundle manager from hub addresses
+    // Get bundle manager address from hub
     const addresses = marketplaceHubService.getAddresses();
-    // Note: BundleManager might not be in hub.getAllAddresses()
-    // You may need to add it or fetch it separately
-    // For now, we'll assume it needs to be added to the hub
+    this.bundleManagerAddress = addresses.bundleManager;
 
-    console.log("✅ BundleService initialized");
+    console.log("✅ BundleService initialized with BundleManager:", this.bundleManagerAddress);
   }
 
   /**
@@ -78,14 +76,11 @@ export class BundleService {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    // TODO: Add BundleManager to MarketplaceHub.getAllAddresses()
-    // For now, this will need to be fetched from env or added to hub
-    const address = process.env.NEXT_PUBLIC_BUNDLE_MANAGER_ADDRESS;
-    if (!address) {
-      throw new Error("BundleManager address not configured");
+    if (!this.bundleManagerAddress) {
+      throw new Error("BundleManager address not loaded from hub");
     }
 
-    return new ethers.Contract(address, BundleManager_ABI, this.signer);
+    return new ethers.Contract(this.bundleManagerAddress, BundleManager_ABI, this.signer);
   }
 
   /**

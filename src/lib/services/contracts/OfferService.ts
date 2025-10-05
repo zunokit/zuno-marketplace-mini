@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { marketplaceHubService } from "./MarketplaceHubService";
 import { OfferManager_ABI } from "@/lib/contracts/abis";
 
 export interface NFTOfferParams {
@@ -57,7 +58,11 @@ export class OfferService {
     this.provider = provider;
     this.signer = signer || null;
 
-    console.log("✅ OfferService initialized");
+    // Get offer manager address from hub
+    const addresses = marketplaceHubService.getAddresses();
+    this.offerManagerAddress = addresses.offerManager;
+
+    console.log("✅ OfferService initialized with OfferManager:", this.offerManagerAddress);
   }
 
   /**
@@ -68,13 +73,11 @@ export class OfferService {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    // TODO: Add OfferManager to MarketplaceHub or use env variable
-    const address = process.env.NEXT_PUBLIC_OFFER_MANAGER_ADDRESS;
-    if (!address) {
-      throw new Error("OfferManager address not configured");
+    if (!this.offerManagerAddress) {
+      throw new Error("OfferManager address not loaded from hub");
     }
 
-    return new ethers.Contract(address, OfferManager_ABI, this.signer);
+    return new ethers.Contract(this.offerManagerAddress, OfferManager_ABI, this.signer);
   }
 
   /**

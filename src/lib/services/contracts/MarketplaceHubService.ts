@@ -18,6 +18,8 @@ export interface MarketplaceAddresses {
   dutchAuction: string;
   auctionFactory: string;
   feeRegistry: string;
+  bundleManager: string;
+  offerManager: string;
 }
 
 export interface FeeBreakdown {
@@ -83,6 +85,8 @@ export class MarketplaceHubService {
       dutchAuction: result[5],
       auctionFactory: result[6],
       feeRegistry: result[7],
+      bundleManager: result[8],
+      offerManager: result[9],
     };
   }
 
@@ -222,6 +226,46 @@ export class MarketplaceHubService {
       throw new Error("Hub not initialized");
     }
     return this.addresses.auctionFactory;
+  }
+
+  /**
+   * Get Bundle Manager address
+   */
+  getBundleManager(): string {
+    if (!this.addresses) {
+      throw new Error("Hub not initialized");
+    }
+    return this.addresses.bundleManager;
+  }
+
+  /**
+   * Get Offer Manager address
+   */
+  getOfferManager(): string {
+    if (!this.addresses) {
+      throw new Error("Hub not initialized");
+    }
+    return this.addresses.offerManager;
+  }
+
+  /**
+   * Get Bundle Manager address async (for compatibility)
+   */
+  async getBundleManagerAsync(): Promise<string> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.getBundleManager();
+  }
+
+  /**
+   * Get Offer Manager address async (for compatibility)
+   */
+  async getOfferManagerAsync(): Promise<string> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.getOfferManager();
   }
 }
 
