@@ -1,7 +1,7 @@
-'use client'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -10,9 +10,9 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+} from "@/components/ui/navigation-menu";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,60 +20,60 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { ModeToggle } from '@/components/ui/mode-toggle'
-import { WalletConnect } from '@/components/features/wallet/WalletConnect'
-import { 
-  Store, 
-  Palette, 
-  Gavel, 
-  Package, 
-  TrendingUp, 
-  User, 
-  Settings, 
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ModeToggle } from "@/components/ui/mode-toggle";
+import { WalletConnect } from "@/components/features/wallet/WalletConnect";
+import {
+  Store,
+  Palette,
+  Gavel,
+  Package,
+  TrendingUp,
+  User,
+  Settings,
   Bell,
-  Search
-} from 'lucide-react'
-import { useAppSelector } from '@/lib/store/hooks'
+  Search,
+} from "lucide-react";
+import { useAppSelector } from "@/lib/store/hooks";
 
 const navigationItems = [
   {
-    title: 'Marketplace',
-    href: '/marketplace',
+    title: "Marketplace",
+    href: "/marketplace",
     icon: Store,
-    description: 'Browse and buy NFTs',
+    description: "Browse and buy NFTs",
   },
   {
-    title: 'Collections',
-    href: '/collections',
+    title: "Collections",
+    href: "/collections",
     icon: Palette,
-    description: 'Explore NFT collections',
+    description: "Explore NFT collections",
   },
   {
-    title: 'Auctions',
-    href: '/auctions',
+    title: "Auctions",
+    href: "/auctions",
     icon: Gavel,
-    description: 'Participate in auctions',
+    description: "Participate in auctions",
   },
   {
-    title: 'Bundles',
-    href: '/bundles',
+    title: "Bundles",
+    href: "/bundles",
     icon: Package,
-    description: 'Buy NFT bundles',
+    description: "Buy NFT bundles",
   },
   {
-    title: 'Analytics',
-    href: '/analytics',
+    title: "Analytics",
+    href: "/analytics",
     icon: TrendingUp,
-    description: 'View market analytics',
+    description: "View market analytics",
   },
-]
+];
 
 export function Header() {
-  const pathname = usePathname()
-  const wallet = useAppSelector((state) => state.wallet)
-  const notifications = useAppSelector((state) => state.notifications)
+  const pathname = usePathname();
+  const wallet = useAppSelector((state) => state.wallet);
+  const notifications = useAppSelector((state) => state.notifications);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -93,17 +93,19 @@ export function Header() {
           <NavigationMenuList>
             {navigationItems.map((item) => (
               <NavigationMenuItem key={item.href}>
-                <Link href={item.href} legacyBehavior passHref>
-                  <NavigationMenuLink 
+                <NavigationMenuLink asChild>
+                  <Link
+                    href={item.href}
                     className={cn(
                       navigationMenuTriggerStyle(),
-                      pathname === item.href && "bg-accent text-accent-foreground"
+                      pathname === item.href &&
+                        "bg-accent text-accent-foreground"
                     )}
                   >
                     <item.icon className="h-4 w-4 mr-2" />
                     {item.title}
-                  </NavigationMenuLink>
-                </Link>
+                  </Link>
+                </NavigationMenuLink>
               </NavigationMenuItem>
             ))}
 
@@ -123,7 +125,8 @@ export function Header() {
                           Create Collection
                         </div>
                         <p className="text-sm leading-tight text-muted-foreground">
-                          Deploy your own NFT collection with custom metadata and royalties.
+                          Deploy your own NFT collection with custom metadata
+                          and royalties.
                         </p>
                       </Link>
                     </NavigationMenuLink>
@@ -157,8 +160,8 @@ export function Header() {
                 <Button variant="ghost" size="sm" className="relative">
                   <Bell className="h-4 w-4" />
                   {notifications.unreadCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
+                    <Badge
+                      variant="destructive"
                       className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs"
                     >
                       {notifications.unreadCount}
@@ -170,11 +173,18 @@ export function Header() {
                 <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {notifications.items.slice(0, 5).map((notification) => (
-                  <DropdownMenuItem key={notification.id} className="flex flex-col items-start p-4">
+                  <DropdownMenuItem
+                    key={notification.id}
+                    className="flex flex-col items-start p-4"
+                  >
                     <div className="flex items-center w-full">
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{notification.title}</p>
-                        <p className="text-xs text-muted-foreground">{notification.message}</p>
+                        <p className="text-sm font-medium">
+                          {notification.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {notification.message}
+                        </p>
                       </div>
                       {!notification.read && (
                         <div className="h-2 w-2 bg-primary rounded-full" />
@@ -183,9 +193,7 @@ export function Header() {
                   </DropdownMenuItem>
                 ))}
                 {notifications.items.length === 0 && (
-                  <DropdownMenuItem disabled>
-                    No notifications
-                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled>No notifications</DropdownMenuItem>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -198,7 +206,10 @@ export function Header() {
           {wallet.isConnected ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                <Button
+                  variant="ghost"
+                  className="relative h-9 w-9 rounded-full"
+                >
                   <Avatar className="h-9 w-9">
                     <AvatarFallback>
                       {wallet.account?.slice(2, 4).toUpperCase()}
@@ -209,9 +220,12 @@ export function Header() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">My Account</p>
+                    <p className="text-sm font-medium leading-none">
+                      My Account
+                    </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {wallet.account?.slice(0, 6)}...{wallet.account?.slice(-4)}
+                      {wallet.account?.slice(0, 6)}...
+                      {wallet.account?.slice(-4)}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -223,7 +237,10 @@ export function Header() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link href="/profile/collections" className="flex items-center">
+                  <Link
+                    href="/profile/collections"
+                    className="flex items-center"
+                  >
                     <Palette className="mr-2 h-4 w-4" />
                     My Collections
                   </Link>
@@ -243,14 +260,20 @@ export function Header() {
         </div>
       </div>
     </header>
-  )
+  );
 }
 
-const ListItem = ({ className, title, children, href, ...props }: {
-  className?: string
-  title: string
-  children: React.ReactNode
-  href: string
+const ListItem = ({
+  className,
+  title,
+  children,
+  href,
+  ...props
+}: {
+  className?: string;
+  title: string;
+  children: React.ReactNode;
+  href: string;
 }) => {
   return (
     <li>
@@ -270,5 +293,5 @@ const ListItem = ({ className, title, children, href, ...props }: {
         </Link>
       </NavigationMenuLink>
     </li>
-  )
-}
+  );
+};
