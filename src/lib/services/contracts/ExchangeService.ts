@@ -159,7 +159,7 @@ export class ExchangeService {
           ? ERC721NFTExchange_ABI
           : ERC1155NFTExchange_ABI;
       const exchange = getContractRegistryService().getContractByKey(
-        "NFTExchangeRegistry_ABI"
+        "NFT_EXCHANGE_REGISTRY"
       ); // Use registry for batch operations
 
       const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
