@@ -37,7 +37,7 @@ export interface OfferInfo {
   tokenId: string;
   price: string;
   quantity: string;
-  expirationTime: number;
+  expirationTime: string; // Changed from number to string for BigInt compatibility
   status: "ACTIVE" | "ACCEPTED" | "CANCELLED" | "EXPIRED" | "UNKNOWN";
   offerType: "NFT" | "COLLECTION" | "TRAIT" | "UNKNOWN";
   traits?: string[];
@@ -240,13 +240,12 @@ export class OfferService {
         throw new Error("Provider not available");
       }
 
-      const address = process.env.NEXT_PUBLIC_OFFER_MANAGER_ADDRESS;
-      if (!address) {
-        throw new Error("OfferManager address not configured");
+      if (!this.offerManagerAddress) {
+        throw new Error("OfferManager address not loaded from hub");
       }
 
       const contract = new ethers.Contract(
-        address,
+        this.offerManagerAddress,
         OfferManager_ABI,
         this.provider
       );

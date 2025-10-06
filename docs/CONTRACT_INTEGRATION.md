@@ -87,10 +87,12 @@ contract MarketplaceHub {
 import { MarketplaceHub_ABI } from "./abis";
 
 export const CONTRACT_ADDRESSES = {
-  11155111: { // Sepolia
+  11155111: {
+    // Sepolia
     MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA || "",
   },
-  31337: { // Local
+  31337: {
+    // Local
     MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL || "",
   },
 };
@@ -142,7 +144,10 @@ export class MarketplaceHubService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
 
-  async initialize(provider: ethers.Provider, signer?: ethers.Signer): Promise<void> {
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
     this.provider = provider;
     this.signer = signer || null;
 
@@ -209,26 +214,33 @@ export class ExchangeService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
 
-  async initialize(provider: ethers.Provider, signer?: ethers.Signer): Promise<void> {
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
     this.provider = provider;
     this.signer = signer || null;
   }
 
-  private getExchangeContract(tokenType: "ERC721" | "ERC1155"): ethers.Contract {
+  private getExchangeContract(
+    tokenType: "ERC721" | "ERC1155"
+  ): ethers.Contract {
     if (!this.signer) throw new Error("Signer required");
 
-    const address = tokenType === "ERC721"
-      ? marketplaceHubService.getERC721Exchange()
-      : marketplaceHubService.getERC1155Exchange();
+    const address =
+      tokenType === "ERC721"
+        ? marketplaceHubService.getERC721Exchange()
+        : marketplaceHubService.getERC1155Exchange();
 
-    const abi = tokenType === "ERC721"
-      ? ERC721NFTExchange_ABI
-      : ERC1155NFTExchange_ABI;
+    const abi =
+      tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
 
     return new ethers.Contract(address, abi, this.signer);
   }
 
-  async createListing(params: ListingParams): Promise<ethers.ContractTransactionResponse> {
+  async createListing(
+    params: ListingParams
+  ): Promise<ethers.ContractTransactionResponse> {
     const exchange = this.getExchangeContract(params.tokenType);
 
     const amount = params.tokenType === "ERC1155" ? params.amount || 1 : 1;
@@ -291,21 +303,25 @@ export class AuctionService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
 
-  private getAuctionContract(auctionType: "english" | "dutch"): ethers.Contract {
+  private getAuctionContract(
+    auctionType: "english" | "dutch"
+  ): ethers.Contract {
     if (!this.signer) throw new Error("Signer required");
 
-    const address = auctionType === "english"
-      ? marketplaceHubService.getEnglishAuction()
-      : marketplaceHubService.getDutchAuction();
+    const address =
+      auctionType === "english"
+        ? marketplaceHubService.getEnglishAuction()
+        : marketplaceHubService.getDutchAuction();
 
-    const abi = auctionType === "english"
-      ? EnglishAuction_ABI
-      : DutchAuction_ABI;
+    const abi =
+      auctionType === "english" ? EnglishAuction_ABI : DutchAuction_ABI;
 
     return new ethers.Contract(address, abi, this.signer);
   }
 
-  async createEnglishAuction(params: EnglishAuctionParams): Promise<ethers.ContractTransactionResponse> {
+  async createEnglishAuction(
+    params: EnglishAuctionParams
+  ): Promise<ethers.ContractTransactionResponse> {
     const auction = this.getAuctionContract("english");
 
     const tx = await auction.createAuction(
@@ -334,7 +350,9 @@ export class AuctionService {
     return tx;
   }
 
-  async endAuction(auctionId: string): Promise<ethers.ContractTransactionResponse> {
+  async endAuction(
+    auctionId: string
+  ): Promise<ethers.ContractTransactionResponse> {
     const auction = this.getAuctionContract("english");
     return await auction.endAuction(auctionId);
   }
@@ -351,18 +369,26 @@ Handles NFT collections and factory operations.
 
 ```typescript
 export class CollectionService {
-  async deployCollection(params: DeployCollectionParams): Promise<ethers.ContractTransactionResponse> {
+  async deployCollection(
+    params: DeployCollectionParams
+  ): Promise<ethers.ContractTransactionResponse> {
     if (!this.signer) throw new Error("Signer required");
 
-    const factoryAddress = params.tokenType === "ERC721"
-      ? marketplaceHubService.getERC721Factory()
-      : marketplaceHubService.getERC1155Factory();
+    const factoryAddress =
+      params.tokenType === "ERC721"
+        ? marketplaceHubService.getERC721Factory()
+        : marketplaceHubService.getERC1155Factory();
 
-    const factoryABI = params.tokenType === "ERC721"
-      ? ERC721CollectionFactory_ABI
-      : ERC1155CollectionFactory_ABI;
+    const factoryABI =
+      params.tokenType === "ERC721"
+        ? ERC721CollectionFactory_ABI
+        : ERC1155CollectionFactory_ABI;
 
-    const factory = new ethers.Contract(factoryAddress, factoryABI, this.signer);
+    const factory = new ethers.Contract(
+      factoryAddress,
+      factoryABI,
+      this.signer
+    );
 
     const tx = await factory.createCollection(
       params.name,
@@ -382,9 +408,8 @@ export class CollectionService {
   ): Promise<ethers.ContractTransactionResponse> {
     if (!this.signer) throw new Error("Signer required");
 
-    const abi = tokenType === "ERC721"
-      ? ERC721Collection_ABI
-      : ERC1155Collection_ABI;
+    const abi =
+      tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
 
     const collection = new ethers.Contract(collectionAddress, abi, this.signer);
     return await collection.setApprovalForAll(operator, approved);
@@ -398,11 +423,14 @@ export class CollectionService {
   ): Promise<boolean> {
     if (!this.provider) throw new Error("Provider required");
 
-    const abi = tokenType === "ERC721"
-      ? ERC721Collection_ABI
-      : ERC1155Collection_ABI;
+    const abi =
+      tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
 
-    const collection = new ethers.Contract(collectionAddress, abi, this.provider);
+    const collection = new ethers.Contract(
+      collectionAddress,
+      abi,
+      this.provider
+    );
     return await collection.isApprovedForAll(owner, operator);
   }
 }
@@ -418,11 +446,17 @@ Manages NFT bundles (multiple NFTs sold together).
 
 ```typescript
 export class BundleService {
-  async createBundle(params: CreateBundleParams): Promise<ethers.ContractTransactionResponse> {
+  async createBundle(
+    params: CreateBundleParams
+  ): Promise<ethers.ContractTransactionResponse> {
     if (!this.signer) throw new Error("Signer required");
 
     const bundleAddress = marketplaceHubService.getBundleManager();
-    const bundle = new ethers.Contract(bundleAddress, BundleManager_ABI, this.signer);
+    const bundle = new ethers.Contract(
+      bundleAddress,
+      BundleManager_ABI,
+      this.signer
+    );
 
     const tx = await bundle.createBundle(
       params.nftContracts,
@@ -442,7 +476,11 @@ export class BundleService {
     if (!this.signer) throw new Error("Signer required");
 
     const bundleAddress = marketplaceHubService.getBundleManager();
-    const bundle = new ethers.Contract(bundleAddress, BundleManager_ABI, this.signer);
+    const bundle = new ethers.Contract(
+      bundleAddress,
+      BundleManager_ABI,
+      this.signer
+    );
 
     const tx = await bundle.buyBundle(bundleId, {
       value: ethers.parseEther(price),
@@ -463,13 +501,20 @@ Handles offers on NFTs and collections.
 
 ```typescript
 export class OfferService {
-  async makeOffer(params: MakeOfferParams): Promise<ethers.ContractTransactionResponse> {
+  async makeOffer(
+    params: MakeOfferParams
+  ): Promise<ethers.ContractTransactionResponse> {
     if (!this.signer) throw new Error("Signer required");
 
     const offerAddress = marketplaceHubService.getOfferManager();
-    const offer = new ethers.Contract(offerAddress, OfferManager_ABI, this.signer);
+    const offer = new ethers.Contract(
+      offerAddress,
+      OfferManager_ABI,
+      this.signer
+    );
 
-    const expirationTime = Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60;
+    const expirationTime =
+      Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60;
 
     const tx = await offer.makeOffer(
       params.nftContract,
@@ -483,20 +528,32 @@ export class OfferService {
     return tx;
   }
 
-  async acceptOffer(offerId: string): Promise<ethers.ContractTransactionResponse> {
+  async acceptOffer(
+    offerId: string
+  ): Promise<ethers.ContractTransactionResponse> {
     if (!this.signer) throw new Error("Signer required");
 
     const offerAddress = marketplaceHubService.getOfferManager();
-    const offer = new ethers.Contract(offerAddress, OfferManager_ABI, this.signer);
+    const offer = new ethers.Contract(
+      offerAddress,
+      OfferManager_ABI,
+      this.signer
+    );
 
     return await offer.acceptOffer(offerId);
   }
 
-  async cancelOffer(offerId: string): Promise<ethers.ContractTransactionResponse> {
+  async cancelOffer(
+    offerId: string
+  ): Promise<ethers.ContractTransactionResponse> {
     if (!this.signer) throw new Error("Signer required");
 
     const offerAddress = marketplaceHubService.getOfferManager();
-    const offer = new ethers.Contract(offerAddress, OfferManager_ABI, this.signer);
+    const offer = new ethers.Contract(
+      offerAddress,
+      OfferManager_ABI,
+      this.signer
+    );
 
     return await offer.cancelOffer(offerId);
   }
@@ -513,7 +570,7 @@ export const offerService = new OfferService();
 import {
   initializeServices,
   exchangeService,
-  collectionService
+  collectionService,
 } from "@/lib/services/contracts";
 import { BrowserProvider } from "ethers";
 
@@ -599,15 +656,18 @@ async function listenToListings() {
   );
 
   // Listen for new listings
-  exchange.on("NFTListed", (listingId, seller, nftContract, tokenId, price, event) => {
-    console.log("New listing:", {
-      listingId: listingId.toString(),
-      seller,
-      nftContract,
-      tokenId: tokenId.toString(),
-      price: ethers.formatEther(price),
-    });
-  });
+  exchange.on(
+    "NFTListed",
+    (listingId, seller, nftContract, tokenId, price, event) => {
+      console.log("New listing:", {
+        listingId: listingId.toString(),
+        seller,
+        nftContract,
+        tokenId: tokenId.toString(),
+        price: ethers.formatEther(price),
+      });
+    }
+  );
 
   // Listen for sales
   exchange.on("NFTSold", (listingId, buyer, seller, price, event) => {
@@ -703,6 +763,247 @@ if (chainId !== SUPPORTED_CHAIN_IDS.SEPOLIA) {
 }
 ```
 
+## Real-Time Events
+
+### Event Subscription
+
+The marketplace provides real-time blockchain event monitoring through the `RealTimeEventsService`:
+
+```typescript
+import { useRealTimeEvents } from "@/hooks/useRealTimeEvents";
+import { EventHandler } from "@/lib/services/contracts/RealTimeEvents";
+
+export default function MyComponent() {
+  const handlers: EventHandler = {
+    onListingCreated: (event) => {
+      console.log("New listing:", event);
+      // Refresh UI
+    },
+    onListingPurchased: (event) => {
+      console.log("NFT sold:", event);
+      // Update listings
+    },
+    onOfferCreated: (event) => {
+      console.log("New offer:", event);
+    },
+    // ... more handlers
+  };
+
+  const { isInitialized } = useRealTimeEvents(handlers, {
+    includeListings: true,
+    includeOffers: true,
+    includeAuctions: true,
+    includeBundles: true,
+  });
+
+  return <div>Event monitoring active: {isInitialized ? "Yes" : "No"}</div>;
+}
+```
+
+### Available Events
+
+- **Listings**: `NFTListed`, `NFTSold`, `ListingCancelled`
+- **Offers**: `OfferMade`, `OfferAccepted`, `OfferCancelled`
+- **Auctions**: `AuctionCreated`, `BidPlaced`, `AuctionEnded`
+- **Bundles**: `BundleCreated`, `BundlePurchased`, `BundleCancelled`
+
+## Admin Features
+
+### Fee Management
+
+Configure platform fees and tier discounts:
+
+```typescript
+import { feeManagerService } from "@/lib/services/contracts";
+
+// Get current fee config
+const config = await feeManagerService.getBaseFeeConfig();
+console.log("Maker fee:", Number(config.makerFee) / 100, "%");
+
+// Update fees (admin only)
+await feeManagerService.updateBaseFeeConfig({
+  makerFee: BigInt(200), // 2%
+  takerFee: BigInt(0),
+  listingFee: BigInt(0),
+  auctionFee: BigInt(50), // 0.5%
+  bundleFee: BigInt(25), // 0.25%
+  isActive: true,
+});
+```
+
+### Access Control
+
+Manage roles and permissions:
+
+```typescript
+import { accessControlService } from "@/lib/services/contracts";
+
+// Grant admin role
+const roleHash = accessControlService.getRoleHash("ADMIN_ROLE");
+await accessControlService.grantRole(
+  roleHash,
+  userAddress,
+  "Granted admin access"
+);
+
+// Check user roles
+const roles = await accessControlService.getActiveRoles(userAddress);
+```
+
+### Emergency Controls
+
+Pause marketplace and manage blacklists:
+
+```typescript
+import { emergencyManagerService } from "@/lib/services/contracts";
+
+// Emergency pause
+await emergencyManagerService.emergencyPause("Security incident detected");
+
+// Blacklist malicious contract
+await emergencyManagerService.setContractBlacklist(
+  contractAddress,
+  true,
+  "Malicious contract detected"
+);
+
+// Check status
+const status = await emergencyManagerService.getEmergencyStatus();
+```
+
+### Collection Verification
+
+Verify NFT collections:
+
+```typescript
+import { collectionVerifierService } from "@/lib/services/contracts";
+
+// Process verification
+await collectionVerifierService.processVerificationRequest(
+  collectionAddress,
+  true, // approved
+  "premium", // tier: basic, premium, featured
+  "Verified authentic collection"
+);
+
+// Get verification status
+const verification = await collectionVerifierService.getCollectionVerification(
+  collectionAddress
+);
+```
+
+### Royalty Management
+
+Configure advanced royalties:
+
+```typescript
+import { royaltyManagerService } from "@/lib/services/contracts";
+
+// Set royalties with multiple recipients
+await royaltyManagerService.setAdvancedRoyalty(
+  collectionAddress,
+  [
+    {
+      recipient: creatorAddress,
+      basisPoints: BigInt(250), // 2.5%
+      role: "creator",
+      isActive: true,
+    },
+    {
+      recipient: platformAddress,
+      basisPoints: BigInt(50), // 0.5%
+      role: "platform",
+      isActive: true,
+    },
+  ],
+  true // useERC2981
+);
+```
+
+### Timelock Actions
+
+Schedule time-delayed admin actions:
+
+```typescript
+import { timelockService } from "@/lib/services/contracts";
+
+// Schedule an action
+const { actionId } = await timelockService.scheduleAction(
+  targetContract,
+  encodedCalldata,
+  BigInt(0), // value
+  "Update platform fee to 2%"
+);
+
+// Execute when ready
+await timelockService.executeAction(actionId);
+```
+
+### Listing Validation
+
+Configure listing validation rules:
+
+```typescript
+import { listingValidatorService } from "@/lib/services/contracts";
+
+// Update global settings
+await listingValidatorService.setGlobalSettings({
+  minPrice: ethers.parseEther("0.001"),
+  maxPrice: ethers.parseEther("10000"),
+  minDuration: BigInt(3600), // 1 hour
+  maxDuration: BigInt(7776000), // 90 days
+  cooldownPeriod: BigInt(300), // 5 minutes
+  maxListingsPerUser: BigInt(100),
+  requireVerifiedCollection: false,
+  enableQualityCheck: true,
+  isActive: true,
+});
+```
+
+## Analytics & History
+
+### Marketplace Analytics
+
+Track marketplace metrics:
+
+```typescript
+import { listingHistoryTrackerService } from "@/lib/services/contracts";
+
+// Get global stats
+const stats = await listingHistoryTrackerService.getGlobalStats();
+console.log("Total volume:", stats.totalVolume);
+console.log("Total sales:", stats.totalSales);
+
+// Get collection stats
+const collectionStats = await listingHistoryTrackerService.getCollectionStats(
+  collectionAddress
+);
+console.log("Floor price:", collectionStats.floorPrice);
+
+// Get user stats
+const userStats = await listingHistoryTrackerService.getUserStats(userAddress);
+console.log("User volume:", userStats.totalVolumeAsSeller);
+```
+
+## Environment Configuration
+
+### .env.example
+
+```bash
+# Mode
+NEXT_PUBLIC_USE_MOCK_DATA=false
+
+# Network
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
+
+# Hub Addresses (One per network - all other addresses auto-discovered)
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
+NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x...
+NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET=0x...
+```
+
+**Important**: Do NOT add individual contract addresses. The Hub provides all addresses.
+
 ## Advanced Topics
 
 ### Custom Service Creation
@@ -717,7 +1018,10 @@ export class CustomService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
 
-  async initialize(provider: ethers.Provider, signer?: ethers.Signer): Promise<void> {
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
     this.provider = provider;
     this.signer = signer || null;
   }
@@ -777,14 +1081,14 @@ async function monitorTransaction(tx: ethers.ContractTransactionResponse) {
   );
 
   const logs = receipt.logs
-    .map(log => {
+    .map((log) => {
       try {
         return exchange.interface.parseLog(log);
       } catch {
         return null;
       }
     })
-    .filter(log => log !== null);
+    .filter((log) => log !== null);
 
   console.log("Events emitted:", logs);
 }
@@ -814,7 +1118,7 @@ async function createListingWithGasEstimate(params: ListingParams) {
     1,
     ethers.parseEther(params.price),
     parseInt(params.duration) * 24 * 60 * 60,
-    { gasLimit: gasEstimate * 120n / 100n } // 20% buffer
+    { gasLimit: (gasEstimate * 120n) / 100n } // 20% buffer
   );
 
   return tx;

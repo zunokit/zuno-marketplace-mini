@@ -114,13 +114,23 @@ export const useMarketplace = () => {
    * Buy a listing
    */
   const buyListing = useCallback(
-    async (listingId: string, price: string) => {
+    async (
+      contractAddress: string,
+      tokenId: string,
+      amount: string = "1",
+      tokenType: "ERC721" | "ERC1155" = "ERC721"
+    ) => {
       try {
         if (!wallet.isConnected) {
           throw new Error("Wallet not connected");
         }
 
-        const tx = await exchangeService.buyNFT(listingId, "1", "1", "ERC721"); // Default to ERC721
+        const tx = await exchangeService.buyNFT(
+          contractAddress,
+          tokenId,
+          amount,
+          tokenType
+        );
 
         dispatch(
           addNotification({
@@ -141,8 +151,8 @@ export const useMarketplace = () => {
             })
           );
 
-          // Update listing status
-          dispatch(updateListing({ id: listingId, status: "SOLD" }));
+          // Refresh listings
+          dispatch(fetchActiveListings());
         }
 
         return receipt;
@@ -164,24 +174,28 @@ export const useMarketplace = () => {
         throw error;
       }
     },
-    [wallet.isConnected, dispatch, initializeService]
+    [wallet.isConnected, dispatch]
   );
 
   /**
    * Cancel a listing
    */
   const cancelListing = useCallback(
-    async (listingId: string) => {
+    async (
+      contractAddress: string,
+      tokenId: string,
+      tokenType: "ERC721" | "ERC1155" = "ERC721"
+    ) => {
       try {
         if (!wallet.isConnected) {
           throw new Error("Wallet not connected");
         }
 
         const tx = await exchangeService.cancelListing(
-          listingId,
-          "1",
-          "ERC721"
-        ); // Default to ERC721
+          contractAddress,
+          tokenId,
+          tokenType
+        );
 
         dispatch(
           addNotification({
@@ -202,8 +216,8 @@ export const useMarketplace = () => {
             })
           );
 
-          // Update listing status
-          dispatch(updateListing({ id: listingId, status: "CANCELLED" }));
+          // Refresh listings
+          dispatch(fetchActiveListings());
         }
 
         return receipt;
@@ -227,7 +241,7 @@ export const useMarketplace = () => {
         throw error;
       }
     },
-    [wallet.isConnected, dispatch, initializeService]
+    [wallet.isConnected, dispatch]
   );
 
   /**

@@ -2,10 +2,10 @@
 
 /**
  * Fee Management Admin Page
- * Configure platform fees and royalties
+ * Configure platform fees using FeeManagerService
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -26,60 +26,78 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, TrendingUp, Edit, Check, X } from "lucide-react";
+import { useAppSelector } from "@/lib/store/hooks";
+import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
+import {
+  feeManagerService,
+  FeeConfig,
+  FeeTierConfig,
+} from "@/lib/services/contracts/FeeManagerService";
+import { DollarSign, TrendingUp, Edit, Users, Star } from "lucide-react";
 
 export default function FeeManagementPage() {
   const { toast } = useToast();
+  const { account } = useAppSelector((state) => state.wallet);
+  const [useMockData] = useState(isMockDataEnabled());
 
-  const [platformFee, setPlatformFee] = useState("2.0");
-  const [editingFee, setEditingFee] = useState(false);
-  const [newFeeValue, setNewFeeValue] = useState("");
-
-  const [feeStats] = useState({
-    last7Days: {
-      volume: "123.45",
-      fees: "2.47",
-      transactions: 156,
-    },
-    last30Days: {
-      volume: "567.89",
-      fees: "11.36",
-      transactions: 689,
-    },
-    allTime: {
-      volume: "2345.67",
-      fees: "46.91",
-      transactions: 2834,
-    },
+  const [baseFeeConfig, setBaseFeeConfig] = useState<FeeConfig>({
+    makerFee: BigInt(200), // 2%
+    takerFee: BigInt(0),
+    listingFee: BigInt(0),
+    auctionFee: BigInt(50), // 0.5%
+    bundleFee: BigInt(25), // 0.25%
+    isActive: true,
   });
 
-  /**
-   * Handle update platform fee
-   */
-  const handleUpdateFee = async () => {
-    const feeValue = parseFloat(newFeeValue);
+  const [feeTiers, setFeeTiers] = useState<FeeTierConfig[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-    if (isNaN(feeValue) || feeValue < 0 || feeValue > 10) {
-      toast({
-        title: "Invalid Fee",
-        description: "Platform fee must be between 0% and 10%",
-        variant: "destructive",
-      });
-      return;
+  /**
+   * Load fee configuration
+   */
+  useEffect(() => {
+    if (!useMockData && account) {
+      loadFeeConfig();
     }
+  }, [account, useMockData]);
+
+  const loadFeeConfig = async () => {
+    try {
+      const config = await feeManagerService.getBaseFeeConfig();
+      setBaseFeeConfig(config);
+
+      const tiers = await feeManagerService.getAllFeeTierConfigs();
+      setFeeTiers(tiers);
+    } catch (error) {
+      console.error("Failed to load fee config:", error);
+    }
+  };
+
+  /**
+   * Handle update base fee
+   */
+  const handleUpdateBaseFee = async () => {
+    setLoading(true);
 
     try {
-      // Mock - in real app, call FeeManager contract
-      // await feeManager.updatePlatformFee(feeValue * 100) // Convert to basis points
+      if (useMockData) {
+        toast({
+          title: "Fee Updated",
+          description: "Base fee configuration has been updated",
+        });
+        setEditDialogOpen(false);
+      } else {
+        await feeManagerService.updateBaseFeeConfig(baseFeeConfig);
 
-      setPlatformFee(newFeeValue);
-      setEditingFee(false);
-      setNewFeeValue("");
+        toast({
+          title: "Fee Updated",
+          description: "Base fee configuration has been updated successfully",
+        });
 
-      toast({
-        title: "Fee Updated",
-        description: `Platform fee updated to ${newFeeValue}%`,
-      });
+        setEditDialogOpen(false);
+        await loadFeeConfig();
+      }
     } catch (error) {
       toast({
         title: "Update Failed",
@@ -87,7 +105,16 @@ export default function FeeManagementPage() {
           error instanceof Error ? error.message : "Failed to update fee",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  /**
+   * Update fee config
+   */
+  const updateFeeConfig = (field: keyof FeeConfig, value: bigint) => {
+    setBaseFeeConfig({ ...baseFeeConfig, [field]: value });
   };
 
   return (
@@ -95,193 +122,221 @@ export default function FeeManagementPage() {
       <div className="mb-6">
         <h2 className="text-2xl font-bold">💰 Fee Management</h2>
         <p className="text-muted-foreground">
-          Configure platform fees and view revenue statistics
+          Configure platform fees and view tier discounts
         </p>
       </div>
 
-      {/* Current Fee */}
+      {useMockData && (
+        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            ⚠️ Mock Data Mode - Real contract integration disabled
+          </p>
+        </div>
+      )}
+
+      {/* Base Fee Configuration */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Platform Fee</CardTitle>
-          <CardDescription>
-            Current fee charged on all marketplace transactions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-4">
-                <span className="text-4xl font-bold">{platformFee}%</span>
-                <Badge variant="outline">Active</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Fee is applied to sale price before royalties
+              <CardTitle>Base Fee Configuration</CardTitle>
+              <CardDescription>Platform-wide fee settings</CardDescription>
+            </div>
+            <Button onClick={() => setEditDialogOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Fees
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <Label>Maker Fee (Seller)</Label>
+              <p className="text-2xl font-bold">
+                {Number(baseFeeConfig.makerFee) / 100}%
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Fee paid by sellers
               </p>
             </div>
-            <Button onClick={() => {
-              setNewFeeValue(platformFee);
-              setEditingFee(true);
-            }}>
-              <Edit className="h-4 w-4 mr-2" />
-              Update Fee
-            </Button>
+            <div>
+              <Label>Taker Fee (Buyer)</Label>
+              <p className="text-2xl font-bold">
+                {Number(baseFeeConfig.takerFee) / 100}%
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Fee paid by buyers
+              </p>
+            </div>
+            <div>
+              <Label>Auction Fee</Label>
+              <p className="text-2xl font-bold">
+                {Number(baseFeeConfig.auctionFee) / 100}%
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Additional auction fee
+              </p>
+            </div>
+            <div>
+              <Label>Bundle Fee</Label>
+              <p className="text-2xl font-bold">
+                {Number(baseFeeConfig.bundleFee) / 100}%
+              </p>
+              <p className="text-sm text-muted-foreground">Bundle sale fee</p>
+            </div>
+            <div>
+              <Label>Status</Label>
+              <Badge variant={baseFeeConfig.isActive ? "default" : "secondary"}>
+                {baseFeeConfig.isActive ? "Active" : "Inactive"}
+              </Badge>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Fee Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Last 7 Days</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Volume</p>
-              <p className="text-2xl font-bold">{feeStats.last7Days.volume} ETH</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Platform Fees</p>
-              <p className="text-xl font-semibold text-green-600">
-                {feeStats.last7Days.fees} ETH
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">
-                {feeStats.last7Days.transactions} transactions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Last 30 Days</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Volume</p>
-              <p className="text-2xl font-bold">{feeStats.last30Days.volume} ETH</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Platform Fees</p>
-              <p className="text-xl font-semibold text-green-600">
-                {feeStats.last30Days.fees} ETH
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">
-                {feeStats.last30Days.transactions} transactions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">All Time</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div>
-              <p className="text-sm text-muted-foreground">Volume</p>
-              <p className="text-2xl font-bold">{feeStats.allTime.volume} ETH</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Platform Fees</p>
-              <p className="text-xl font-semibold text-green-600">
-                {feeStats.allTime.fees} ETH
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">
-                {feeStats.allTime.transactions} transactions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Fee Breakdown */}
+      {/* Fee Tiers */}
       <Card>
         <CardHeader>
-          <CardTitle>Revenue Breakdown</CardTitle>
-          <CardDescription>Fee distribution across the platform</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Star className="h-5 w-5" />
+            Fee Tier Discounts
+          </CardTitle>
+          <CardDescription>
+            Volume-based fee discounts for active traders
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg border">
-              <div>
-                <p className="font-medium">Platform Fees</p>
-                <p className="text-sm text-muted-foreground">
-                  {platformFee}% of transaction value
-                </p>
-              </div>
-              <span className="text-2xl font-bold text-green-600">
-                {feeStats.allTime.fees} ETH
-              </span>
+          {feeTiers.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No fee tiers configured
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {feeTiers.map((tier, index) => (
+                <Card key={index}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{tier.tierName}</CardTitle>
+                    <CardDescription>
+                      Tier {index} - Volume threshold
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Min Volume
+                        </span>
+                        <span className="font-medium">
+                          {Number(tier.volumeThreshold) / 1e18} ETH
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Discount
+                        </span>
+                        <span className="font-medium">
+                          {Number(tier.discountBps) / 100}%
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          Status
+                        </span>
+                        <Badge
+                          variant={tier.isActive ? "default" : "secondary"}
+                        >
+                          {tier.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-
-            <div className="flex items-center justify-between p-4 rounded-lg border">
-              <div>
-                <p className="font-medium">Creator Royalties</p>
-                <p className="text-sm text-muted-foreground">
-                  Varies by collection (typically 2.5-10%)
-                </p>
-              </div>
-              <span className="text-2xl font-bold text-blue-600">
-                {(parseFloat(feeStats.allTime.fees) * 3).toFixed(2)} ETH
-              </span>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Edit Fee Dialog */}
-      <Dialog open={editingFee} onOpenChange={setEditingFee}>
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Platform Fee</DialogTitle>
+            <DialogTitle>Edit Base Fees</DialogTitle>
             <DialogDescription>
-              Set the new platform fee percentage (0% - 10%)
+              Update platform fee configuration (in basis points, 100 = 1%)
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fee">Platform Fee (%)</Label>
+            <div>
+              <Label htmlFor="makerFee">
+                Maker Fee (Seller) - Current:{" "}
+                {Number(baseFeeConfig.makerFee) / 100}%
+              </Label>
               <Input
-                id="fee"
+                id="makerFee"
                 type="number"
-                min="0"
-                max="10"
-                step="0.1"
-                placeholder="2.0"
-                value={newFeeValue}
-                onChange={(e) => setNewFeeValue(e.target.value)}
+                value={Number(baseFeeConfig.makerFee)}
+                onChange={(e) =>
+                  updateFeeConfig("makerFee", BigInt(e.target.value))
+                }
               />
-              <p className="text-xs text-muted-foreground">
-                Current fee: {platformFee}%
-              </p>
             </div>
 
-            <div className="p-4 rounded-lg bg-muted">
-              <p className="text-sm font-medium mb-2">Example Impact:</p>
-              <p className="text-sm text-muted-foreground">
-                For a 10 ETH sale, platform fee would be{" "}
-                <strong>
-                  {newFeeValue ? (10 * parseFloat(newFeeValue) / 100).toFixed(2) : "0.00"} ETH
-                </strong>
-              </p>
+            <div>
+              <Label htmlFor="takerFee">
+                Taker Fee (Buyer) - Current:{" "}
+                {Number(baseFeeConfig.takerFee) / 100}%
+              </Label>
+              <Input
+                id="takerFee"
+                type="number"
+                value={Number(baseFeeConfig.takerFee)}
+                onChange={(e) =>
+                  updateFeeConfig("takerFee", BigInt(e.target.value))
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="auctionFee">
+                Auction Fee - Current: {Number(baseFeeConfig.auctionFee) / 100}%
+              </Label>
+              <Input
+                id="auctionFee"
+                type="number"
+                value={Number(baseFeeConfig.auctionFee)}
+                onChange={(e) =>
+                  updateFeeConfig("auctionFee", BigInt(e.target.value))
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="bundleFee">
+                Bundle Fee - Current: {Number(baseFeeConfig.bundleFee) / 100}%
+              </Label>
+              <Input
+                id="bundleFee"
+                type="number"
+                value={Number(baseFeeConfig.bundleFee)}
+                onChange={(e) =>
+                  updateFeeConfig("bundleFee", BigInt(e.target.value))
+                }
+              />
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingFee(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button onClick={handleUpdateFee}>
-              <Check className="h-4 w-4 mr-2" />
-              Update Fee
+            <Button onClick={handleUpdateBaseFee} disabled={loading}>
+              {loading ? "Updating..." : "Update Fees"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -289,4 +344,3 @@ export default function FeeManagementPage() {
     </div>
   );
 }
-

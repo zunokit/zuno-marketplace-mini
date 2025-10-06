@@ -2,8 +2,7 @@
 
 /**
  * Analytics Dashboard Page
- * Migrated from frontend-foundry/src/components/AnalyticsDashboard.jsx
- * Platform metrics, charts, and statistics
+ * Marketplace analytics using ListingHistoryTrackerService
  */
 
 import { useState, useEffect } from "react";
@@ -14,372 +13,228 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAppSelector } from "@/lib/store/hooks";
-import { useToast } from "@/hooks/use-toast";
 import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
 import {
-  getMockAnalyticsService,
-  VolumeDataPoint,
-  CollectionStats,
-  PlatformStats,
-} from "@/lib/services/mock/mockAnalyticsService";
+  listingHistoryTrackerService,
+  GlobalStats,
+  ListingHistoryTrackerService,
+} from "@/lib/services/contracts/ListingHistoryTrackerService";
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   ShoppingCart,
   Users,
-  Activity,
-  Loader2,
-  Download,
+  BarChart3,
 } from "lucide-react";
 
 export default function AnalyticsPage() {
-  const { toast } = useToast();
-
-  // Redux state
-  const { isConnected } = useAppSelector((state) => state.wallet);
-
-  // Local state
-  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null);
-  const [volumeData, setVolumeData] = useState<VolumeDataPoint[]>([]);
-  const [collectionStats, setCollectionStats] = useState<CollectionStats[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<"day" | "week" | "month">("week");
+  const { account } = useAppSelector((state) => state.wallet);
   const [useMockData] = useState(isMockDataEnabled());
+
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({
+    totalTransactions: BigInt(0),
+    totalVolume: BigInt(0),
+    totalListings: BigInt(0),
+    totalSales: BigInt(0),
+    averagePrice: BigInt(0),
+    uniqueCollections: BigInt(0),
+    uniqueUsers: BigInt(0),
+  });
+
+  const [loading, setLoading] = useState(true);
 
   /**
    * Load analytics data
    */
   useEffect(() => {
-    loadAnalytics();
-  }, [period]);
+    if (!useMockData && account) {
+      loadAnalytics();
+    } else if (useMockData) {
+      // Mock data
+      setGlobalStats({
+        totalTransactions: BigInt(2834),
+        totalVolume: BigInt("2345670000000000000000"), // 2345.67 ETH
+        totalListings: BigInt(1456),
+        totalSales: BigInt(1234),
+        averagePrice: BigInt("1500000000000000000"), // 1.5 ETH
+        uniqueCollections: BigInt(45),
+        uniqueUsers: BigInt(892),
+      });
+      setLoading(false);
+    }
+  }, [account, useMockData]);
 
-  /**
-   * Fetch analytics from service
-   */
   const loadAnalytics = async () => {
     setLoading(true);
     try {
-      if (useMockData) {
-        const mockService = getMockAnalyticsService();
-        const [stats, volume, collections] = await Promise.all([
-          mockService.getPlatformStats(),
-          mockService.getVolumeData(period),
-          mockService.getCollectionStats(10),
-        ]);
-        setPlatformStats(stats);
-        setVolumeData(volume);
-        setCollectionStats(collections);
-      } else {
-        // Real blockchain data
-        // TODO: Implement with ListingHistoryTracker contract
-        // 1. Query TransactionRecorded events for platform stats
-        // 2. Aggregate volume data by time period
-        // 3. Fetch collection-specific stats
-        
-        toast({
-          title: "Blockchain Integration",
-          description: "Real analytics coming soon",
-          variant: "default",
-        });
-      }
+      const stats = await listingHistoryTrackerService.getGlobalStats();
+      setGlobalStats(stats);
     } catch (error) {
-      console.error("Error loading analytics:", error);
-      toast({
-        title: "Error Loading Analytics",
-        description:
-          error instanceof Error ? error.message : "Failed to load analytics",
-        variant: "destructive",
-      });
+      console.error("Failed to load analytics:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Export data to CSV
-   */
-  const handleExport = (type: "volume" | "collections") => {
-    try {
-      let csvContent = "";
-      let filename = "";
-
-      if (type === "volume") {
-        csvContent = "Date,Volume (ETH),Sales,Average Price (ETH)\n";
-        volumeData.forEach((d) => {
-          csvContent += `${d.date},${d.totalVolume},${d.totalSales},${d.averagePrice}\n`;
-        });
-        filename = `volume_data_${period}.csv`;
-      } else {
-        csvContent = "Collection,Volume (ETH),Sales,Avg Price (ETH),Floor (ETH)\n";
-        collectionStats.forEach((c) => {
-          csvContent += `${c.name},${c.volume},${c.sales},${c.averagePrice},${c.floorPrice}\n`;
-        });
-        filename = "collection_stats.csv";
-      }
-
-      const blob = new Blob([csvContent], { type: "text/csv" });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-
-      toast({
-        title: "Export Successful",
-        description: `Downloaded ${filename}`,
-      });
-    } catch (error) {
-      toast({
-        title: "Export Failed",
-        description: "Failed to export data",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto p-6">
-      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-          📊 Marketplace Analytics
-        </h1>
+        <h1 className="text-3xl font-bold">📊 Marketplace Analytics</h1>
         <p className="text-muted-foreground">
-          Platform statistics and performance metrics
+          Real-time marketplace statistics and insights
         </p>
-        {useMockData && (
-          <Badge variant="outline" className="mt-2">
-            🎭 Mock Data Mode
-          </Badge>
-        )}
       </div>
 
-      {/* Platform Stats Cards */}
-      {platformStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platformStats.totalVolume} ETH</div>
-              <p className="text-xs text-muted-foreground">All time trading volume</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platformStats.totalSales}</div>
-              <p className="text-xs text-muted-foreground">Completed transactions</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Collections</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platformStats.totalCollections}</div>
-              <p className="text-xs text-muted-foreground">Active collections</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{platformStats.activeUsers24h}</div>
-              <p className="text-xs text-muted-foreground">Last 24 hours</p>
-            </CardContent>
-          </Card>
+      {useMockData && (
+        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            ⚠️ Mock Data Mode - Real contract integration disabled
+          </p>
         </div>
       )}
 
-      {/* Tabs */}
-      <Tabs defaultValue="volume" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="volume">Volume & Sales</TabsTrigger>
-          <TabsTrigger value="collections">Top Collections</TabsTrigger>
-        </TabsList>
+      {/* Global Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {ListingHistoryTrackerService.formatVolume(
+                globalStats.totalVolume
+              )}{" "}
+              ETH
+            </div>
+            <p className="text-xs text-muted-foreground">
+              All-time trading volume
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Volume & Sales Tab */}
-        <TabsContent value="volume">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Volume & Sales Trends</CardTitle>
-                  <CardDescription>Trading volume over time</CardDescription>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Select value={period} onValueChange={(v) => setPeriod(v as any)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Select period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="day">Daily (7 days)</SelectItem>
-                      <SelectItem value="week">Weekly (30 days)</SelectItem>
-                      <SelectItem value="month">Monthly (90 days)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleExport("volume")}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Data Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-2">Date</th>
-                      <th className="text-right p-2">Volume (ETH)</th>
-                      <th className="text-right p-2">Sales</th>
-                      <th className="text-right p-2">Avg Price (ETH)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {volumeData.map((data, idx) => (
-                      <tr key={idx} className="border-b hover:bg-muted/50">
-                        <td className="p-2">{data.date}</td>
-                        <td className="text-right p-2 font-semibold">
-                          {data.totalVolume}
-                        </td>
-                        <td className="text-right p-2">{data.totalSales}</td>
-                        <td className="text-right p-2">{data.averagePrice}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {globalStats.totalSales.toString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Completed transactions
+            </p>
+          </CardContent>
+        </Card>
 
-              {/* Summary */}
-              <div className="mt-6 grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Total Volume</p>
-                  <p className="text-2xl font-bold">
-                    {volumeData.reduce((sum, d) => sum + d.totalVolume, 0).toFixed(2)} ETH
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Total Sales</p>
-                  <p className="text-2xl font-bold">
-                    {volumeData.reduce((sum, d) => sum + d.totalSales, 0)}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Avg Sale Price</p>
-                  <p className="text-2xl font-bold">
-                    {(
-                      volumeData.reduce((sum, d) => sum + d.totalVolume, 0) /
-                      volumeData.reduce((sum, d) => sum + d.totalSales, 0)
-                    ).toFixed(2)}{" "}
-                    ETH
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Active Listings
+            </CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {globalStats.totalListings.toString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Current marketplace listings
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Top Collections Tab */}
-        <TabsContent value="collections">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Top Collections</CardTitle>
-                  <CardDescription>Highest performing collections</CardDescription>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleExport("collections")}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export CSV
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {collectionStats.map((collection, idx) => (
-                  <div
-                    key={collection.address}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold">
-                        {idx + 1}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{collection.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {collection.sales} sales • {collection.uniqueOwners} owners
-                        </p>
-                      </div>
-                    </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Unique Users</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {globalStats.uniqueUsers.toString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Active marketplace participants
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-                    <div className="text-right">
-                      <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold">
-                          {collection.volume} ETH
-                        </span>
-                        {idx < 3 && (
-                          <TrendingUp className="h-5 w-5 text-green-500" />
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Floor: {collection.floorPrice} ETH
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Additional Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Average Price</CardTitle>
+            <CardDescription>Mean NFT sale price</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {ListingHistoryTrackerService.formatPrice(
+                globalStats.averagePrice
+              )}{" "}
+              ETH
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Collections</CardTitle>
+            <CardDescription>Unique NFT collections</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {globalStats.uniqueCollections.toString()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Transactions</CardTitle>
+            <CardDescription>All marketplace activities</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">
+              {globalStats.totalTransactions.toString()}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Transaction Types */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Transaction Breakdown
+          </CardTitle>
+          <CardDescription>
+            Distribution of marketplace activities
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Listings Created</span>
+              <Badge>{globalStats.totalListings.toString()}</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Sales Completed</span>
+              <Badge>{globalStats.totalSales.toString()}</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">Total Transactions</span>
+              <Badge variant="outline">
+                {globalStats.totalTransactions.toString()}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
