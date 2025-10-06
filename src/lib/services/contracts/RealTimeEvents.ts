@@ -5,7 +5,15 @@
  */
 
 import { ethers } from "ethers";
-import { getContractRegistryService } from "./ContractRegistryService";
+import { marketplaceHubService } from "./MarketplaceHubService";
+import {
+  ERC721NFTExchange_ABI,
+  ERC1155NFTExchange_ABI,
+  EnglishAuction_ABI,
+  DutchAuction_ABI,
+  BundleManager_ABI,
+  OfferManager_ABI,
+} from "@/lib/contracts/abis";
 
 export interface EventSubscription {
   id: string;
@@ -33,19 +41,18 @@ export interface EventHandler {
 export class RealTimeEventsService {
   private subscriptions: Map<string, EventSubscription> = new Map();
   private isInitialized = false;
+  private provider: ethers.Provider | null = null;
 
   constructor() {}
 
   /**
    * Initialize the real-time events service
    */
-  async initialize(): Promise<void> {
+  async initialize(provider: ethers.Provider): Promise<void> {
     if (this.isInitialized) return;
 
     try {
-      const registryService = getContractRegistryService();
-      await registryService.initialize();
-
+      this.provider = provider;
       this.isInitialized = true;
       console.log("✅ RealTimeEventsService initialized");
     } catch (error) {
@@ -55,26 +62,30 @@ export class RealTimeEventsService {
   }
 
   /**
-   * Subscribe to listing events
+   * Subscribe to listing events (ERC721)
    */
   async subscribeToListingEvents(handlers: EventHandler): Promise<void> {
     try {
-      const registryService = getContractRegistryService();
-      const registry = registryService.getContractByKey(
-        "NFT_EXCHANGE_REGISTRY"
+      if (!this.provider) throw new Error("Provider not initialized");
+
+      const exchangeAddress = marketplaceHubService.getERC721Exchange();
+      const exchange = new ethers.Contract(
+        exchangeAddress,
+        ERC721NFTExchange_ABI,
+        this.provider
       );
 
       // ListingCreated event
       if (handlers.onListingCreated) {
-        const subscription = registry.on("ListingCreated", (event) => {
-          console.log("📝 ListingCreated event:", event);
-          handlers.onListingCreated!(event);
+        exchange.on("NFTListed", (...args) => {
+          console.log("📝 NFTListed event:", args);
+          handlers.onListingCreated!(args);
         });
 
-        this.subscriptions.set("ListingCreated", {
-          id: "ListingCreated",
-          contract: registry,
-          eventName: "ListingCreated",
+        this.subscriptions.set("NFTListed", {
+          id: "NFTListed",
+          contract: exchange,
+          eventName: "NFTListed",
           filter: null,
           handler: handlers.onListingCreated,
         });
@@ -82,15 +93,15 @@ export class RealTimeEventsService {
 
       // ListingPurchased event
       if (handlers.onListingPurchased) {
-        const subscription = registry.on("ListingPurchased", (event) => {
-          console.log("💰 ListingPurchased event:", event);
-          handlers.onListingPurchased!(event);
+        exchange.on("NFTSold", (...args) => {
+          console.log("💰 NFTSold event:", args);
+          handlers.onListingPurchased!(args);
         });
 
-        this.subscriptions.set("ListingPurchased", {
-          id: "ListingPurchased",
-          contract: registry,
-          eventName: "ListingPurchased",
+        this.subscriptions.set("NFTSold", {
+          id: "NFTSold",
+          contract: exchange,
+          eventName: "NFTSold",
           filter: null,
           handler: handlers.onListingPurchased,
         });
@@ -98,14 +109,14 @@ export class RealTimeEventsService {
 
       // ListingCancelled event
       if (handlers.onListingCancelled) {
-        const subscription = registry.on("ListingCancelled", (event) => {
-          console.log("❌ ListingCancelled event:", event);
-          handlers.onListingCancelled!(event);
+        exchange.on("ListingCancelled", (...args) => {
+          console.log("❌ ListingCancelled event:", args);
+          handlers.onListingCancelled!(args);
         });
 
         this.subscriptions.set("ListingCancelled", {
           id: "ListingCancelled",
-          contract: registry,
+          contract: exchange,
           eventName: "ListingCancelled",
           filter: null,
           handler: handlers.onListingCancelled,
@@ -122,20 +133,26 @@ export class RealTimeEventsService {
    */
   async subscribeToOfferEvents(handlers: EventHandler): Promise<void> {
     try {
-      const registryService = getContractRegistryService();
-      const offerManager = registryService.getContractByKey("OFFER_MANAGER");
+      if (!this.provider) throw new Error("Provider not initialized");
+
+      const offerAddress = marketplaceHubService.getOfferManager();
+      const offerManager = new ethers.Contract(
+        offerAddress,
+        OfferManager_ABI,
+        this.provider
+      );
 
       // OfferCreated event
       if (handlers.onOfferCreated) {
-        const subscription = offerManager.on("OfferCreated", (event) => {
-          console.log("🎯 OfferCreated event:", event);
-          handlers.onOfferCreated!(event);
+        offerManager.on("OfferMade", (...args) => {
+          console.log("🎯 OfferMade event:", args);
+          handlers.onOfferCreated!(args);
         });
 
-        this.subscriptions.set("OfferCreated", {
-          id: "OfferCreated",
+        this.subscriptions.set("OfferMade", {
+          id: "OfferMade",
           contract: offerManager,
-          eventName: "OfferCreated",
+          eventName: "OfferMade",
           filter: null,
           handler: handlers.onOfferCreated,
         });
@@ -143,9 +160,9 @@ export class RealTimeEventsService {
 
       // OfferAccepted event
       if (handlers.onOfferAccepted) {
-        const subscription = offerManager.on("OfferAccepted", (event) => {
-          console.log("✅ OfferAccepted event:", event);
-          handlers.onOfferAccepted!(event);
+        offerManager.on("OfferAccepted", (...args) => {
+          console.log("✅ OfferAccepted event:", args);
+          handlers.onOfferAccepted!(args);
         });
 
         this.subscriptions.set("OfferAccepted", {
@@ -159,9 +176,9 @@ export class RealTimeEventsService {
 
       // OfferCancelled event
       if (handlers.onOfferCancelled) {
-        const subscription = offerManager.on("OfferCancelled", (event) => {
-          console.log("❌ OfferCancelled event:", event);
-          handlers.onOfferCancelled!(event);
+        offerManager.on("OfferCancelled", (...args) => {
+          console.log("❌ OfferCancelled event:", args);
+          handlers.onOfferCancelled!(args);
         });
 
         this.subscriptions.set("OfferCancelled", {
@@ -179,23 +196,29 @@ export class RealTimeEventsService {
   }
 
   /**
-   * Subscribe to auction events
+   * Subscribe to auction events (English Auction)
    */
   async subscribeToAuctionEvents(handlers: EventHandler): Promise<void> {
     try {
-      const registryService = getContractRegistryService();
-      const factory = registryService.getContractByKey("AUCTION_FACTORY");
+      if (!this.provider) throw new Error("Provider not initialized");
+
+      const englishAuctionAddress = marketplaceHubService.getEnglishAuction();
+      const englishAuction = new ethers.Contract(
+        englishAuctionAddress,
+        EnglishAuction_ABI,
+        this.provider
+      );
 
       // AuctionCreated event
       if (handlers.onAuctionCreated) {
-        const subscription = factory.on("AuctionCreated", (event) => {
-          console.log("🏆 AuctionCreated event:", event);
-          handlers.onAuctionCreated!(event);
+        englishAuction.on("AuctionCreated", (...args) => {
+          console.log("🏆 AuctionCreated event:", args);
+          handlers.onAuctionCreated!(args);
         });
 
         this.subscriptions.set("AuctionCreated", {
           id: "AuctionCreated",
-          contract: factory,
+          contract: englishAuction,
           eventName: "AuctionCreated",
           filter: null,
           handler: handlers.onAuctionCreated,
@@ -204,14 +227,14 @@ export class RealTimeEventsService {
 
       // BidPlaced event
       if (handlers.onBidPlaced) {
-        const subscription = factory.on("BidPlaced", (event) => {
-          console.log("💰 BidPlaced event:", event);
-          handlers.onBidPlaced!(event);
+        englishAuction.on("BidPlaced", (...args) => {
+          console.log("💰 BidPlaced event:", args);
+          handlers.onBidPlaced!(args);
         });
 
         this.subscriptions.set("BidPlaced", {
           id: "BidPlaced",
-          contract: factory,
+          contract: englishAuction,
           eventName: "BidPlaced",
           filter: null,
           handler: handlers.onBidPlaced,
@@ -220,14 +243,14 @@ export class RealTimeEventsService {
 
       // AuctionEnded event
       if (handlers.onAuctionEnded) {
-        const subscription = factory.on("AuctionEnded", (event) => {
-          console.log("🏁 AuctionEnded event:", event);
-          handlers.onAuctionEnded!(event);
+        englishAuction.on("AuctionEnded", (...args) => {
+          console.log("🏁 AuctionEnded event:", args);
+          handlers.onAuctionEnded!(args);
         });
 
         this.subscriptions.set("AuctionEnded", {
           id: "AuctionEnded",
-          contract: factory,
+          contract: englishAuction,
           eventName: "AuctionEnded",
           filter: null,
           handler: handlers.onAuctionEnded,
@@ -244,14 +267,20 @@ export class RealTimeEventsService {
    */
   async subscribeToBundleEvents(handlers: EventHandler): Promise<void> {
     try {
-      const registryService = getContractRegistryService();
-      const bundleManager = registryService.getContractByKey("BUNDLE_MANAGER");
+      if (!this.provider) throw new Error("Provider not initialized");
+
+      const bundleAddress = marketplaceHubService.getBundleManager();
+      const bundleManager = new ethers.Contract(
+        bundleAddress,
+        BundleManager_ABI,
+        this.provider
+      );
 
       // BundleCreated event
       if (handlers.onBundleCreated) {
-        const subscription = bundleManager.on("BundleCreated", (event) => {
-          console.log("📦 BundleCreated event:", event);
-          handlers.onBundleCreated!(event);
+        bundleManager.on("BundleCreated", (...args) => {
+          console.log("📦 BundleCreated event:", args);
+          handlers.onBundleCreated!(args);
         });
 
         this.subscriptions.set("BundleCreated", {
@@ -265,9 +294,9 @@ export class RealTimeEventsService {
 
       // BundlePurchased event
       if (handlers.onBundlePurchased) {
-        const subscription = bundleManager.on("BundlePurchased", (event) => {
-          console.log("💰 BundlePurchased event:", event);
-          handlers.onBundlePurchased!(event);
+        bundleManager.on("BundlePurchased", (...args) => {
+          console.log("💰 BundlePurchased event:", args);
+          handlers.onBundlePurchased!(args);
         });
 
         this.subscriptions.set("BundlePurchased", {
@@ -281,9 +310,9 @@ export class RealTimeEventsService {
 
       // BundleCancelled event
       if (handlers.onBundleCancelled) {
-        const subscription = bundleManager.on("BundleCancelled", (event) => {
-          console.log("❌ BundleCancelled event:", event);
-          handlers.onBundleCancelled!(event);
+        bundleManager.on("BundleCancelled", (...args) => {
+          console.log("❌ BundleCancelled event:", args);
+          handlers.onBundleCancelled!(args);
         });
 
         this.subscriptions.set("BundleCancelled", {

@@ -84,32 +84,33 @@ export default function OffersPage() {
     if (account) {
       loadOffers();
 
-      // Subscribe to real-time events if not in mock mode
-      if (!useMockData) {
-        const realTimeEvents = new RealTimeEventsService();
-        realTimeEvents.initialize().then(() => {
-          // Subscribe to offer events
-          realTimeEvents.subscribeToOfferEvents({
-            onOfferCreated: () => {
-              console.log("📝 New offer created, refreshing offers...");
-              loadOffers();
-            },
-            onOfferAccepted: () => {
-              console.log("✅ Offer accepted, refreshing offers...");
-              loadOffers();
-            },
-            onOfferCancelled: () => {
-              console.log("❌ Offer cancelled, refreshing offers...");
-              loadOffers();
-            },
-          });
-        });
+      // TODO: Subscribe to real-time events if not in mock mode
+      // Requires provider to be available in component
+      // if (!useMockData) {
+      //   const realTimeEvents = new RealTimeEventsService();
+      //   realTimeEvents.initialize(provider).then(() => {
+      //     // Subscribe to offer events
+      //     realTimeEvents.subscribeToOfferEvents({
+      //       onOfferCreated: () => {
+      //         console.log("📝 New offer created, refreshing offers...");
+      //         loadOffers();
+      //       },
+      //       onOfferAccepted: () => {
+      //         console.log("✅ Offer accepted, refreshing offers...");
+      //         loadOffers();
+      //       },
+      //       onOfferCancelled: () => {
+      //         console.log("❌ Offer cancelled, refreshing offers...");
+      //         loadOffers();
+      //       },
+      //     });
+      //   });
 
-        // Cleanup on unmount
-        return () => {
-          realTimeEvents.unsubscribeAll();
-        };
-      }
+      //   // Cleanup on unmount
+      //   return () => {
+      //     realTimeEvents.unsubscribeAll();
+      //   };
+      // }
     }
   }, [account, useMockData]);
 
@@ -131,7 +132,6 @@ export default function OffersPage() {
         setUserOffers(user);
       } else {
         // Real blockchain data
-        await offerService.initialize();
         const [active, user] = await Promise.all([
           offerService.getActiveOffers(),
           offerService.getUserOffers(account),
@@ -248,7 +248,6 @@ export default function OffersPage() {
         loadOffers();
       } else {
         // Real contract interaction
-        await offerService.initialize();
         await offerService.acceptOffer(offerId);
         toast({
           title: "Offer Accepted!",
@@ -281,7 +280,6 @@ export default function OffersPage() {
         loadOffers();
       } else {
         // Real contract interaction
-        await offerService.initialize();
         await offerService.cancelOffer(offerId);
         toast({
           title: "Offer Cancelled",
@@ -324,7 +322,6 @@ export default function OffersPage() {
         });
         loadOffers();
       } else {
-        await offerService.initialize();
         await offerService.createNFTOffer({
           collection: nftOffer.collection,
           tokenId: nftOffer.tokenId,
@@ -375,7 +372,6 @@ export default function OffersPage() {
         setCollectionOffer({ collection: "", price: "", expirationDays: "7" });
         loadOffers();
       } else {
-        await offerService.initialize();
         await offerService.createCollectionOffer({
           collection: collectionOffer.collection,
           price: collectionOffer.price,
@@ -434,7 +430,6 @@ export default function OffersPage() {
         });
         loadOffers();
       } else {
-        await offerService.initialize();
         await offerService.createTraitOffer({
           collection: traitOffer.collection,
           traits,

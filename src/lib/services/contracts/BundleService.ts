@@ -1,11 +1,12 @@
 /**
  * Bundle Service
- * Ported from frontend-foundry/src/services/contracts/BundleService.js
  * Handles bundle creation, purchasing, and management operations
+ * Now uses MarketplaceHub for address discovery
  */
 
 import { ethers } from "ethers";
-import { getContractRegistryService } from "./ContractRegistryService";
+import { marketplaceHubService } from "./MarketplaceHubService";
+import { BundleManager_ABI } from "@/lib/contracts/abis";
 
 export interface BundleItem {
   collection: string;
@@ -46,35 +47,40 @@ export interface BundleInfo {
 }
 
 export class BundleService {
-  private isInitialized = false;
-
-  constructor() {
-    // No need to store addresses, will get from registry service
-  }
+  private provider: ethers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
+  private bundleManagerAddress: string | null = null;
 
   /**
-   * Initialize the bundle service
+   * Initialize bundle service
    */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
 
-    try {
-      const registryService = getContractRegistryService();
-      await registryService.initialize();
-      this.isInitialized = true;
-      console.log("✅ BundleService initialized");
-    } catch (error) {
-      console.error("❌ Failed to initialize BundleService:", error);
-      throw error;
-    }
+    // Get bundle manager address from hub
+    const addresses = marketplaceHubService.getAddresses();
+    this.bundleManagerAddress = addresses.bundleManager;
+
+    console.log("✅ BundleService initialized with BundleManager:", this.bundleManagerAddress);
   }
 
   /**
    * Get the bundle manager contract instance
    */
   private getBundleManagerContract(): ethers.Contract {
-    const registryService = getContractRegistryService();
-    return registryService.getContractByKey("BUNDLE_MANAGER");
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+
+    if (!this.bundleManagerAddress) {
+      throw new Error("BundleManager address not loaded from hub");
+    }
+
+    return new ethers.Contract(this.bundleManagerAddress, BundleManager_ABI, this.signer);
   }
 
   /**
@@ -172,7 +178,20 @@ export class BundleService {
    */
   async getBundle(bundleId: string): Promise<BundleInfo> {
     try {
-      const contract = this.getBundleManagerContract();
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const address = process.env.NEXT_PUBLIC_BUNDLE_MANAGER_ADDRESS;
+      if (!address) {
+        throw new Error("BundleManager address not configured");
+      }
+
+      const contract = new ethers.Contract(
+        address,
+        BundleManager_ABI,
+        this.provider
+      );
 
       const [bundle, timing, metadata, items] = await Promise.all([
         contract.bundles(bundleId),
@@ -187,10 +206,10 @@ export class BundleService {
         totalPrice: ethers.formatEther(bundle.totalPrice),
         discountPercentage: bundle.discountPercentage / 100,
         status: this.getBundleStatus(bundle.status),
-        startTime: timing.startTime.toNumber(),
-        endTime: timing.endTime.toNumber(),
-        createdAt: timing.createdAt.toNumber(),
-        soldAt: timing.soldAt.toNumber(),
+        startTime: timing.startTime.toString(),
+        endTime: timing.endTime.toString(),
+        createdAt: timing.createdAt.toString(),
+        soldAt: timing.soldAt.toString(),
         buyer: metadata.buyer,
         description: metadata.description,
         imageUrl: metadata.imageUrl,

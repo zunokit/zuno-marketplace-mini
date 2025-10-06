@@ -119,32 +119,33 @@ export default function AuctionsPage() {
     if (account) {
       loadAuctions();
 
-      // Subscribe to real-time events if not in mock mode
-      if (!useMockData) {
-        const realTimeEvents = new RealTimeEventsService();
-        realTimeEvents.initialize().then(() => {
-          // Subscribe to auction events
-          realTimeEvents.subscribeToAuctionEvents({
-            onAuctionCreated: () => {
-              console.log("🏆 New auction created, refreshing auctions...");
-              loadAuctions();
-            },
-            onBidPlaced: () => {
-              console.log("💰 Bid placed, refreshing auctions...");
-              loadAuctions();
-            },
-            onAuctionEnded: () => {
-              console.log("🏁 Auction ended, refreshing auctions...");
-              loadAuctions();
-            },
-          });
-        });
+      // TODO: Subscribe to real-time events if not in mock mode
+      // Requires provider to be available in component
+      // if (!useMockData) {
+      //   const realTimeEvents = new RealTimeEventsService();
+      //   realTimeEvents.initialize(provider).then(() => {
+      //     // Subscribe to auction events
+      //     realTimeEvents.subscribeToAuctionEvents({
+      //       onAuctionCreated: () => {
+      //         console.log("🏆 New auction created, refreshing auctions...");
+      //         loadAuctions();
+      //       },
+      //       onBidPlaced: () => {
+      //         console.log("💰 Bid placed, refreshing auctions...");
+      //         loadAuctions();
+      //       },
+      //       onAuctionEnded: () => {
+      //         console.log("🏁 Auction ended, refreshing auctions...");
+      //         loadAuctions();
+      //       },
+      //     });
+      //   });
 
-        // Cleanup on unmount
-        return () => {
-          realTimeEvents.unsubscribeAll();
-        };
-      }
+      //   // Cleanup on unmount
+      //   return () => {
+      //     realTimeEvents.unsubscribeAll();
+      //   };
+      // }
     }
   }, [account, refreshKey, useMockData]);
 
@@ -179,13 +180,12 @@ export default function AuctionsPage() {
         setUserAuctions(user);
       } else {
         // Real blockchain data
-        await auctionService.initialize();
-        const [active, user] = await Promise.all([
-          auctionService.getActiveAuctions(),
-          auctionService.getUserAuctions(account),
-        ]);
-        setActiveAuctions(active.map(mapAuctionInfoToAuction));
-        setUserAuctions(user.map(mapAuctionInfoToAuction));
+        // Note: Services already initialized via initializeServices() in useWeb3
+        // TODO: These methods don't exist in current AuctionService
+        // Need to implement or remove this functionality
+        console.warn("Real auction data not yet implemented");
+        setActiveAuctions([]);
+        setUserAuctions([]);
       }
     } catch (error) {
       console.error("Error loading auctions:", error);
@@ -282,7 +282,7 @@ export default function AuctionsPage() {
         handleRefresh();
       } else {
         // Real contract interaction
-        await auctionService.initialize();
+        // Note: Service already initialized via initializeServices()
         await auctionService.placeBid(auctionId, bidAmount);
         toast({
           title: "Bid Placed!",
@@ -315,8 +315,8 @@ export default function AuctionsPage() {
         handleRefresh();
       } else {
         // Real contract interaction
-        await auctionService.initialize();
-        await auctionService.buyNow(auctionId, price);
+        // Note: Service already initialized, buyNow renamed to buyFromDutchAuction
+        await auctionService.buyFromDutchAuction(auctionId, price);
         toast({
           title: "Purchase Successful!",
           description: `Successfully bought NFT for ${price} ETH`,

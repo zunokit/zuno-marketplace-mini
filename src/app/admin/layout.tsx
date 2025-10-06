@@ -13,7 +13,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle } from "lucide-react";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const { account, isConnected } = useAppSelector((state) => state.wallet);
   const [isAdmin, setIsAdmin] = useState(true); // Mock - replace with real permission check
@@ -61,7 +65,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Navigation */}
-        <div className="mt-4 flex gap-4">
+        <div className="mt-4 flex gap-4 flex-wrap">
           <Link
             href="/admin"
             className="text-sm font-medium hover:text-primary transition-colors"
@@ -72,19 +76,49 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             href="/admin/collections/verify"
             className="text-sm font-medium hover:text-primary transition-colors"
           >
-            Collection Verification
+            Collections
           </Link>
           <Link
             href="/admin/fees"
             className="text-sm font-medium hover:text-primary transition-colors"
           >
-            Fee Management
+            Fees
+          </Link>
+          <Link
+            href="/admin/royalties"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
+            Royalties
+          </Link>
+          <Link
+            href="/admin/access-control"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
+            Access Control
+          </Link>
+          <Link
+            href="/admin/validator"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
+            Validator
+          </Link>
+          <Link
+            href="/admin/timelock"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
+            Timelock
           </Link>
           <Link
             href="/admin/emergency"
             className="text-sm font-medium hover:text-primary transition-colors"
           >
-            Emergency Controls
+            Emergency
+          </Link>
+          <Link
+            href="/admin/users"
+            className="text-sm font-medium hover:text-primary transition-colors"
+          >
+            Users
           </Link>
         </div>
       </div>
@@ -94,4 +128,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
-

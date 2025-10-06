@@ -8,6 +8,8 @@ export interface Listing {
   price: string;
   currency: string;
   status: "ACTIVE" | "SOLD" | "CANCELLED";
+  tokenType?: "ERC721" | "ERC1155"; // Token standard type
+  amount?: string; // For ERC1155 listings
   nft?: {
     name?: string;
     image?: string;

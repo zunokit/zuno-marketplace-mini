@@ -2,10 +2,10 @@
 
 /**
  * Emergency Controls Admin Page
- * Pause/unpause contracts in emergencies
+ * Emergency pause/blacklist using EmergencyManagerService
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,8 +14,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -25,266 +27,368 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { AlertTriangle, PlayCircle, PauseCircle, Shield } from "lucide-react";
-
-interface ContractState {
-  name: string;
-  address: string;
-  paused: boolean;
-  lastAction?: {
-    type: "pause" | "unpause";
-    timestamp: number;
-    admin: string;
-  };
-}
+import { useAppSelector } from "@/lib/store/hooks";
+import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
+import {
+  emergencyManagerService,
+  EmergencyManagerService,
+  EmergencyStatus,
+} from "@/lib/services/contracts/EmergencyManagerService";
+import {
+  AlertTriangle,
+  Shield,
+  Ban,
+  PlayCircle,
+  PauseCircle,
+} from "lucide-react";
 
 export default function EmergencyControlsPage() {
   const { toast } = useToast();
+  const { account } = useAppSelector((state) => state.wallet);
+  const [useMockData] = useState(isMockDataEnabled());
 
-  const [contracts, setContracts] = useState<ContractState[]>([
-    {
-      name: "Marketplace",
-      address: "0x1234...5678",
-      paused: false,
-    },
-    {
-      name: "Auction Factory",
-      address: "0x2345...6789",
-      paused: false,
-    },
-    {
-      name: "Offer Manager",
-      address: "0x3456...7890",
-      paused: false,
-    },
-    {
-      name: "Bundle Manager",
-      address: "0x4567...8901",
-      paused: false,
-    },
-  ]);
+  const [emergencyStatus, setEmergencyStatus] = useState<EmergencyStatus>({
+    isPaused: false,
+    pausedAt: BigInt(0),
+    pauseReason: "",
+    cooldownRemaining: BigInt(0),
+  });
 
-  const [confirmDialog, setConfirmDialog] = useState(false);
-  const [selectedContract, setSelectedContract] = useState<ContractState | null>(
-    null
+  const [blacklistDialogOpen, setBlacklistDialogOpen] = useState(false);
+  const [blacklistAddress, setBlacklistAddress] = useState("");
+  const [blacklistReason, setBlacklistReason] = useState("");
+  const [blacklistType, setBlacklistType] = useState<"user" | "contract">(
+    "user"
   );
-  const [action, setAction] = useState<"pause" | "unpause">("pause");
+  const [pauseReason, setPauseReason] = useState("");
+  const [loading, setLoading] = useState(false);
 
   /**
-   * Handle pause/unpause contract
+   * Load emergency status
    */
-  const handleTogglePause = async () => {
-    if (!selectedContract) return;
+  useEffect(() => {
+    if (!useMockData && account) {
+      loadEmergencyStatus();
+    }
+  }, [account, useMockData]);
 
+  const loadEmergencyStatus = async () => {
     try {
-      // Mock - in real app, call contract's pause/unpause functions
-      // if (action === 'pause') {
-      //   await contract.pause()
-      // } else {
-      //   await contract.unpause()
-      // }
-
-      setContracts((prev) =>
-        prev.map((c) =>
-          c.name === selectedContract.name
-            ? {
-                ...c,
-                paused: action === "pause",
-                lastAction: {
-                  type: action,
-                  timestamp: Date.now(),
-                  admin: "0xAdmin...Address",
-                },
-              }
-            : c
-        )
-      );
-
-      toast({
-        title: `Contract ${action === "pause" ? "Paused" : "Unpaused"}`,
-        description: `${selectedContract.name} has been ${action}d`,
-        variant: action === "pause" ? "destructive" : "default",
-      });
-
-      setConfirmDialog(false);
-      setSelectedContract(null);
+      const status = await emergencyManagerService.getEmergencyStatus();
+      setEmergencyStatus(status);
     } catch (error) {
-      toast({
-        title: "Action Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to toggle contract state",
-        variant: "destructive",
-      });
+      console.error("Failed to load emergency status:", error);
     }
   };
 
   /**
-   * Open confirmation dialog
+   * Handle emergency pause
    */
-  const openConfirm = (contract: ContractState, newAction: "pause" | "unpause") => {
-    setSelectedContract(contract);
-    setAction(newAction);
-    setConfirmDialog(true);
+  const handleEmergencyPause = async () => {
+    if (!pauseReason) {
+      toast({
+        title: "Validation Error",
+        description: "Please provide a reason for emergency pause",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (useMockData) {
+        setEmergencyStatus({ ...emergencyStatus, isPaused: true });
+        toast({
+          title: "Emergency Pause Activated",
+          description: "Marketplace has been paused",
+        });
+      } else {
+        await emergencyManagerService.emergencyPause(pauseReason);
+
+        toast({
+          title: "Emergency Pause Activated",
+          description: "Marketplace has been paused successfully",
+        });
+
+        setPauseReason("");
+        await loadEmergencyStatus();
+      }
+    } catch (error) {
+      toast({
+        title: "Pause Failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to pause marketplace",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const pausedCount = contracts.filter((c) => c.paused).length;
-  const activeCount = contracts.filter((c) => !c.paused).length;
+  /**
+   * Handle emergency unpause
+   */
+  const handleEmergencyUnpause = async () => {
+    setLoading(true);
+
+    try {
+      if (useMockData) {
+        setEmergencyStatus({ ...emergencyStatus, isPaused: false });
+        toast({
+          title: "Emergency Unpause",
+          description: "Marketplace has been unpaused",
+        });
+      } else {
+        await emergencyManagerService.emergencyUnpause();
+
+        toast({
+          title: "Emergency Unpause",
+          description: "Marketplace has been unpaused successfully",
+        });
+
+        await loadEmergencyStatus();
+      }
+    } catch (error) {
+      toast({
+        title: "Unpause Failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to unpause marketplace",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Handle blacklist
+   */
+  const handleBlacklist = async () => {
+    if (!blacklistAddress || !blacklistReason) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      if (useMockData) {
+        toast({
+          title: "Blacklisted",
+          description: `Successfully blacklisted ${blacklistType}: ${blacklistAddress}`,
+        });
+        setBlacklistDialogOpen(false);
+      } else {
+        if (blacklistType === "user") {
+          await emergencyManagerService.setUserBlacklist(
+            blacklistAddress,
+            true,
+            blacklistReason
+          );
+        } else {
+          await emergencyManagerService.setContractBlacklist(
+            blacklistAddress,
+            true,
+            blacklistReason
+          );
+        }
+
+        toast({
+          title: "Blacklisted",
+          description: `Successfully blacklisted ${blacklistType}`,
+        });
+
+        setBlacklistDialogOpen(false);
+        setBlacklistAddress("");
+        setBlacklistReason("");
+      }
+    } catch (error) {
+      toast({
+        title: "Blacklist Failed",
+        description:
+          error instanceof Error ? error.message : "Failed to blacklist",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold">🚨 Emergency Controls</h2>
         <p className="text-muted-foreground">
-          Pause or unpause contracts during emergencies or maintenance
+          Emergency pause and blacklist management for platform security
         </p>
       </div>
 
-      {/* Warning Banner */}
-      <Alert variant="destructive" className="mb-6">
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Critical System Controls:</strong> These actions will immediately
-          affect all users. Only use in emergencies or planned maintenance. Always
-          communicate with users before taking emergency actions.
-        </AlertDescription>
-      </Alert>
+      {useMockData && (
+        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <p className="text-sm text-amber-600 dark:text-amber-400">
+            ⚠️ Mock Data Mode - Real contract integration disabled
+          </p>
+        </div>
+      )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Contracts</CardTitle>
-            <PlayCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCount}</div>
-            <p className="text-xs text-muted-foreground">Operating normally</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Paused Contracts</CardTitle>
-            <PauseCircle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pausedCount}</div>
-            <p className="text-xs text-muted-foreground">Emergency mode</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Contract Controls */}
-      <Card>
+      {/* Emergency Status */}
+      <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Contract Status</CardTitle>
-          <CardDescription>
-            View and control the status of all platform contracts
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Emergency Status
+          </CardTitle>
+          <CardDescription>Current marketplace emergency state</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {contracts.map((contract) => (
-              <div
-                key={contract.name}
-                className={`flex items-center justify-between p-4 rounded-lg border ${
-                  contract.paused ? "bg-red-50 dark:bg-red-950/20" : ""
-                }`}
-              >
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className={`w-3 h-3 rounded-full ${
-                        contract.paused ? "bg-red-500" : "bg-green-500"
-                      }`}
-                    ></div>
-                    <h3 className="font-semibold">{contract.name}</h3>
-                    <Badge variant={contract.paused ? "destructive" : "default"}>
-                      {contract.paused ? "Paused" : "Active"}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {contract.address}
-                  </p>
-                  {contract.lastAction && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Last {contract.lastAction.type}d{" "}
-                      {new Date(contract.lastAction.timestamp).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex gap-2">
-                  {contract.paused ? (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => openConfirm(contract, "unpause")}
-                    >
-                      <PlayCircle className="h-4 w-4 mr-1" />
-                      Unpause
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => openConfirm(contract, "pause")}
-                    >
-                      <PauseCircle className="h-4 w-4 mr-1" />
-                      Pause
-                    </Button>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Marketplace Status</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge
+                    variant={
+                      emergencyStatus.isPaused ? "destructive" : "default"
+                    }
+                  >
+                    {emergencyStatus.isPaused ? "PAUSED" : "ACTIVE"}
+                  </Badge>
+                  {emergencyStatus.isPaused && emergencyStatus.pauseReason && (
+                    <span className="text-sm text-muted-foreground">
+                      Reason: {emergencyStatus.pauseReason}
+                    </span>
                   )}
                 </div>
               </div>
-            ))}
+              {emergencyStatus.isPaused ? (
+                <Button onClick={handleEmergencyUnpause} disabled={loading}>
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                  Unpause
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Reason for pause..."
+                    value={pauseReason}
+                    onChange={(e) => setPauseReason(e.target.value)}
+                  />
+                  <Button
+                    onClick={handleEmergencyPause}
+                    disabled={loading}
+                    variant="destructive"
+                  >
+                    <PauseCircle className="h-4 w-4 mr-2" />
+                    Emergency Pause
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {emergencyStatus.cooldownRemaining > BigInt(0) && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium">Pause Cooldown Active</p>
+                <p className="text-sm text-muted-foreground">
+                  {EmergencyManagerService.formatCooldown(
+                    emergencyStatus.cooldownRemaining
+                  )}{" "}
+                  remaining
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Confirmation Dialog */}
-      <Dialog open={confirmDialog} onOpenChange={setConfirmDialog}>
+      {/* Blacklist Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Ban className="h-5 w-5" />
+            Blacklist Management
+          </CardTitle>
+          <CardDescription>Block malicious users or contracts</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={() => setBlacklistDialogOpen(true)}>
+            <Ban className="h-4 w-4 mr-2" />
+            Add to Blacklist
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Blacklist Dialog */}
+      <Dialog open={blacklistDialogOpen} onOpenChange={setBlacklistDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              {action === "pause" ? "Pause" : "Unpause"} Contract
-            </DialogTitle>
+            <DialogTitle>Add to Blacklist</DialogTitle>
             <DialogDescription>
-              {selectedContract && (
-                <>
-                  Are you sure you want to {action}{" "}
-                  <strong>{selectedContract.name}</strong>?
-                </>
-              )}
+              Block a user or contract from marketplace activities
             </DialogDescription>
           </DialogHeader>
 
-          <Alert variant={action === "pause" ? "destructive" : "default"}>
-            <AlertDescription>
-              {action === "pause" ? (
-                <>
-                  <strong>Warning:</strong> Pausing this contract will prevent all
-                  users from interacting with it. This should only be done during
-                  emergencies or planned maintenance.
-                </>
-              ) : (
-                <>
-                  <strong>Notice:</strong> Unpausing this contract will restore
-                  normal functionality and allow users to interact with it again.
-                </>
-              )}
-            </AlertDescription>
-          </Alert>
+          <div className="space-y-4">
+            <div>
+              <Label>Type</Label>
+              <div className="flex gap-2 mt-2">
+                <Button
+                  variant={blacklistType === "user" ? "default" : "outline"}
+                  onClick={() => setBlacklistType("user")}
+                >
+                  User
+                </Button>
+                <Button
+                  variant={blacklistType === "contract" ? "default" : "outline"}
+                  onClick={() => setBlacklistType("contract")}
+                >
+                  Contract
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                placeholder="0x..."
+                value={blacklistAddress}
+                onChange={(e) => setBlacklistAddress(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="reason">Reason</Label>
+              <Textarea
+                id="reason"
+                placeholder="Reason for blacklisting..."
+                value={blacklistReason}
+                onChange={(e) => setBlacklistReason(e.target.value)}
+              />
+            </div>
+          </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setBlacklistDialogOpen(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button
-              variant={action === "pause" ? "destructive" : "default"}
-              onClick={handleTogglePause}
+              onClick={handleBlacklist}
+              disabled={loading}
+              variant="destructive"
             >
-              {action === "pause" ? "Pause Contract" : "Unpause Contract"}
+              {loading ? "Blacklisting..." : "Add to Blacklist"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -292,4 +396,3 @@ export default function EmergencyControlsPage() {
     </div>
   );
 }
-
