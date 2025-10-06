@@ -243,7 +243,8 @@ export const useMarketplace = () => {
         await initializeService();
         const tx = await exchangeService.updateListingPrice(
           listingId,
-          newPrice
+          newPrice,
+          "ERC721"
         );
 
         dispatch(
@@ -300,7 +301,10 @@ export const useMarketplace = () => {
         const address = userAddress || wallet.account;
         if (!address) return [];
 
-        const listings = await exchangeService.getUserListings(address);
+        const listings = await exchangeService.getUserListings(
+          address,
+          "ERC721"
+        );
 
         return listings;
       } catch (error) {

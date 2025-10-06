@@ -172,6 +172,8 @@ src/
 - [**Contract Integration**](./docs/CONTRACT_INTEGRATION.md) - Smart contract integration guide
 - [**Code Structure**](./docs/CODE_STRUCTURE.md) - Architecture and patterns
 - [**Contract Summary**](./docs/README_CONTRACT.md) - Contract integration overview
+- [**Format Name Contracts and ABIs**](./docs/CONTRACT_NAMING_STANDARD.md) - Required for name
+- [**Architecture**](./docs/SERVICE_ARCHITECTURE.md) - Architecture
 
 ## 🎯 Key Concepts
 

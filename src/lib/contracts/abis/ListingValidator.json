@@ -1,0 +1,1011 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_accessControl",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "DEFAULT_COOLDOWN",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_LISTINGS_PER_HOUR",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_QUALITY_SCORE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MIN_AUTO_APPROVAL_SCORE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "accessControl",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract MarketplaceAccessControl"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "collectionSettings",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "minPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minDuration",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxDuration",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cooldownPeriod",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxListingsPerUser",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "requireVerifiedCollection",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "enableQualityCheck",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "isActive",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "globalSettings",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "minPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxPrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "minDuration",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxDuration",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "cooldownPeriod",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxListingsPerUser",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "requireVerifiedCollection",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "enableQualityCheck",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "isActive",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "listingQualityScores",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pause",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "paused",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setGlobalValidationSettings",
+    "inputs": [
+      {
+        "name": "settings",
+        "type": "tuple",
+        "internalType": "struct ListingValidator.ValidationSettings",
+        "components": [
+          {
+            "name": "minPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "cooldownPeriod",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxListingsPerUser",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "requireVerifiedCollection",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "enableQualityCheck",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "isActive",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setValidationSettings",
+    "inputs": [
+      {
+        "name": "collection",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "settings",
+        "type": "tuple",
+        "internalType": "struct ListingValidator.ValidationSettings",
+        "components": [
+          {
+            "name": "minPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "cooldownPeriod",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxListingsPerUser",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "requireVerifiedCollection",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "enableQualityCheck",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "isActive",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "spamTrackers",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "listingsInLastHour",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "lastHourStart",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "suspiciousActivity",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "isFlagged",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalValidatedListings",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "unpause",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "userCooldowns",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "lastListingTime",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "activeListings",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalListings",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "isRestricted",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "validateListing",
+    "inputs": [
+      {
+        "name": "listing",
+        "type": "tuple",
+        "internalType": "struct Listing",
+        "components": [
+          {
+            "name": "listingId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "listingType",
+            "type": "uint8",
+            "internalType": "enum ListingType"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ListingStatus"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nftContract",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quantity",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "startTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "endTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minOfferPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "acceptOffers",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "bundleId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "metadata",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "tuple",
+        "internalType": "struct ListingValidator.ValidationResult",
+        "components": [
+          {
+            "name": "isValid",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "errors",
+            "type": "string[]",
+            "internalType": "string[]"
+          },
+          {
+            "name": "qualityScore",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "recommendedPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "validateListingUpdate",
+    "inputs": [
+      {
+        "name": "oldListing",
+        "type": "tuple",
+        "internalType": "struct Listing",
+        "components": [
+          {
+            "name": "listingId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "listingType",
+            "type": "uint8",
+            "internalType": "enum ListingType"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ListingStatus"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nftContract",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quantity",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "startTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "endTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minOfferPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "acceptOffers",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "bundleId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "metadata",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      },
+      {
+        "name": "newListing",
+        "type": "tuple",
+        "internalType": "struct Listing",
+        "components": [
+          {
+            "name": "listingId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "listingType",
+            "type": "uint8",
+            "internalType": "enum ListingType"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ListingStatus"
+          },
+          {
+            "name": "seller",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "nftContract",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "tokenId",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "quantity",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "price",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "startTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "endTime",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minOfferPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "acceptOffers",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "bundleId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "metadata",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isValid",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "ListingValidated",
+    "inputs": [
+      {
+        "name": "listingId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "isValid",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "qualityScore",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Paused",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SpamDetected",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "suspiciousActivity",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Unpaused",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "UserRestricted",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "restrictionEnd",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ValidationSettingsUpdated",
+    "inputs": [
+      {
+        "name": "collection",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "settings",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct ListingValidator.ValidationSettings",
+        "components": [
+          {
+            "name": "minPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxPrice",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "minDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxDuration",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "cooldownPeriod",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "maxListingsPerUser",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "requireVerifiedCollection",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "enableQualityCheck",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "isActive",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "updatedBy",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "EnforcedPause",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ExpectedPause",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NFTExchange__InvalidCollection",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NFTExchange__InvalidOwner",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  }
+]

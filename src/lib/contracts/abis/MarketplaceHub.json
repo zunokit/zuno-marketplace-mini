@@ -26,6 +26,16 @@
         "name": "_auctionRegistry",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "_bundleManager",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_offerManager",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
@@ -65,6 +75,19 @@
         "name": "",
         "type": "address",
         "internalType": "contract IAuctionRegistry"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "bundleManager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -208,6 +231,16 @@
         "name": "feeRegistryAddr",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "bundleManagerAddr",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "offerManagerAddr",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -228,6 +261,19 @@
   {
     "type": "function",
     "name": "getAuctionRegistry",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getBundleManager",
     "inputs": [],
     "outputs": [
       {
@@ -369,6 +415,19 @@
   },
   {
     "type": "function",
+    "name": "getOfferManager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getPlatformFeePercentage",
     "inputs": [],
     "outputs": [
@@ -437,6 +496,19 @@
         "name": "",
         "type": "bool",
         "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "offerManager",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"

@@ -3,24 +3,29 @@
  * Generated from contract artifacts
  */
 
-import MarketplaceHub_ABI from './MarketplaceHub.json';
-import ERC721NFTExchange_ABI from './ERC721NFTExchange.json';
-import ERC1155NFTExchange_ABI from './ERC1155NFTExchange.json';
-import EnglishAuction_ABI from './EnglishAuction.json';
-import DutchAuction_ABI from './DutchAuction.json';
-import BundleManager_ABI from './BundleManager.json';
-import OfferManager_ABI from './OfferManager.json';
-import ERC721Collection_ABI from './ERC721Collection.json';
-import ERC1155Collection_ABI from './ERC1155Collection.json';
-import ERC721CollectionFactory_ABI from './ERC721CollectionFactory.json';
-import ERC1155CollectionFactory_ABI from './ERC1155CollectionFactory.json';
-import ExchangeRegistry_ABI from './ExchangeRegistry.json';
-import CollectionRegistry_ABI from './CollectionRegistry.json';
-import AuctionRegistry_ABI from './AuctionRegistry.json';
-import FeeRegistry_ABI from './FeeRegistry.json';
-import AdvancedFeeManager_ABI from './AdvancedFeeManager.json';
-import AdvancedRoyaltyManager_ABI from './AdvancedRoyaltyManager.json';
-import MarketplaceAccessControl_ABI from './MarketplaceAccessControl.json';
+import MarketplaceHub_ABI from "./MarketplaceHub.json";
+import ERC721NFTExchange_ABI from "./ERC721NFTExchange.json";
+import ERC1155NFTExchange_ABI from "./ERC1155NFTExchange.json";
+import EnglishAuction_ABI from "./EnglishAuction.json";
+import DutchAuction_ABI from "./DutchAuction.json";
+import BundleManager_ABI from "./BundleManager.json";
+import OfferManager_ABI from "./OfferManager.json";
+import ERC721Collection_ABI from "./ERC721Collection.json";
+import ERC1155Collection_ABI from "./ERC1155Collection.json";
+import ERC721CollectionFactory_ABI from "./ERC721CollectionFactory.json";
+import ERC1155CollectionFactory_ABI from "./ERC1155CollectionFactory.json";
+import ExchangeRegistry_ABI from "./ExchangeRegistry.json";
+import CollectionRegistry_ABI from "./CollectionRegistry.json";
+import AuctionRegistry_ABI from "./AuctionRegistry.json";
+import FeeRegistry_ABI from "./FeeRegistry.json";
+import AdvancedFeeManager_ABI from "./AdvancedFeeManager.json";
+import AdvancedRoyaltyManager_ABI from "./AdvancedRoyaltyManager.json";
+import MarketplaceAccessControl_ABI from "./MarketplaceAccessControl.json";
+import EmergencyManager_ABI from "./EmergencyManager.json";
+import MarketplaceTimelock_ABI from "./MarketplaceTimelock.json";
+import ListingValidator_ABI from "./ListingValidator.json";
+import ListingHistoryTracker_ABI from "./ListingHistoryTracker.json";
+import CollectionVerifier_ABI from "./CollectionVerifier.json";
 
 export {
   MarketplaceHub_ABI,
@@ -41,6 +46,11 @@ export {
   AdvancedFeeManager_ABI,
   AdvancedRoyaltyManager_ABI,
   MarketplaceAccessControl_ABI,
+  EmergencyManager_ABI,
+  MarketplaceTimelock_ABI,
+  ListingValidator_ABI,
+  ListingHistoryTracker_ABI,
+  CollectionVerifier_ABI,
 };
 
 // Type-safe ABI access
@@ -63,4 +73,9 @@ export const ABIS = {
   AdvancedFeeManager: AdvancedFeeManager_ABI,
   AdvancedRoyaltyManager: AdvancedRoyaltyManager_ABI,
   MarketplaceAccessControl: MarketplaceAccessControl_ABI,
+  EmergencyManager: EmergencyManager_ABI,
+  MarketplaceTimelock: MarketplaceTimelock_ABI,
+  ListingValidator: ListingValidator_ABI,
+  ListingHistoryTracker: ListingHistoryTracker_ABI,
+  CollectionVerifier: CollectionVerifier_ABI,
 } as const;

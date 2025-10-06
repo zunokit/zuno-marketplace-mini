@@ -38,10 +38,19 @@ const CONTRACTS_TO_EXTRACT = [
   { name: 'AuctionRegistry', path: 'AuctionRegistry.sol/AuctionRegistry.json' },
   { name: 'FeeRegistry', path: 'FeeRegistry.sol/FeeRegistry.json' },
 
-  // Management contracts
+  // Fee & Royalty Management
   { name: 'AdvancedFeeManager', path: 'AdvancedFeeManager.sol/AdvancedFeeManager.json' },
   { name: 'AdvancedRoyaltyManager', path: 'AdvancedRoyaltyManager.sol/AdvancedRoyaltyManager.json' },
+
+  // Access Control & Security
   { name: 'MarketplaceAccessControl', path: 'MarketplaceAccessControl.sol/MarketplaceAccessControl.json' },
+  { name: 'EmergencyManager', path: 'EmergencyManager.sol/EmergencyManager.json' },
+  { name: 'MarketplaceTimelock', path: 'MarketplaceTimelock.sol/MarketplaceTimelock.json' },
+
+  // Validation & Analytics
+  { name: 'ListingValidator', path: 'ListingValidator.sol/ListingValidator.json' },
+  { name: 'ListingHistoryTracker', path: 'ListingHistoryTracker.sol/ListingHistoryTracker.json' },
+  { name: 'CollectionVerifier', path: 'CollectionVerifier.sol/CollectionVerifier.json' },
 ];
 
 async function extractABIs() {

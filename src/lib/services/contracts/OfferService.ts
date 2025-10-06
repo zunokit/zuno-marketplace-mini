@@ -62,7 +62,10 @@ export class OfferService {
     const addresses = marketplaceHubService.getAddresses();
     this.offerManagerAddress = addresses.offerManager;
 
-    console.log("✅ OfferService initialized with OfferManager:", this.offerManagerAddress);
+    console.log(
+      "✅ OfferService initialized with OfferManager:",
+      this.offerManagerAddress
+    );
   }
 
   /**
@@ -77,7 +80,11 @@ export class OfferService {
       throw new Error("OfferManager address not loaded from hub");
     }
 
-    return new ethers.Contract(this.offerManagerAddress, OfferManager_ABI, this.signer);
+    return new ethers.Contract(
+      this.offerManagerAddress,
+      OfferManager_ABI,
+      this.signer
+    );
   }
 
   /**
@@ -150,6 +157,44 @@ export class OfferService {
       throw new Error("OfferCreated event not found");
     } catch (error) {
       console.error("Error creating collection offer:", error);
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Creates an offer for NFTs matching specific traits within a collection
+   */
+  async createTraitOffer(params: TraitOfferParams): Promise<string> {
+    try {
+      const contract = this.getOfferManagerContract();
+      const priceInWei = ethers.parseEther(params.price);
+
+      const tx = await contract.createTraitOffer(
+        params.collection,
+        params.traits,
+        priceInWei,
+        params.quantity,
+        params.expirationTime
+      );
+
+      const receipt = await tx.wait();
+      const event = receipt.logs.find((log: any) => {
+        try {
+          const parsed = contract.interface.parseLog(log);
+          return parsed?.name === "OfferCreated";
+        } catch {
+          return false;
+        }
+      });
+
+      if (event) {
+        const parsed = contract.interface.parseLog(event);
+        return parsed?.args.offerId.toString();
+      }
+
+      throw new Error("OfferCreated event not found");
+    } catch (error) {
+      console.error("Error creating trait offer:", error);
       throw this.formatTransactionError(error);
     }
   }
@@ -229,7 +274,10 @@ export class OfferService {
   /**
    * Gets all offers for an NFT
    */
-  async getNFTOffers(collection: string, tokenId: string): Promise<OfferInfo[]> {
+  async getNFTOffers(
+    collection: string,
+    tokenId: string
+  ): Promise<OfferInfo[]> {
     try {
       const contract = this.getOfferManagerContract();
       const offerIds = await contract.getNFTOffers(collection, tokenId);
@@ -254,6 +302,31 @@ export class OfferService {
       );
     } catch (error) {
       console.error("Error getting user offers:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets all active offers across NFT, Collection, and Trait types
+   */
+  async getActiveOffers(): Promise<OfferInfo[]> {
+    try {
+      const contract = this.getOfferManagerContract();
+      const offerTypeCodes = [0, 1, 2]; // NFT, COLLECTION, TRAIT
+
+      const idsByType: string[][] = await Promise.all(
+        offerTypeCodes.map(async (typeCode) => {
+          const ids: readonly bigint[] = await contract.getActiveOffers(
+            typeCode
+          );
+          return ids.map((id: bigint) => id.toString());
+        })
+      );
+
+      const allIds = idsByType.flat();
+      return Promise.all(allIds.map((id) => this.getOffer(id)));
+    } catch (error) {
+      console.error("Error getting active offers:", error);
       throw error;
     }
   }

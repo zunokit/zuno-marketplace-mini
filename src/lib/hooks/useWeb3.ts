@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import { web3Utils } from "@/lib/utils/web3";
 import type { ethers } from "ethers";
 
-interface UseWeb3Return {
+export interface UseWeb3Return {
   account: string | null;
   chainId: number | null;
   balance: string | null;
