@@ -141,15 +141,35 @@ export class MarketplaceHubService {
   }
 
   /**
-   * Get collection factory for token type
+   * Get collection factory for token type (from cache)
    */
-  async getCollectionFactory(
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<string> {
-    if (!this.hub) {
+  getCollectionFactory(tokenType: "ERC721" | "ERC1155"): string {
+    if (!this.addresses) {
       throw new Error("Hub not initialized");
     }
-    return await this.hub.getCollectionFactory(tokenType);
+    return tokenType === "ERC721"
+      ? this.addresses.erc721Factory
+      : this.addresses.erc1155Factory;
+  }
+
+  /**
+   * Get ERC721 Factory address (from cache)
+   */
+  getERC721Factory(): string {
+    if (!this.addresses) {
+      throw new Error("Hub not initialized");
+    }
+    return this.addresses.erc721Factory;
+  }
+
+  /**
+   * Get ERC1155 Factory address (from cache)
+   */
+  getERC1155Factory(): string {
+    if (!this.addresses) {
+      throw new Error("Hub not initialized");
+    }
+    return this.addresses.erc1155Factory;
   }
 
   /**
@@ -229,7 +249,7 @@ export class MarketplaceHubService {
   }
 
   /**
-   * Get Bundle Manager address
+   * Get Bundle Manager address (from cache)
    */
   getBundleManager(): string {
     if (!this.addresses) {
@@ -239,7 +259,7 @@ export class MarketplaceHubService {
   }
 
   /**
-   * Get Offer Manager address
+   * Get Offer Manager address (from cache)
    */
   getOfferManager(): string {
     if (!this.addresses) {
@@ -248,24 +268,188 @@ export class MarketplaceHubService {
     return this.addresses.offerManager;
   }
 
+  // ==================== REGISTRY QUERIES ====================
+
   /**
-   * Get Bundle Manager address async (for compatibility)
+   * Get all registered exchanges
    */
-  async getBundleManagerAsync(): Promise<string> {
+  async getAllExchanges(): Promise<{
+    standards: number[];
+    exchanges: string[];
+  }> {
     if (!this.hub) {
       throw new Error("Hub not initialized");
     }
-    return await this.hub.getBundleManager();
+    const [standards, exchanges] = await this.hub.getAllExchanges();
+    return { standards, exchanges };
   }
 
   /**
-   * Get Offer Manager address async (for compatibility)
+   * Get all registered factories
    */
-  async getOfferManagerAsync(): Promise<string> {
+  async getAllFactories(): Promise<{
+    tokenTypes: string[];
+    factories: string[];
+  }> {
     if (!this.hub) {
       throw new Error("Hub not initialized");
     }
-    return await this.hub.getOfferManager();
+    const [tokenTypes, factories] = await this.hub.getAllFactories();
+    return { tokenTypes, factories };
+  }
+
+  /**
+   * Get all registered auction contracts
+   */
+  async getAllAuctions(): Promise<{
+    types: number[];
+    contracts: string[];
+  }> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    const [types, contracts] = await this.hub.getAllAuctions();
+    return { types, contracts };
+  }
+
+  /**
+   * Check if address is a registered exchange
+   */
+  async isRegisteredExchange(exchange: string): Promise<boolean> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.isRegisteredExchange(exchange);
+  }
+
+  /**
+   * Check if address is a registered factory
+   */
+  async isRegisteredFactory(factory: string): Promise<boolean> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.isRegisteredFactory(factory);
+  }
+
+  /**
+   * Check if address is a registered auction contract
+   */
+  async isRegisteredAuction(auctionContract: string): Promise<boolean> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.isRegisteredAuction(auctionContract);
+  }
+
+  // ==================== ADDITIONAL FEE QUERIES ====================
+
+  /**
+   * Calculate platform fee only
+   */
+  async calculatePlatformFee(salePrice: bigint): Promise<bigint> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.calculatePlatformFee(salePrice);
+  }
+
+  /**
+   * Calculate royalty fee only
+   */
+  async calculateRoyalty(
+    nftContract: string,
+    tokenId: string,
+    salePrice: bigint
+  ): Promise<{ recipient: string; amount: bigint }> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    const [recipient, amount] = await this.hub.calculateRoyalty(
+      nftContract,
+      tokenId,
+      salePrice
+    );
+    return { recipient, amount };
+  }
+
+  /**
+   * Get fee-related contract addresses
+   */
+  async getFeeContracts(): Promise<{
+    baseFeeContract: string;
+    feeManagerContract: string;
+    royaltyManagerContract: string;
+  }> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    const [baseFeeContract, feeManagerContract, royaltyManagerContract] =
+      await this.hub.getFeeContracts();
+    return {
+      baseFeeContract,
+      feeManagerContract,
+      royaltyManagerContract,
+    };
+  }
+
+  // ==================== REGISTRY ACCESS ====================
+
+  /**
+   * Get Exchange Registry address
+   */
+  async getExchangeRegistry(): Promise<string> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.getExchangeRegistry();
+  }
+
+  /**
+   * Get Collection Registry address
+   */
+  async getCollectionRegistry(): Promise<string> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.getCollectionRegistry();
+  }
+
+  /**
+   * Get Fee Registry address
+   */
+  async getFeeRegistry(): Promise<string> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.getFeeRegistry();
+  }
+
+  /**
+   * Get Auction Registry address
+   */
+  async getAuctionRegistry(): Promise<string> {
+    if (!this.hub) {
+      throw new Error("Hub not initialized");
+    }
+    return await this.hub.getAuctionRegistry();
+  }
+
+  // ==================== ADMIN FUNCTIONS ====================
+
+  /**
+   * Update a registry address (Admin only)
+   * @param registryType "exchange", "collection", "fee", "auction", "bundle", or "offer"
+   * @param newRegistry The new registry address
+   */
+  async updateRegistry(
+    registryType: string,
+    newRegistry: string
+  ): Promise<ethers.ContractTransactionResponse> {
+    if (!this.hub || !this.signer) {
+      throw new Error("Hub not initialized with signer");
+    }
+    return await this.hub.updateRegistry(registryType, newRegistry);
   }
 }
 
