@@ -2,7 +2,9 @@
 
 ## Problem
 
-The minting error `0xf501eed5` (Collection__MintingNotStarted) was occurring because the mint stage was set to "not_started" but the UI was still showing the mint button as enabled.
+The minting error `0xf501eed5` (Collection__MintingNotStarted) was occurring due to two issues:
+1. The mint stage enum value (BigInt) wasn't being properly compared with regular numbers
+2. When in allowlist stage, addresses need to be added to the allowlist first
 
 ## Solution
 
@@ -35,6 +37,21 @@ npx tsx scripts/start-mint.ts 0xYourCollectionAddress
 
 # Skip directly to public mint (stage 2)
 npx tsx scripts/start-mint.ts 0xYourCollectionAddress 2
+```
+
+**Script to Manage Allowlist:**
+```bash
+# Add addresses to allowlist (required for allowlist stage)
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress add 0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
+
+# Add multiple addresses
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress add 0xAddr1 0xAddr2 0xAddr3
+
+# Remove from allowlist
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress remove 0xAddress
+
+# Check if address is in allowlist
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress check 0xAddress
 ```
 
 #### For Collection Owners
@@ -88,9 +105,23 @@ if (isOwner) {
 }
 ```
 
-## Testing
+## Complete Setup Guide
 
+To enable minting for your collection, follow these steps:
+
+### For Allowlist Stage:
 1. Deploy a new collection
-2. Try to mint (should fail with "Minting has not started yet")
-3. Run the start-mint script or use the UI component
-4. Try to mint again (should succeed if in allowlist or public stage)
+2. Update mint stage to allowlist: `npx tsx scripts/start-mint.ts 0xCollectionAddress`
+3. Add addresses to allowlist: `npx tsx scripts/manage-allowlist.ts 0xCollectionAddress add 0xYourWalletAddress`
+4. Now allowlisted addresses can mint
+
+### For Public Stage:
+1. Deploy a new collection
+2. Update mint stage to public: `npx tsx scripts/start-mint.ts 0xCollectionAddress 2`
+3. Now anyone can mint
+
+### Testing Steps:
+1. Check current mint stage in console logs (look for "🔍 Mint stage enum value")
+2. If stage is 1 (allowlist), ensure your address is allowlisted
+3. If stage is 2 (public), anyone can mint
+4. The UI will now properly show if you can mint based on stage and allowlist status

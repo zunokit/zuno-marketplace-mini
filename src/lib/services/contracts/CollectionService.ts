@@ -551,11 +551,13 @@ export class CollectionService {
       console.log("🔍 Mint stage enum value:", currentStageEnum);
       
       if (currentStageEnum !== undefined) {
-        if (currentStageEnum === 0 || currentStageEnum === "0") {
+        // Convert to number for comparison (handles BigInt, string, and number)
+        const stageNum = Number(currentStageEnum);
+        if (stageNum === 0) {
           mintStage = "not_started";
-        } else if (currentStageEnum === 1 || currentStageEnum === "1") {
+        } else if (stageNum === 1) {
           mintStage = "allowlist";
-        } else if (currentStageEnum === 2 || currentStageEnum === "2") {
+        } else if (stageNum === 2) {
           mintStage = "public";
         }
       }
