@@ -167,29 +167,48 @@ export async function initializeServices(
   provider: any,
   signer?: any
 ): Promise<void> {
-  // Initialize Hub first (it loads all addresses)
-  await marketplaceHubService.initialize(provider, signer);
+  try {
+    // Initialize Hub first (it loads all addresses)
+    await marketplaceHubService.initialize(provider, signer);
 
-  // Initialize other services
-  const services = [
-    exchangeService,
-    auctionService,
-    bundleService,
-    offerService,
-    collectionService,
-    feeManagerService,
-    royaltyManagerService,
-    accessControlService,
-    emergencyManagerService,
-    listingValidatorService,
-    listingHistoryTrackerService,
-    collectionVerifierService,
-    timelockService,
-  ];
+    // Check if we have valid addresses
+    const addresses = marketplaceHubService.getAddresses();
+    const hasValidAddresses = addresses.erc721Exchange !== "0x0000000000000000000000000000000000000000";
 
-  await Promise.all(services.map((svc) => svc.initialize(provider, signer)));
+    if (hasValidAddresses) {
+      // Initialize other services only if we have valid addresses
+      const services = [
+        exchangeService,
+        auctionService,
+        bundleService,
+        offerService,
+        collectionService,
+        feeManagerService,
+        royaltyManagerService,
+        accessControlService,
+        emergencyManagerService,
+        listingValidatorService,
+        listingHistoryTrackerService,
+        collectionVerifierService,
+        timelockService,
+      ];
 
-  console.log(
-    `✅ All marketplace services initialized (${services.length} services)`
-  );
+      await Promise.all(services.map((svc) => svc.initialize(provider, signer)));
+
+      console.log(
+        `✅ All marketplace services initialized (${services.length} services)`
+      );
+    } else {
+      console.log(
+        "⚠️ Marketplace services not initialized - contracts not deployed"
+      );
+      console.log(
+        "Deploy the contracts using the zuno-marketplace-contracts repository"
+      );
+    }
+  } catch (error) {
+    console.error("Failed to initialize services:", error);
+    // Don't throw - allow app to run in limited mode
+    console.log("⚠️ Running in limited mode without smart contract features");
+  }
 }
