@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MainLayout } from '@/components/common/layout/MainLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -62,13 +62,21 @@ const categories = [
 ]
 
 export default function CreateCollectionPage() {
-  const { account, isConnected } = useWallet()
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [logoImage, setLogoImage] = useState<string | null>(null)
   const [bannerImage, setBannerImage] = useState<string | null>(null)
   const [contractType, setContractType] = useState<'ERC721' | 'ERC1155'>('ERC721')
+  const [mounted, setMounted] = useState(false)
+
+  // Use effect to set mounted state
+  const { account, isConnected } = useWallet()
+  
+  // Ensure client-side only rendering for wallet-dependent parts
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const {
     register,
@@ -96,6 +104,18 @@ export default function CreateCollectionPage() {
   })
 
   const watchedValues = watch()
+
+  // Show loading state while mounting
+  if (!mounted) {
+    return (
+      <MainLayout>
+        <div className="max-w-2xl mx-auto py-20 text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </MainLayout>
+    )
+  }
 
   if (!isConnected) {
     return (
@@ -132,29 +152,43 @@ export default function CreateCollectionPage() {
   const onSubmit = async (data: CreateCollectionForm) => {
     setIsSubmitting(true)
     try {
-      // Creating collection and connecting to MetaMask...
-      await web3Utils.connectMetaMask()
+      // Import Web3 provider service
+      const { web3Provider } = await import('@/lib/services/web3/Web3Provider')
+      const { DEFAULT_CHAIN_ID } = await import('@/lib/config/networks')
       
-      const connectedAccount = await web3Utils.getAccount()
-      if (!connectedAccount) {
-        throw new Error('No account found after MetaMask connection')
+      // Connect wallet
+      const connection = await web3Provider.connect()
+      
+      // Check if on correct network
+      if (connection.chainId !== DEFAULT_CHAIN_ID) {
+        const shouldSwitch = window.confirm(
+          `You are on wrong network (chainId: ${connection.chainId}).\n` +
+          `Would you like to switch to the correct network (chainId: ${DEFAULT_CHAIN_ID})?`
+        )
+        
+        if (shouldSwitch) {
+          await web3Provider.switchNetwork(DEFAULT_CHAIN_ID)
+          // Re-connect after network switch
+          const newConnection = await web3Provider.connect()
+          connection.provider = newConnection.provider
+          connection.signer = newConnection.signer
+          connection.account = newConnection.account
+          connection.chainId = newConnection.chainId
+        } else {
+          throw new Error('Please switch to the correct network to continue')
+        }
       }
       
-      console.log('✅ MetaMask connected with account:', connectedAccount)
-
-      // Create localhost provider with MetaMask signer for localhost contracts
-      const { JsonRpcProvider } = await import('ethers')
-      const localhostProvider = new JsonRpcProvider('http://127.0.0.1:8545')
-      const signer = web3Utils.getSigner()
+      console.log('✅ Wallet connected:', {
+        chainId: connection.chainId,
+        account: connection.account,
+        wallet: connection.walletType
+      })
       
-      if (!signer) {
-        throw new Error('Signer not available after MetaMask connection')
-      }
-      
-      // Import and re-initialize services with signer
+      // Import and initialize services with wallet signer
       const { marketplaceHubService } = await import('@/lib/services/contracts')
-      await marketplaceHubService.initialize(localhostProvider, signer)
-      await collectionService.initialize(localhostProvider, signer)
+      await marketplaceHubService.initialize(connection.provider, connection.signer)
+      await collectionService.initialize(connection.provider, connection.signer)
 
       // Call real smart contract
       const collectionAddress = await collectionService.createCollection({

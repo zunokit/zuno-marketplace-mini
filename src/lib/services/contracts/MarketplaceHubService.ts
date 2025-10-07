@@ -5,7 +5,7 @@
  */
 
 import { ethers } from "ethers";
-import { getMarketplaceHubAddress } from "@/lib/contracts/addresses";
+import { getHubAddress } from "@/lib/config/networks";
 import { MarketplaceHub_ABI } from "@/lib/contracts/abis";
 
 export interface MarketplaceAddresses {
@@ -47,7 +47,7 @@ export class MarketplaceHubService {
 
     const network = await provider.getNetwork();
     const chainId = Number(network.chainId);
-    const hubAddress = getMarketplaceHubAddress(chainId);
+    const hubAddress = getHubAddress(chainId);
 
     // Check if hub address is configured
     if (!hubAddress || hubAddress === "0x0000000000000000000000000000000000000000") {
@@ -81,9 +81,9 @@ export class MarketplaceHubService {
         chainId,
         addresses: this.addresses,
       });
-    } catch (error) {
-      console.error("Failed to load addresses from hub:", error);
-      console.log("Using default addresses for development/testing");
+    } catch (error: any) {
+      console.error("❌ Failed to load addresses from hub:", error?.message || error);
+      console.warn("⚠️ Hub may not be properly initialized or ABI mismatch");
       this.setDefaultAddresses();
     }
   }

@@ -88,16 +88,14 @@ export class CollectionService {
 
     console.log(`🏭 ${tokenType} Factory Address:`, factoryAddress);
 
-    if (!factoryAddress || factoryAddress === "0x0000000000000000000000000000000000000000") {
+    if (!factoryAddress || factoryAddress === "0x0000000000000000000000000000000000") {
       console.error(`❌ ${tokenType} Factory not available:`, {
         factoryAddress,
         hubInitialized: !!marketplaceHubService,
         addresses: marketplaceHubService.getAddresses()
       });
       throw new Error(
-        `${tokenType} Factory not deployed or not found in hub. ` +
-        `Expected address: 0xcbEAF3BDe82155F56486Fb5a1072cb8baAf547cc (for ERC721). ` +
-        `Make sure the MarketplaceHub is properly initialized and contracts are deployed.`
+        `${tokenType} Factory not deployed or not found in hub (expected: ${factoryAddress})`
       );
     }
 
