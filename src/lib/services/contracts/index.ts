@@ -149,6 +149,11 @@ export type {
   PendingAction,
 } from "./TimelockService";
 
+export { collectionQueryService, CollectionQueryService } from "./CollectionQueryService";
+export type {
+  CollectionData,
+} from "./CollectionQueryService";
+
 /**
  * Initialize all services
  *

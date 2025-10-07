@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { CollectionsGrid } from "@/components/features/collection/CollectionsGrid";
 import { Input } from "@/components/ui/input";
@@ -15,87 +15,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, TrendingUp, Filter, Grid3X3, List } from "lucide-react";
 import Link from "next/link";
+import { collectionQueryService, type CollectionData } from "@/lib/services/contracts/CollectionQueryService";
+import { marketplaceHubService } from "@/lib/services/contracts/MarketplaceHubService";
+import { web3Utils } from "@/lib/utils/web3";
 
-// Mock collections data
-const collections = [
-  {
-    address: "0x123...",
-    name: "Cosmic Warriors",
-    symbol: "CW",
-    description:
-      "A collection of 10,000 unique cosmic warriors ready for battle across the metaverse.",
-    image: "https://picsum.photos/200/200?random=1",
-    bannerImage: "https://picsum.photos/800/200?random=1",
-    creator: "0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c",
-    verified: true,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 10000,
-      totalOwners: 5432,
-      floorPrice: "1.2",
-      totalVolume: "12500.5",
-      listed: 234,
-    },
-    createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-  },
-  {
-    address: "0x456...",
-    name: "Digital Dreams",
-    symbol: "DD",
-    description:
-      "Surreal digital art pieces that blur the line between reality and imagination.",
-    image: "https://picsum.photos/200/200?random=2",
-    creator: "0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c",
-    verified: false,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 5000,
-      totalOwners: 2876,
-      floorPrice: "0.8",
-      totalVolume: "8750.2",
-      listed: 156,
-    },
-    createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000, // 15 days ago
-  },
-  {
-    address: "0x789...",
-    name: "Neon Nights",
-    symbol: "NN",
-    description:
-      "Cyberpunk-inspired collectibles featuring neon aesthetics and futuristic themes.",
-    image: "https://picsum.photos/200/200?random=3",
-    creator: "0x964f57ed8cc7e9d5f6c0e9d6c4d5b3a1f9e7d0c6c",
-    verified: true,
-    type: "ERC1155" as const,
-    stats: {
-      totalSupply: 2500,
-      totalOwners: 1892,
-      floorPrice: "2.1",
-      totalVolume: "15320.8",
-      listed: 89,
-    },
-    createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000, // 7 days ago
-  },
-  {
-    address: "0xABC...",
-    name: "Abstract Emotions",
-    symbol: "AE",
-    description:
-      "Abstract art pieces that capture the essence of human emotions through color and form.",
-    image: "https://picsum.photos/200/200?random=4",
-    creator: "0x123456789abcdef123456789abcdef123456789a",
-    verified: false,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 1000,
-      totalOwners: 678,
-      floorPrice: "3.5",
-      totalVolume: "4500.2",
-      listed: 45,
-    },
-    createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000, // 60 days ago
-  },
-];
+// No mock data - load only from blockchain contracts
 
 const sortOptions = [
   { value: "volume_desc", label: "Highest Volume" },
@@ -120,7 +44,85 @@ export default function CollectionsPage() {
   const [sortBy, setSortBy] = useState("volume_desc");
   const [filterBy, setFilterBy] = useState("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [collections, setCollections] = useState<CollectionData[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load collections on mount (client-side only)
+  useEffect(() => {
+    // Only run on client-side to avoid SSR issues
+    if (typeof window !== 'undefined') {
+      loadCollections();
+    }
+  }, []);
+
+  const loadCollections = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setCollections([]); // Clear existing collections
+
+      // Check if we're in browser environment
+      if (typeof window === 'undefined') {
+        console.log("⚠️ Not in browser environment");
+        setError("Browser environment required for blockchain connection");
+        return;
+      }
+
+      // Initialize web3 and services
+      console.log("🔗 Initializing Web3 provider...");
+      await web3Utils.initializeProvider();
+      const provider = web3Utils.getProvider();
+      
+      if (!provider) {
+        console.log("❌ No Web3 provider available");
+        setError("Web3 provider not available. Please connect your wallet to view collections.");
+        return;
+      }
+
+      console.log("✅ Web3 provider initialized");
+
+      // Initialize collection query service
+      console.log("🔍 Initializing collection query service...");
+      await collectionQueryService.initialize(provider);
+      
+      // Get all collections from blockchain
+      console.log("📡 Loading collections from blockchain...");
+      const blockchainCollections = await collectionQueryService.getAllCollections();
+      
+      console.log(`✅ Found ${blockchainCollections.length} collections from blockchain`);
+      console.log("🔍 Collections data:", blockchainCollections);
+      
+      // Debug: Check if collections are valid
+      const validCollections = blockchainCollections.filter(c => c && c.address && c.name);
+      console.log(`✅ Valid collections: ${validCollections.length}`);
+      
+      setCollections(blockchainCollections);
+      console.log("🔄 Collections state updated");
+      console.log("🔍 State collections:", blockchainCollections.slice(0, 2)); // Show first 2 for debugging
+
+      if (blockchainCollections.length === 0) {
+        // Check if contracts are deployed
+        const addresses = marketplaceHubService.getAddresses();
+        const contractsDeployed = addresses.erc721Factory !== "0x0000000000000000000000000000000000000000";
+        
+        if (!contractsDeployed) {
+          setError(
+            "Marketplace contracts not deployed. Please deploy the contracts using 'zuno-marketplace-contracts' repository or switch to a network with deployed contracts."
+          );
+        } else {
+          setError("No collections found on blockchain. Try creating a collection first.");
+        }
+      }
+
+    } catch (error) {
+      console.error("❌ Error loading collections:", error);
+      setError(`Failed to load collections from blockchain: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setCollections([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter and sort collections
   const filteredAndSortedCollections = useMemo(() => {
@@ -189,8 +191,9 @@ export default function CollectionsPage() {
       }
     });
 
+    console.log("🔍 Filtered collections:", filtered);
     return filtered;
-  }, [searchQuery, sortBy, filterBy]);
+  }, [collections, searchQuery, sortBy, filterBy]);
 
   return (
     <MainLayout>
@@ -280,8 +283,11 @@ export default function CollectionsPage() {
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {loading
-              ? "Loading..."
+              ? "Loading collections from blockchain..."
               : `${filteredAndSortedCollections.length} collections found`}
+            {!loading && collections.length > 0 && (
+              <span className="ml-2 text-green-600">✅ Live from blockchain</span>
+            )}
           </p>
 
           {(searchQuery || filterBy !== "all") && (
@@ -314,6 +320,17 @@ export default function CollectionsPage() {
         </div>
       </div>
 
+      {/* Error State */}
+      {error && (
+        <div className="text-center py-12">
+          <div className="text-yellow-600 mb-4">⚠️</div>
+          <h3 className="text-lg font-semibold mb-2">{error}</h3>
+          <Button onClick={loadCollections} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      )}
+
       {/* Collections Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -337,19 +354,32 @@ export default function CollectionsPage() {
       ) : (
         <div className="flex flex-col items-center justify-center py-12">
           <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">No collections found</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              {collections.length === 0 ? "No collections available" : "No collections found"}
+            </h3>
             <p className="text-muted-foreground mb-4">
-              Try adjusting your search or filter criteria
+              {collections.length === 0 
+                ? "No collections have been created on this blockchain yet. Be the first to create one!"
+                : "Try adjusting your search or filter criteria"}
             </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSearchQuery("");
-                setFilterBy("all");
-              }}
-            >
-              Clear Filters
-            </Button>
+            {collections.length === 0 ? (
+              <Button asChild>
+                <Link href="/collections/create">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create First Collection
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilterBy("all");
+                }}
+              >
+                Clear Filters
+              </Button>
+            )}
           </div>
         </div>
       )}

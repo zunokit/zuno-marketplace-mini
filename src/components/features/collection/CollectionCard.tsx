@@ -110,8 +110,13 @@ export function CollectionCard({
                   onError={() => setImageError(true)}
                 />
               ) : (
-                <div className="flex h-full items-center justify-center">
-                  <Package className="h-6 w-6 text-muted-foreground" />
+                <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-100 to-purple-100">
+                  <div className="flex flex-col items-center gap-1">
+                    <Package className="h-6 w-6 text-blue-600" />
+                    <span className="text-xs font-semibold text-blue-600">
+                      {collection.symbol}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -190,8 +195,13 @@ export function CollectionCard({
                 }}
               />
             ) : (
-              <div className="flex h-full items-center justify-center bg-muted">
-                <Package className="h-6 w-6 text-muted-foreground" />
+              <div className="flex h-full items-center justify-center bg-gradient-to-br from-indigo-100 to-pink-100">
+                <div className="flex flex-col items-center gap-1">
+                  <Package className="h-4 w-4 text-indigo-600" />
+                  <span className="text-xs font-bold text-indigo-600">
+                    {collection.symbol.slice(0, 3)}
+                  </span>
+                </div>
               </div>
             )}
           </div>

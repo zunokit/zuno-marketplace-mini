@@ -36,6 +36,9 @@ export function CollectionsGrid({
   collections,
   viewMode = "grid",
 }: CollectionsGridProps) {
+  console.log("🎨 CollectionsGrid received collections:", collections.length);
+  console.log("🎨 First collection:", collections[0]);
+
   const handleFollow = (collectionAddress: string) => {
     console.log("Follow collection:", collectionAddress);
   };

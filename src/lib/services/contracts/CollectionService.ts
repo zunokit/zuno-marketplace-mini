@@ -138,6 +138,13 @@ export class CollectionService {
         tokenURI: params.baseURI || "https://api.example.com/metadata/",
       };
 
+      console.log("🔍 DEBUG: Collection parameters being sent:", {
+        name: params.name,
+        symbol: params.symbol,
+        description: params.description,
+        collectionParams
+      });
+
       // Use correct method name based on token type
       const methodName = params.tokenType === "ERC721" ? "createERC721Collection" : "createERC1155Collection";
       const tx = await factory[methodName](collectionParams);
@@ -145,10 +152,11 @@ export class CollectionService {
       const receipt = await tx.wait();
 
       // Find CollectionCreated event
+      const eventName = params.tokenType === "ERC721" ? "ERC721CollectionCreated" : "ERC1155CollectionCreated";
       const event = receipt.logs.find((log: any) => {
         try {
           const parsed = factory.interface.parseLog(log);
-          return parsed?.name === "CollectionCreated";
+          return parsed?.name === eventName;
         } catch {
           return false;
         }
