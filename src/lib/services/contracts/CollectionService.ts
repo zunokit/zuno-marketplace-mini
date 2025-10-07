@@ -469,6 +469,35 @@ export class CollectionService {
   }
 
   /**
+   * Update mint stage for a collection (owner only)
+   * This function progresses the mint stage from not_started -> allowlist -> public
+   */
+  async updateMintStage(
+    collectionAddress: string,
+    tokenType: "ERC721" | "ERC1155"
+  ): Promise<ethers.ContractTransactionResponse> {
+    try {
+      if (!this.signer) {
+        throw new Error("Signer not available - connect wallet first");
+      }
+
+      const collection = this.getCollectionContract(
+        collectionAddress,
+        tokenType
+      );
+
+      // Call updateMintStage to progress to the next stage
+      const tx = await collection.updateMintStage();
+      console.log("📋 Updating mint stage for collection:", collectionAddress);
+      
+      return tx;
+    } catch (error) {
+      console.error("Error updating mint stage:", error);
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
    * Get mint information for a collection
    */
   async getMintInfo(
@@ -519,17 +548,46 @@ export class CollectionService {
       // Determine mint stage
       let mintStage = "not_started";
       const currentStageEnum = mintInfo.currentStage || mintInfo[3];
+      console.log("🔍 Mint stage enum value:", currentStageEnum);
+      
       if (currentStageEnum !== undefined) {
-        if (currentStageEnum === 0) mintStage = "not_started";
-        else if (currentStageEnum === 1) mintStage = "allowlist";
-        else if (currentStageEnum === 2) mintStage = "public";
+        if (currentStageEnum === 0 || currentStageEnum === "0") {
+          mintStage = "not_started";
+        } else if (currentStageEnum === 1 || currentStageEnum === "1") {
+          mintStage = "allowlist";
+        } else if (currentStageEnum === 2 || currentStageEnum === "2") {
+          mintStage = "public";
+        }
       }
+      
+      console.log("🎯 Determined mint stage:", mintStage);
+      console.log("📊 Mint info:", {
+        mintedPerWallet,
+        mintLimitPerWallet,
+        totalMinted,
+        maxSupply,
+        currentMintPrice
+      });
 
       // Check if user can mint
-      const canMint =
-        parseInt(mintedPerWallet) < parseInt(mintLimitPerWallet) &&
-        parseInt(totalMinted) < parseInt(maxSupply) &&
-        mintStage !== "not_started";
+      const hasSupplyLeft = parseInt(totalMinted) < parseInt(maxSupply);
+      const underWalletLimit = parseInt(mintedPerWallet) < parseInt(mintLimitPerWallet);
+      const stageAllowsMinting = (mintStage === "allowlist" && isAllowlisted) || (mintStage === "public");
+      
+      // User can mint if:
+      // 1. There's supply left
+      // 2. They're under their wallet limit
+      // 3. Mint stage is active and they meet the requirements
+      const canMint = hasSupplyLeft && underWalletLimit && stageAllowsMinting;
+      
+      console.log("🚀 Can mint check:", {
+        hasSupplyLeft,
+        underWalletLimit,
+        stageAllowsMinting,
+        isAllowlisted,
+        mintStage,
+        canMint
+      });
 
       return {
         currentMintPrice,
@@ -699,6 +757,27 @@ export class CollectionService {
       const revertReason = error.message
         .split("execution reverted: ")[1]
         ?.split('"')[0];
+
+      // Check for custom error data
+      if (error.data) {
+        const errorData = error.data;
+        // Custom error selectors
+        if (errorData === "0xf501eed5" || revertReason?.includes("MintingNotStarted")) {
+          return new Error("Minting has not started yet. Please wait for the mint to begin.");
+        }
+        if (errorData === "0x5a8a1c5c" || revertReason?.includes("MintingNotActive")) {
+          return new Error("Minting is not currently active");
+        }
+        if (revertReason?.includes("MintLimitExceeded")) {
+          return new Error("You have exceeded the mint limit per wallet");
+        }
+        if (revertReason?.includes("InsufficientPayment")) {
+          return new Error("Incorrect ETH amount sent for minting");
+        }
+        if (revertReason?.includes("NotInAllowlist")) {
+          return new Error("Your address is not in the allowlist");
+        }
+      }
 
       // Common mint errors
       if (revertReason?.includes("Mint not started")) {

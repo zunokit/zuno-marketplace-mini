@@ -71,8 +71,10 @@ export function MintNFTButton({
       setMintInfo(info);
       
       // Auto-adjust quantity if it exceeds limit
-      if (info && info.mintLimitPerWallet > 0n) {
-        const remaining = Number(info.mintLimitPerWallet - info.mintedPerWallet);
+      if (info && info.mintLimitPerWallet && info.mintLimitPerWallet > BigInt(0)) {
+        const mintLimit = info.mintLimitPerWallet || BigInt(0);
+        const minted = info.mintedPerWallet || BigInt(0);
+        const remaining = Number(mintLimit - minted);
         if (remaining < quantity) {
           setQuantity(Math.max(1, remaining));
         }
@@ -118,15 +120,19 @@ export function MintNFTButton({
   };
 
   const getTotalPrice = () => {
-    if (!mintInfo) return '0';
+    if (!mintInfo || !mintInfo.currentPrice) return '0';
     const totalWei = mintInfo.currentPrice * BigInt(quantity);
     return ethers.formatEther(totalWei);
   };
 
   const getRemainingMints = () => {
     if (!mintInfo) return 0;
-    const walletRemaining = Number(mintInfo.mintLimitPerWallet - mintInfo.mintedPerWallet);
-    const supplyRemaining = Number(mintInfo.remainingSupply);
+    const mintLimit = mintInfo.mintLimitPerWallet || BigInt(0);
+    const minted = mintInfo.mintedPerWallet || BigInt(0);
+    const remaining = mintInfo.remainingSupply || BigInt(0);
+    
+    const walletRemaining = Number(mintLimit - minted);
+    const supplyRemaining = Number(remaining);
     return Math.min(walletRemaining, supplyRemaining);
   };
 
@@ -184,9 +190,19 @@ export function MintNFTButton({
                   mintInfo.currentStage === 'PUBLIC' ? 'default' :
                   mintInfo.currentStage === 'ALLOWLIST' ? 'secondary' : 'outline'
                 }>
-                  {mintInfo.currentStage}
+                  {mintInfo.currentStage === 'INACTIVE' ? 'NOT STARTED' : mintInfo.currentStage}
                 </Badge>
               </div>
+              
+              {/* Development Mode Notice */}
+              {mintInfo.currentStage === 'INACTIVE' && mintInfo.canMint && (
+                <Alert className="border-amber-200 bg-amber-50">
+                  <Info className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800">
+                    Development Mode: Minting enabled for testing despite inactive stage
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {/* Allowlist Status */}
               {mintInfo.currentStage === 'ALLOWLIST' && (
@@ -204,11 +220,11 @@ export function MintNFTButton({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Minted</span>
-                  <span>{mintInfo.totalMinted.toString()} / {mintInfo.maxSupply.toString()}</span>
+                  <span>{mintInfo.totalMinted?.toString() || '0'} / {mintInfo.maxSupply?.toString() || '0'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Your Mints</span>
-                  <span>{mintInfo.mintedPerWallet.toString()} / {mintInfo.mintLimitPerWallet.toString()}</span>
+                  <span>{mintInfo.mintedPerWallet?.toString() || '0'} / {mintInfo.mintLimitPerWallet?.toString() || '0'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Available to Mint</span>
@@ -239,7 +255,7 @@ export function MintNFTButton({
                   <div className="text-right">
                     <div className="text-2xl font-bold">{getTotalPrice()} ETH</div>
                     <div className="text-xs text-muted-foreground">
-                      {ethers.formatEther(mintInfo.currentPrice)} ETH × {quantity}
+                      {ethers.formatEther(mintInfo.currentPrice || BigInt(0))} ETH × {quantity}
                     </div>
                   </div>
                 </div>
@@ -250,11 +266,11 @@ export function MintNFTButton({
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {mintInfo.remainingSupply === 0n 
+                    {(mintInfo.remainingSupply || BigInt(0)) === BigInt(0)
                       ? 'This collection is sold out!'
                       : mintInfo.currentStage === 'INACTIVE'
                       ? 'Minting has not started yet.'
-                      : mintInfo.mintedPerWallet >= mintInfo.mintLimitPerWallet
+                      : (mintInfo.mintedPerWallet || BigInt(0)) >= (mintInfo.mintLimitPerWallet || BigInt(1))
                       ? 'You have reached the mint limit for this wallet.'
                       : mintInfo.currentStage === 'ALLOWLIST' && !mintInfo.isAllowlisted
                       ? 'You are not on the allowlist.'

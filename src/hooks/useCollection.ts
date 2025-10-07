@@ -40,6 +40,10 @@ interface UseCollectionReturn {
   // Minting operations
   mint: (params: MintParams) => Promise<string>;
   getMintInfo: (collection: string) => Promise<MintInfo | null>;
+  updateMintStage: (
+    collection: string,
+    tokenType?: TokenType
+  ) => Promise<string>;
 
   // Approval operations
   setApprovalForAll: (
@@ -337,9 +341,17 @@ export function useCollection(): UseCollectionReturn {
         if (!rawMintInfo) return null;
         
         // Transform to MintInfo type
+        // Map mint stages correctly
+        let currentStage = MintStage.INACTIVE;
+        if (rawMintInfo.mintStage === "public") {
+          currentStage = MintStage.PUBLIC;
+        } else if (rawMintInfo.mintStage === "allowlist") {
+          currentStage = MintStage.ALLOWLIST;
+        }
+        // If stage is "not_started" or "unknown", it remains INACTIVE
+        
         const info: MintInfo = {
-          currentStage: rawMintInfo.mintStage === "allowlist" ? MintStage.ALLOWLIST : 
-                       rawMintInfo.mintStage === "public" ? MintStage.PUBLIC : MintStage.INACTIVE,
+          currentStage,
           currentPrice: ethers.parseEther(rawMintInfo.currentMintPrice || "0"),
           isAllowlisted: rawMintInfo.isAllowlisted,
           mintedPerWallet: BigInt(rawMintInfo.mintedPerWallet || 0),
@@ -419,6 +431,53 @@ export function useCollection(): UseCollectionReturn {
   );
 
   /**
+   * Update mint stage for a collection (owner only)
+   */
+  const updateMintStage = useCallback(
+    async (
+      collection: string,
+      tokenType: TokenType = TokenType.ERC721
+    ): Promise<string> => {
+      if (!isConnected || !account) {
+        const message = "Please connect your wallet";
+        setError(message);
+        toast.error(message);
+        throw new CollectionError(message, "NO_WALLET");
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const toastId = toast.loading("Updating mint stage...");
+
+        const txResponse = await collectionService.updateMintStage(
+          collection,
+          tokenType === TokenType.ERC721 ? "ERC721" : "ERC1155"
+        );
+
+        const txHash = typeof txResponse === 'string' ? txResponse : (txResponse.hash || '');
+
+        toast.success("Mint stage updated successfully!", {
+          id: toastId,
+          description: `Transaction: ${txHash ? txHash.slice(0, 10) : 'Pending'}...`,
+        });
+
+        return txHash || '';
+      } catch (err: any) {
+        const message = err.message || "Failed to update mint stage";
+        setError(message);
+        toast.error(message);
+        logger.error("Mint stage update failed", err);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isConnected, account]
+  );
+
+  /**
    * Check if operator is approved
    */
   const isApprovedForAll = useCallback(
@@ -470,6 +529,7 @@ export function useCollection(): UseCollectionReturn {
     // Minting operations
     mint,
     getMintInfo,
+    updateMintStage,
 
     // Approval operations
     setApprovalForAll,
