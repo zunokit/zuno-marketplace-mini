@@ -32,6 +32,17 @@ export interface NFTAttribute {
 }
 
 // Collection Types
+export enum TokenType {
+  ERC721 = 'ERC721',
+  ERC1155 = 'ERC1155'
+}
+
+export enum MintStage {
+  INACTIVE = 'INACTIVE',
+  ALLOWLIST = 'ALLOWLIST',
+  PUBLIC = 'PUBLIC'
+}
+
 export interface Collection {
   address: string;
   name: string;
@@ -45,6 +56,74 @@ export interface Collection {
   floorPrice?: string;
   volume?: string;
   verified?: boolean;
+}
+
+export interface CollectionMetadata {
+  name: string;
+  symbol: string;
+  description?: string;
+  image?: string;
+  banner?: string;
+  website?: string;
+  twitter?: string;
+  discord?: string;
+  category?: string;
+}
+
+export interface CollectionConfig {
+  mintPrice: bigint;
+  royaltyFee: number; // Basis points (e.g., 500 = 5%)
+  maxSupply: bigint;
+  mintLimitPerWallet: bigint;
+  baseTokenURI: string;
+  revealed?: boolean; // ERC721 only
+}
+
+export interface CreateCollectionParams extends CollectionMetadata, CollectionConfig {
+  owner?: string;
+  tokenType: TokenType;
+}
+
+export interface CollectionInfo {
+  address: string;
+  tokenType: TokenType;
+  metadata: CollectionMetadata;
+  config: CollectionConfig;
+  stats: CollectionStats;
+  mintInfo?: MintInfo;
+}
+
+export interface CollectionStats {
+  totalMinted: bigint;
+  maxSupply: bigint;
+  owners: number;
+  floorPrice?: bigint;
+  volume24h?: bigint;
+  volumeTotal?: bigint;
+}
+
+export interface MintInfo {
+  currentStage: MintStage;
+  currentPrice: bigint;
+  isAllowlisted: boolean;
+  mintedPerWallet: bigint;
+  mintLimitPerWallet: bigint;
+  canMint: boolean;
+  remainingSupply: bigint;
+}
+
+export interface MintParams {
+  collection: string;
+  to?: string;
+  quantity?: number;
+  tokenIds?: number[]; // For ERC1155 specific token IDs
+}
+
+export interface BatchMintParams {
+  collection: string;
+  recipients: string[];
+  quantities: number[];
+  tokenIds?: number[]; // For ERC1155
 }
 
 // Listing Types
@@ -255,4 +334,37 @@ export interface ContractError {
   code: string;
   message: string;
   data?: any;
+}
+
+export class CollectionError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'CollectionError';
+  }
+}
+
+export class MintError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'MintError';
+  }
+}
+
+export class TransactionError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: any
+  ) {
+    super(message);
+    this.name = 'TransactionError';
+  }
 }
