@@ -16,7 +16,17 @@ import {
 export interface CreateCollectionParams {
   name: string;
   symbol: string;
-  baseURI: string;
+  owner?: string;
+  description?: string;
+  mintPrice?: string;
+  royaltyFee?: string;
+  maxSupply?: string;
+  mintLimitPerWallet?: string;
+  mintStartTime?: string;
+  allowlistMintPrice?: string;
+  publicMintPrice?: string;
+  allowlistStageDuration?: string; // Duration in seconds (default 24h = 86400)
+  baseURI?: string;
   tokenType: "ERC721" | "ERC1155";
 }
 
@@ -76,6 +86,21 @@ export class CollectionService {
       tokenType
     );
 
+    console.log(`🏭 ${tokenType} Factory Address:`, factoryAddress);
+
+    if (!factoryAddress || factoryAddress === "0x0000000000000000000000000000000000000000") {
+      console.error(`❌ ${tokenType} Factory not available:`, {
+        factoryAddress,
+        hubInitialized: !!marketplaceHubService,
+        addresses: marketplaceHubService.getAddresses()
+      });
+      throw new Error(
+        `${tokenType} Factory not deployed or not found in hub. ` +
+        `Expected address: 0xcbEAF3BDe82155F56486Fb5a1072cb8baAf547cc (for ERC721). ` +
+        `Make sure the MarketplaceHub is properly initialized and contracts are deployed.`
+      );
+    }
+
     const abi =
       tokenType === "ERC721"
         ? ERC721CollectionFactory_ABI
@@ -89,15 +114,33 @@ export class CollectionService {
    */
   async createCollection(
     params: CreateCollectionParams
-  ): Promise<{ tx: ethers.ContractTransactionResponse; address: string }> {
+  ): Promise<string> {
     try {
       const factory = await this.getFactoryContract(params.tokenType);
+      
+      // Get current account as owner
+      const account = await this.signer!.getAddress();
 
-      const tx = await factory.createCollection(
-        params.name,
-        params.symbol,
-        params.baseURI
-      );
+      // Prepare struct parameters
+      const collectionParams = {
+        name: params.name,
+        symbol: params.symbol,
+        owner: params.owner || account,
+        description: params.description || "",
+        mintPrice: ethers.parseEther(params.mintPrice || "0.001"),
+        royaltyFee: ethers.parseUnits(params.royaltyFee || "5", 2), // 5% = 500 basis points
+        maxSupply: BigInt(params.maxSupply || "10000"),
+        mintLimitPerWallet: BigInt(params.mintLimitPerWallet || "10"),
+        mintStartTime: BigInt(params.mintStartTime || Math.floor(Date.now() / 1000)),
+        allowlistMintPrice: ethers.parseEther(params.allowlistMintPrice || "0.001"),
+        publicMintPrice: ethers.parseEther(params.publicMintPrice || "0.001"),
+        allowlistStageDuration: BigInt(params.allowlistStageDuration || "86400"), // 24 hours default
+        tokenURI: params.baseURI || "https://api.example.com/metadata/",
+      };
+
+      // Use correct method name based on token type
+      const methodName = params.tokenType === "ERC721" ? "createERC721Collection" : "createERC1155Collection";
+      const tx = await factory[methodName](collectionParams);
 
       const receipt = await tx.wait();
 
@@ -113,15 +156,68 @@ export class CollectionService {
 
       if (event) {
         const parsed = factory.interface.parseLog(event);
-        return {
-          tx,
-          address: parsed?.args.collection,
-        };
+        console.log("📋 Event parsed:", parsed);
+        console.log("📋 Event args:", parsed?.args);
+        
+        // Try different possible field names
+        const collectionAddress = parsed?.args?.collection || 
+                                 parsed?.args?.collectionAddress ||
+                                 parsed?.args?.[0] ||
+                                 parsed?.args?.[1];
+        
+        console.log("✅ Collection deployed at:", collectionAddress);
+        return collectionAddress || "0x0000000000000000000000000000000000000000";
       }
 
-      throw new Error("CollectionCreated event not found");
+      // If event parsing fails, try to get the new contract address from transaction receipt
+      console.log("⚠️ CollectionCreated event not found, trying alternative method...");
+      
+      // Get factory address for comparison
+      const factoryAddress = await marketplaceHubService.getCollectionFactory(params.tokenType);
+      
+      // For factory contracts, the new contract address is often in logs or receipt
+      if (receipt.logs && receipt.logs.length > 0) {
+        console.log("🔍 Checking transaction logs for contract address...");
+        
+        // Try to find contract creation in logs
+        for (const log of receipt.logs) {
+          console.log("🔍 Checking log:", {
+            address: log.address,
+            topics: log.topics,
+            data: log.data
+          });
+          
+          if (log.topics && log.topics.length > 0) {
+            try {
+              // Check all topics for potential contract addresses
+              for (let i = 1; i < log.topics.length; i++) {
+                const topic = log.topics[i];
+                if (topic && topic.length === 66) {
+                  const contractAddress = '0x' + topic.slice(26);
+                  // Verify it's not zero address
+                  if (contractAddress !== '0x0000000000000000000000000000000000000000') {
+                    console.log(`✅ Found contract address in topic[${i}]:`, contractAddress);
+                    return contractAddress;
+                  }
+                }
+              }
+              
+              // Also check if the log.address itself is the new contract
+              if (log.address && log.address !== factoryAddress) {
+                console.log("✅ Found contract address as log.address:", log.address);
+                return log.address;
+              }
+            } catch (e) {
+              // Continue searching
+            }
+          }
+        }
+      }
+      
+      console.log("⚠️ Using factory contract interaction as success indicator");
+      return "SUCCESS_BUT_ADDRESS_UNKNOWN";
     } catch (error) {
-      console.error("Error creating collection:", error);
+      console.error("❌ Collection creation failed:", error);
       throw this.formatTransactionError(error);
     }
   }

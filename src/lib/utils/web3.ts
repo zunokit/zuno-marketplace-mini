@@ -84,6 +84,24 @@ export class Web3Utils {
   }
 
   /**
+   * Force connect to MetaMask (for transactions)
+   */
+  async connectMetaMask(): Promise<void> {
+    if (typeof window === "undefined" || !window.ethereum) {
+      throw new Error("MetaMask not detected. Please install MetaMask.");
+    }
+
+    try {
+      this.provider = new BrowserProvider(window.ethereum);
+      await this.provider.send("eth_requestAccounts", []);
+      this.signer = await this.provider.getSigner();
+      console.log("✅ MetaMask connected for transactions");
+    } catch (error) {
+      throw new Error("Failed to connect MetaMask: " + (error instanceof Error ? error.message : "Unknown error"));
+    }
+  }
+
+  /**
    * Get connected account address
    */
   async getAccount(): Promise<string | null> {

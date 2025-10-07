@@ -30,14 +30,18 @@ import {
 import { useForm } from 'react-hook-form'
 import { useWallet } from '@/hooks/useWallet'
 import { useRouter } from 'next/navigation'
+import { collectionService } from '@/lib/services/contracts'
+import { web3Utils } from '@/lib/utils/web3'
 
 interface CreateCollectionForm {
   name: string
   symbol: string
   description: string
   category: string
-  supply: string
+  maxSupply: string
   royaltyPercentage: string
+  mintPrice: string
+  mintLimitPerWallet: string
   website?: string
   twitter?: string
   discord?: string
@@ -75,7 +79,18 @@ export default function CreateCollectionPage() {
   } = useForm<CreateCollectionForm>({
     mode: 'onChange',
     defaultValues: {
+      // Pre-filled test data for quick testing
+      name: 'Test NFT Collection',
+      symbol: 'TNC',
+      description: 'A test collection to verify contract deployment works correctly',
+      category: 'Art',
+      maxSupply: '1000',
       royaltyPercentage: '5',
+      mintPrice: '0.01',
+      mintLimitPerWallet: '10',
+      website: 'https://example.com',
+      twitter: 'https://twitter.com/test',
+      discord: 'https://discord.gg/test',
       explicitContent: false,
     },
   })
@@ -117,21 +132,50 @@ export default function CreateCollectionPage() {
   const onSubmit = async (data: CreateCollectionForm) => {
     setIsSubmitting(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      // Creating collection and connecting to MetaMask...
+      await web3Utils.connectMetaMask()
       
-      console.log('Creating collection with data:', {
-        ...data,
-        contractType,
-        logoImage,
-        bannerImage,
-        creator: account,
+      const connectedAccount = await web3Utils.getAccount()
+      if (!connectedAccount) {
+        throw new Error('No account found after MetaMask connection')
+      }
+      
+      console.log('✅ MetaMask connected with account:', connectedAccount)
+
+      // Create localhost provider with MetaMask signer for localhost contracts
+      const { JsonRpcProvider } = await import('ethers')
+      const localhostProvider = new JsonRpcProvider('http://127.0.0.1:8545')
+      const signer = web3Utils.getSigner()
+      
+      if (!signer) {
+        throw new Error('Signer not available after MetaMask connection')
+      }
+      
+      // Import and re-initialize services with signer
+      const { marketplaceHubService } = await import('@/lib/services/contracts')
+      await marketplaceHubService.initialize(localhostProvider, signer)
+      await collectionService.initialize(localhostProvider, signer)
+
+      // Call real smart contract
+      const collectionAddress = await collectionService.createCollection({
+        name: data.name,
+        symbol: data.symbol,
+        description: data.description,
+        mintPrice: data.mintPrice,
+        royaltyFee: data.royaltyPercentage,
+        maxSupply: data.maxSupply,
+        mintLimitPerWallet: data.mintLimitPerWallet,
+        baseURI: 'https://api.example.com/metadata/',
+        tokenType: contractType as "ERC721" | "ERC1155"
       })
       
-      // Redirect to the new collection (mock address)
-      router.push('/collections/0x123456789abcdef123456789abcdef123456789a')
+      // Collection created successfully
+      
+      // Redirect to the new collection
+      router.push(`/collections/${collectionAddress}`)
     } catch (error) {
-      console.error('Error creating collection:', error)
+      console.error('❌ Error creating collection:', error)
+      alert(`Failed to create collection: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -465,23 +509,70 @@ export default function CreateCollectionPage() {
               <CardContent className="space-y-6">
                 {/* Supply */}
                 <div className="space-y-2">
-                  <Label htmlFor="supply">Maximum Supply</Label>
+                  <Label htmlFor="maxSupply">Maximum Supply</Label>
                   <Input
-                    id="supply"
+                    id="maxSupply"
                     type="number"
                     placeholder="e.g. 10000"
-                    {...register('supply', { 
-                      required: 'Supply is required',
-                      min: { value: 1, message: 'Supply must be at least 1' }
+                    {...register('maxSupply', { 
+                      required: 'Max supply is required',
+                      min: { value: 1, message: 'Max supply must be at least 1' }
                     })}
                   />
                   <p className="text-xs text-muted-foreground">
                     The maximum number of NFTs that can be minted in this collection
                   </p>
-                  {errors.supply && (
+                  {errors.maxSupply && (
                     <p className="text-sm text-destructive flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      {errors.supply.message}
+                      {errors.maxSupply.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Mint Price */}
+                <div className="space-y-2">
+                  <Label htmlFor="mintPrice">Mint Price (ETH)</Label>
+                  <Input
+                    id="mintPrice"
+                    type="number"
+                    step="0.001"
+                    placeholder="e.g. 0.001"
+                    {...register('mintPrice', {
+                      required: 'Mint price is required',
+                      min: { value: 0, message: 'Mint price must be non-negative' }
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Price in ETH for minting each NFT
+                  </p>
+                  {errors.mintPrice && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.mintPrice.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Mint Limit Per Wallet */}
+                <div className="space-y-2">
+                  <Label htmlFor="mintLimitPerWallet">Mint Limit Per Wallet</Label>
+                  <Input
+                    id="mintLimitPerWallet"
+                    type="number"
+                    placeholder="e.g. 10"
+                    {...register('mintLimitPerWallet', {
+                      required: 'Mint limit is required',
+                      min: { value: 1, message: 'Mint limit must be at least 1' }
+                    })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum NFTs each wallet can mint
+                  </p>
+                  {errors.mintLimitPerWallet && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.mintLimitPerWallet.message}
                     </p>
                   )}
                 </div>
@@ -544,8 +635,16 @@ export default function CreateCollectionPage() {
                       <Badge variant="outline">{contractType}</Badge>
                     </div>
                     <div className="flex justify-between">
-                      <span>Supply:</span>
-                      <span>{watchedValues.supply || 'Not set'}</span>
+                      <span>Max Supply:</span>
+                      <span>{watchedValues.maxSupply || 'Not set'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Mint Price:</span>
+                      <span>{watchedValues.mintPrice ? `${watchedValues.mintPrice} ETH` : 'Not set'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Mint Limit:</span>
+                      <span>{watchedValues.mintLimitPerWallet || 'Not set'} per wallet</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Royalty:</span>

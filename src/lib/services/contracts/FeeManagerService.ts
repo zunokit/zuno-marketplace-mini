@@ -95,15 +95,20 @@ export class FeeManagerService {
     this.provider = provider;
     this.signer = signer || null;
 
-    // Get fee manager address from hub's fee registry
-    const hub = marketplaceHubService.getHub();
-    const feeRegistryAddress = await hub.getFeeRegistry();
-
-    // Note: FeeRegistry should provide FeeManager address
-    // For now, we'll need to get it from FeeRegistry contract
-    // TODO: Add getFeeManager() to FeeRegistry or Hub
-
-    console.log("✅ FeeManagerService initialized");
+    try {
+      // Try to get fee manager address from hub's fee registry
+      const hub = marketplaceHubService.getHub();
+      const feeRegistryAddress = await hub.getFeeRegistry();
+      
+      // Note: FeeRegistry should provide FeeManager address
+      // For now, we'll need to get it from FeeRegistry contract
+      // TODO: Add getFeeManager() to FeeRegistry or Hub
+      
+      console.log("✅ FeeManagerService initialized with fee registry:", feeRegistryAddress);
+    } catch (error) {
+      console.log("⚠️ FeeManagerService initialized without fee registry access:", error instanceof Error ? error.message : String(error));
+      console.log("✅ FeeManagerService initialized in limited mode");
+    }
   }
 
   /**
