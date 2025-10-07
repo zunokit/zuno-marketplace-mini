@@ -10,19 +10,26 @@ const {
   ERC1155_ABI
 } = require("../utils/config");
 
-// Extended ABI for minting functions
+// Extended ABI for minting functions (Updated for Zuno contracts)
 const MINT_ABI = [
   ...ERC1155_ABI,
-  "function mint(address to, uint256 id, uint256 amount) external payable",
-  "function publicMint(uint256 id, uint256 amount) external payable",
-  "function getMintPrice() view returns (uint256)",
-  "function mintPrice() view returns (uint256)",
-  "function totalSupply(uint256 id) view returns (uint256)",
-  "function exists(uint256 id) view returns (bool)"
+  "function mint(address to, uint256 amount) external payable", // Creates new token ID
+  "function batchMintERC1155(address to, uint256 amount) external payable", // Creates multiple new token IDs
+  "function getMintPrice() external view returns (uint256)",
+  "function getMaxSupply() external view returns (uint256)",
+  "function getTotalMinted() external view returns (uint256)",
+  "function getMintLimitPerWallet() external view returns (uint256)",
+  "function getMintedPerWallet(address account) external view returns (uint256)",
+  "function getCurrentStage() external view returns (uint8)",
+  "function name() view returns (string)",
+  "function symbol() view returns (string)"
 ];
 
-async function mintERC1155(collectionAddress, tokenId = 1, amount = 1, recipientAddress = null) {
+async function mintERC1155(collectionAddress, tokenId = null, amount = 1, recipientAddress = null) {
   try {
+    // Note: In Zuno contracts, tokenId is not used - mint() creates a new token ID
+    // The tokenId parameter is kept for compatibility but will be ignored
+    
     // Validate inputs
     if (!collectionAddress || !ethers.isAddress(collectionAddress)) {
       throw new Error("Invalid collection address");
@@ -50,26 +57,18 @@ async function mintERC1155(collectionAddress, tokenId = 1, amount = 1, recipient
     }
     
     try {
-      uri = await collection.uri(tokenId);
+      uri = await collection.uri(0); // Get base URI
       console.log("   Token URI:", uri || "N/A");
     } catch (e) {
       console.log("   Token URI: Unable to fetch");
     }
     
-    // Check if token exists
+    // Get current minting stats
     try {
-      const exists = await collection.exists(tokenId);
-      if (!exists) {
-        console.log(`   ⚠️ Token ID ${tokenId} doesn't exist yet (will be created)`);
-      }
-    } catch (e) {
-      // Method might not exist
-    }
-    
-    // Try to get current supply for this token ID
-    try {
-      const supply = await collection.totalSupply(tokenId);
-      console.log(`   Current Supply (Token #${tokenId}):`, supply.toString());
+      const totalMinted = await collection.getTotalMinted();
+      const maxSupply = await collection.getMaxSupply();
+      console.log(`   Total Minted: ${totalMinted}`);
+      console.log(`   Max Supply: ${maxSupply}`);
     } catch (e) {
       // Method might not exist
     }
@@ -77,13 +76,9 @@ async function mintERC1155(collectionAddress, tokenId = 1, amount = 1, recipient
     // Try to get mint price
     try {
       mintPrice = await collection.getMintPrice();
-    } catch (e1) {
-      try {
-        mintPrice = await collection.mintPrice();
-      } catch (e2) {
-        mintPrice = ethers.parseEther("0.005"); // Default for ERC1155
-        console.log("   Mint Price: Using default 0.005 ETH");
-      }
+    } catch (e) {
+      mintPrice = ethers.parseEther("0.005"); // Default for ERC1155
+      console.log("   Mint Price: Using default 0.005 ETH");
     }
     
     if (mintPrice) {
@@ -95,44 +90,22 @@ async function mintERC1155(collectionAddress, tokenId = 1, amount = 1, recipient
     
     console.log("\n🎯 Minting Parameters:");
     console.log("   Recipient:", recipient);
-    console.log("   Token ID:", tokenId);
     console.log("   Amount:", amount);
+    console.log("   Note: Will create new token ID(s)");
     
     // Try different mint methods
     let tx;
     let success = false;
     
-    // Method 1: Try publicMint
+    // Method 1: Try mint(address, amount) - Zuno's ERC1155 mint function
     if (!success) {
       try {
-        console.log("\n🔄 Attempting publicMint(id, amount)...");
-        tx = await collection.publicMint(tokenId, amount, { value: totalCost });
+        console.log("\n🔄 Attempting mint(to, amount)...");
+        tx = await collection.mint(recipient, amount, { value: totalCost });
         success = true;
       } catch (e) {
-        console.log("   publicMint not available");
-      }
-    }
-    
-    // Method 2: Try mint with value
-    if (!success) {
-      try {
-        console.log("\n🔄 Attempting mint(to, id, amount) with payment...");
-        tx = await collection.mint(recipient, tokenId, amount, { value: totalCost });
-        success = true;
-      } catch (e) {
-        console.log("   Paid mint not available");
-      }
-    }
-    
-    // Method 3: Try mint without value (might be owner only)
-    if (!success) {
-      try {
-        console.log("\n🔄 Attempting mint(to, id, amount) without payment...");
-        tx = await collection.mint(recipient, tokenId, amount);
-        success = true;
-      } catch (e) {
-        console.log("   Free mint not available");
-        throw new Error("No compatible mint function found on this collection");
+        console.log("   mint failed:", e.message || e);
+        throw new Error("Failed to mint ERC1155 tokens: " + (e.message || e));
       }
     }
     
@@ -140,7 +113,7 @@ async function mintERC1155(collectionAddress, tokenId = 1, amount = 1, recipient
       const receipt = await waitForTransaction(tx, "Mint ERC1155 Token");
       
       console.log("\n✅ Token(s) minted successfully!");
-      console.log(`   Minted ${amount} of Token ID ${tokenId}`);
+      console.log(`   Minted ${amount} token(s)`);
       
       // Try to parse TransferSingle event
       try {

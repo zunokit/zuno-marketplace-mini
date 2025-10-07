@@ -10,34 +10,37 @@ const {
   ERC1155_ABI
 } = require("../utils/config");
 
-// Extended ABI for batch minting
+// Extended ABI for batch minting (Updated for Zuno contracts)
 const BATCH_MINT_ABI = [
   ...ERC1155_ABI,
-  "function mintBatch(address to, uint256[] ids, uint256[] amounts, bytes data) external payable",
-  "function batchMint(address to, uint256[] ids, uint256[] amounts) external payable",
-  "function mintMultiple(address to, uint256[] ids, uint256[] amounts) external payable",
-  "function getMintPrice() view returns (uint256)",
-  "function mintPrice() view returns (uint256)"
+  "function mint(address to, uint256 amount) external payable", // Creates new token ID
+  "function batchMintERC1155(address to, uint256 amount) external payable", // Creates multiple new token IDs  
+  "function getMintPrice() external view returns (uint256)",
+  "function getMaxSupply() external view returns (uint256)",
+  "function getTotalMinted() external view returns (uint256)",
+  "function name() view returns (string)",
+  "function symbol() view returns (string)"
 ];
 
 async function batchMintERC1155(collectionAddress, tokenIds = null, amounts = null, recipientAddress = null) {
   try {
+    // Note: In Zuno contracts, tokenIds are not used - batchMintERC1155() creates new token IDs
+    // We'll use the amounts array length to determine how many different tokens to create
+    
     // Validate inputs
     if (!collectionAddress || !ethers.isAddress(collectionAddress)) {
       throw new Error("Invalid collection address");
     }
 
     // Default values if not provided
-    if (!tokenIds || tokenIds.length === 0) {
-      tokenIds = [1, 2, 3, 4, 5]; // Default: mint token IDs 1-5
-    }
-    if (!amounts || amounts.length === 0) {
-      amounts = new Array(tokenIds.length).fill(10); // Default: 10 of each
-    }
-    
-    // Ensure arrays have same length
-    if (tokenIds.length !== amounts.length) {
-      throw new Error("Token IDs and amounts arrays must have the same length");
+    let numTokens = 3; // Default: create 3 different token IDs
+    if (amounts && amounts.length > 0) {
+      numTokens = amounts.length;
+    } else if (tokenIds && tokenIds.length > 0) {
+      numTokens = tokenIds.length;
+      amounts = new Array(tokenIds.length).fill(1); // Default: 1 of each
+    } else {
+      amounts = [50, 75, 100]; // Default amounts for 3 tokens
     }
 
     // Connect to network
@@ -144,35 +147,46 @@ async function batchMintERC1155(collectionAddress, tokenIds = null, amounts = nu
       }
     }
     
-    // Method 5: Fall back to sequential minting
+    // Method 5: Fall back to sequential minting (Zuno creates new token IDs)
     if (!success) {
       console.log("\n⚠️ No batch mint function available, falling back to sequential minting...");
-      console.log("This will require multiple transactions and may take longer.\n");
+      console.log("Note: Each mint creates a new token ID in Zuno contracts.\n");
       
-      for (let i = 0; i < tokenIds.length; i++) {
+      for (let i = 0; i < amounts.length; i++) {
         try {
-          const tokenId = tokenIds[i];
           const amount = amounts[i];
           const tokenCost = mintPrice * BigInt(amount);
           
-          console.log(`\n📦 Minting Token #${tokenId}:`);
-          console.log(`   Amount: ${amount} units`);
+          console.log(`\n📦 Creating new token with ${amount} units:`);
           console.log(`   Cost: ${ethers.formatEther(tokenCost)} ETH`);
           
-          let singleTx;
+          // Zuno's mint(to, amount) creates a new token ID
+          const singleTx = await collection.mint(recipient, amount, { value: tokenCost });
+          const receipt = await singleTx.wait();
+          
+          // Try to get the token ID from events
+          let newTokenId = "unknown";
           try {
-            // Try with payment
-            singleTx = await collection.mint(recipient, tokenId, amount, { value: tokenCost });
+            const transferEvents = receipt.logs.filter(log => {
+              try {
+                const parsed = collection.interface.parseLog(log);
+                return parsed?.name === "TransferSingle";
+              } catch {
+                return false;
+              }
+            });
+            if (transferEvents.length > 0) {
+              const parsed = collection.interface.parseLog(transferEvents[0]);
+              newTokenId = parsed.args[3].toString(); // Token ID is 4th argument in TransferSingle
+            }
           } catch (e) {
-            // Try without payment
-            singleTx = await collection.mint(recipient, tokenId, amount);
+            // Event parsing failed
           }
           
-          const receipt = await singleTx.wait();
-          console.log(`   ✓ Minted in block ${receipt.blockNumber}`);
+          console.log(`   ✓ Created Token #${newTokenId} with ${amount} units in block ${receipt.blockNumber}`);
           
         } catch (error) {
-          console.error(`   ✗ Failed to mint Token #${tokenIds[i]}:`, error.message);
+          console.error(`   ✗ Failed to mint token ${i + 1}:`, error.message);
           throw error;
         }
       }

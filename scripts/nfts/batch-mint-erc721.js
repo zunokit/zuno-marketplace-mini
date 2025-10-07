@@ -123,20 +123,59 @@ async function batchMintERC721(collectionAddress, quantity = 10, recipients = nu
     // Method 1: Try batchMintERC721 (Zuno's batch mint function)
     if (!success && recipientList.length === 1) {
       try {
-        console.log("\n🔄 Attempting batchMintERC721(to, amount)...");
-        tx = await collection.batchMintERC721(recipientList[0], quantity, { value: totalCost });
-        success = true;
+        // Check mint limit before attempting batch mint
+        const mintLimit = await collection.getMintLimitPerWallet();
+        const alreadyMinted = await collection.getMintedPerWallet(recipientList[0]);
+        const remaining = Number(mintLimit - alreadyMinted);
+        
+        if (remaining < quantity) {
+          console.log(`\n⚠️ Mint limit: Can only mint ${remaining} more NFTs (${alreadyMinted}/${mintLimit} already minted)`);
+          if (remaining > 0) {
+            quantity = remaining;
+            const adjustedCost = mintPrice * BigInt(quantity);
+            console.log(`   Adjusting quantity to ${quantity}, new cost: ${ethers.formatEther(adjustedCost)} ETH`);
+            console.log("\n🔄 Attempting batchMintERC721(to, amount) with adjusted quantity...");
+            tx = await collection.batchMintERC721(recipientList[0], quantity, { value: adjustedCost });
+            success = true;
+          } else {
+            console.log("   Wallet has reached mint limit, cannot mint more");
+            return;
+          }
+        } else {
+          console.log("\n🔄 Attempting batchMintERC721(to, amount)...");
+          tx = await collection.batchMintERC721(recipientList[0], quantity, { value: totalCost });
+          success = true;
+        }
       } catch (e) {
         console.log("   batchMintERC721 failed:", e.message || e);
       }
     }
     
-    // Method 4: Fall back to sequential minting
+    // Method 2: Fall back to sequential minting
     if (!success) {
       console.log("\n⚠️ No batch mint function available, falling back to sequential minting...");
       console.log("This will require multiple transactions and may take longer.\n");
       
       const recipient = recipientList[0];
+      
+      // Check mint limit first
+      try {
+        const mintLimit = await collection.getMintLimitPerWallet();
+        const alreadyMinted = await collection.getMintedPerWallet(recipient);
+        const remaining = Number(mintLimit - alreadyMinted);
+        
+        if (remaining < quantity) {
+          console.log(`⚠️ Mint limit: Can only mint ${remaining} more NFTs (${alreadyMinted}/${mintLimit} already minted)`);
+          if (remaining <= 0) {
+            console.log("   Wallet has reached mint limit, cannot mint more");
+            return;
+          }
+          quantity = remaining; // Adjust quantity to remaining allowance
+        }
+      } catch (e) {
+        // Continue if we can't check the limit
+      }
+      
       let minted = 0;
       const batchSize = 5; // Mint 5 at a time to avoid too many transactions
       
@@ -154,6 +193,14 @@ async function batchMintERC721(collectionAddress, quantity = 10, recipients = nu
             const receipt = await singleTx.wait();
             console.log(`   ✓ NFT ${minted + i + 1} minted in block ${receipt.blockNumber}`);
           } catch (error) {
+            // Check if it's a mint limit error
+            if (error.message && error.message.includes("0xe880fa1b")) {
+              console.log(`   ⚠️ Reached mint limit after ${minted + i} NFTs`);
+              if (minted > 0) {
+                console.log(`\n✅ Successfully minted ${minted + i} NFTs before hitting limit!`);
+                return;
+              }
+            }
             console.error(`   ✗ Failed to mint NFT ${minted + i + 1}:`, error.message);
             throw error;
           }
