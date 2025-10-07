@@ -43,7 +43,7 @@ import { toast } from 'sonner';
 export function CollectionDetail() {
   const params = useParams();
   const collectionAddress = params.id as string;
-  const { isConnected } = useWallet();
+  const { isConnected, provider } = useWallet();
   const { getCollectionInfo } = useCollection();
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +51,14 @@ export function CollectionDetail() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    if (collectionAddress) {
+    if (collectionAddress && provider) {
       fetchCollectionInfo();
+    } else if (collectionAddress && !provider) {
+      // Set loading to false when no provider is available
+      setIsLoading(false);
+      setError('Please connect your wallet to view collection details');
     }
-  }, [collectionAddress]);
+  }, [collectionAddress, provider]);
 
   const fetchCollectionInfo = async (refresh = false) => {
     if (refresh) {
@@ -163,10 +167,10 @@ export function CollectionDetail() {
       <div className="relative">
         {/* Banner */}
         <div className="relative h-64 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg overflow-hidden">
-          {metadata.banner ? (
+          {metadata?.banner ? (
             <img
               src={metadata.banner}
-              alt={metadata.name}
+              alt={metadata?.name || "Collection"}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -179,10 +183,10 @@ export function CollectionDetail() {
           <div className="flex items-end gap-6">
             {/* Logo */}
             <div className="relative">
-              {metadata.image ? (
+              {metadata?.image ? (
                 <img
                   src={metadata.image}
-                  alt={metadata.name}
+                  alt={metadata?.name || "Collection"}
                   className="w-32 h-32 rounded-lg border-4 border-background object-cover"
                 />
               ) : (
@@ -202,11 +206,11 @@ export function CollectionDetail() {
               <div className="flex items-start justify-between">
                 <div>
                   <h1 className="text-3xl font-bold flex items-center gap-2">
-                    {metadata.name}
+                    {metadata?.name || "Unnamed Collection"}
                     <Verified className="h-6 w-6 text-primary" />
                   </h1>
                   <p className="text-muted-foreground">
-                    {metadata.symbol} • Created by {formatAddress(collectionAddress)}
+                    {metadata?.symbol || "N/A"} • Created by {formatAddress(collectionAddress)}
                   </p>
                 </div>
                 
@@ -243,10 +247,12 @@ export function CollectionDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.totalMinted.toString()} / {stats.maxSupply.toString()}
+              {stats?.totalMinted?.toString() || "0"} / {stats?.maxSupply?.toString() || "0"}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {((Number(stats.totalMinted) / Number(stats.maxSupply)) * 100).toFixed(1)}% minted
+              {stats?.maxSupply && Number(stats.maxSupply) > 0 
+                ? `${((Number(stats.totalMinted || 0) / Number(stats.maxSupply)) * 100).toFixed(1)}% minted`
+                : "N/A"}
             </p>
           </CardContent>
         </Card>
@@ -257,7 +263,7 @@ export function CollectionDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {ethers.formatEther(config.mintPrice)} ETH
+              {config?.mintPrice ? ethers.formatEther(config.mintPrice) : "0"} ETH
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Per NFT
@@ -271,7 +277,7 @@ export function CollectionDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {(config.royaltyFee / 100).toFixed(1)}%
+              {config?.royaltyFee ? (config.royaltyFee / 100).toFixed(1) : "0"}%
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Creator fee
@@ -285,7 +291,7 @@ export function CollectionDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {config.mintLimitPerWallet.toString()}
+              {config?.mintLimitPerWallet?.toString() || "0"}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               Per wallet
@@ -309,20 +315,20 @@ export function CollectionDetail() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                {metadata.description || 'No description provided'}
+                {metadata?.description || 'No description provided'}
               </p>
             </CardContent>
           </Card>
 
           {/* Social Links */}
-          {(metadata.website || metadata.twitter || metadata.discord) && (
+          {(metadata?.website || metadata?.twitter || metadata?.discord) && (
             <Card>
               <CardHeader>
                 <CardTitle>Links</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex gap-2">
-                  {metadata.website && (
+                  {metadata?.website && (
                     <Button variant="outline" size="sm" asChild>
                       <a href={metadata.website} target="_blank" rel="noopener noreferrer">
                         <Globe className="mr-2 h-4 w-4" />
@@ -330,7 +336,7 @@ export function CollectionDetail() {
                       </a>
                     </Button>
                   )}
-                  {metadata.twitter && (
+                  {metadata?.twitter && (
                     <Button variant="outline" size="sm" asChild>
                       <a href={`https://twitter.com/${metadata.twitter}`} target="_blank" rel="noopener noreferrer">
                         <Twitter className="mr-2 h-4 w-4" />
@@ -338,7 +344,7 @@ export function CollectionDetail() {
                       </a>
                     </Button>
                   )}
-                  {metadata.discord && (
+                  {metadata?.discord && (
                     <Button variant="outline" size="sm" asChild>
                       <a href={metadata.discord} target="_blank" rel="noopener noreferrer">
                         <MessageSquare className="mr-2 h-4 w-4" />

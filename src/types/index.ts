@@ -79,9 +79,20 @@ export interface CollectionConfig {
   revealed?: boolean; // ERC721 only
 }
 
-export interface CreateCollectionParams extends CollectionMetadata, CollectionConfig {
+export interface CreateCollectionParams extends CollectionMetadata {
   owner?: string;
   tokenType: TokenType;
+  mintPrice?: string;
+  royaltyFee?: string; // Percentage as string (e.g., "5" for 5%)
+  maxSupply?: string;
+  mintLimitPerWallet?: string;
+  baseTokenURI?: string;
+  baseURI?: string; // Alias for baseTokenURI
+  mintStartTime?: string | number;
+  allowlistMintPrice?: string;
+  publicMintPrice?: string;
+  allowlistStageDuration?: string;
+  revealed?: boolean;
 }
 
 export interface CollectionInfo {

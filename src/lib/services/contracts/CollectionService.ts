@@ -53,6 +53,9 @@ export interface CollectionInfo {
   symbol: string;
   totalSupply: string;
   tokenType: "ERC721" | "ERC1155";
+  maxSupply?: string;
+  mintPrice?: string;
+  baseURI?: string;
 }
 
 export class CollectionService {
@@ -112,26 +115,28 @@ export class CollectionService {
       // Get current account as owner
       const account = await this.signer!.getAddress();
 
-      // Prepare struct parameters
+      // Prepare struct parameters - all uint256 values must be strings for ethers v6
       const collectionParams = {
         name: params.name,
         symbol: params.symbol,
         owner: params.owner || account,
         description: params.description || "",
-        mintPrice: ethers.parseEther(params.mintPrice || "0.001"),
-        royaltyFee: ethers.parseUnits(params.royaltyFee || "5", 2), // 5% = 500 basis points
-        maxSupply: BigInt(params.maxSupply || "10000"),
-        mintLimitPerWallet: BigInt(params.mintLimitPerWallet || "10"),
-        mintStartTime: BigInt(
+        mintPrice: ethers.parseEther(params.mintPrice || "0.001").toString(),
+        royaltyFee: (parseInt(params.royaltyFee || "5") * 100).toString(), // Convert percentage to basis points (5% = 500)
+        maxSupply: (params.maxSupply || "10000").toString(),
+        mintLimitPerWallet: (params.mintLimitPerWallet || "10").toString(),
+        mintStartTime: (
           params.mintStartTime || Math.floor(Date.now() / 1000)
-        ),
-        allowlistMintPrice: ethers.parseEther(
-          params.allowlistMintPrice || "0.001"
-        ),
-        publicMintPrice: ethers.parseEther(params.publicMintPrice || "0.001"),
-        allowlistStageDuration: BigInt(
+        ).toString(),
+        allowlistMintPrice: ethers
+          .parseEther(params.allowlistMintPrice || params.mintPrice || "0.001")
+          .toString(),
+        publicMintPrice: ethers
+          .parseEther(params.publicMintPrice || params.mintPrice || "0.001")
+          .toString(),
+        allowlistStageDuration: (
           params.allowlistStageDuration || "86400"
-        ), // 24 hours default
+        ).toString(), // 24 hours default
         tokenURI: params.baseURI || "https://api.example.com/metadata/",
       };
 
@@ -178,9 +183,9 @@ export class CollectionService {
           parsed?.args?.[1];
 
         console.log("✅ Collection deployed at:", collectionAddress);
-        
+
         // Log detailed info about the deployment
-        console.log('📝 Deployment details:', {
+        console.log("📝 Deployment details:", {
           collectionAddress,
           transactionHash: receipt.hash,
           blockNumber: receipt.blockNumber,
@@ -190,14 +195,19 @@ export class CollectionService {
             symbol: params.symbol,
             owner: params.owner || account,
             description: params.description,
-            tokenType: params.tokenType
-          }
+            tokenType: params.tokenType,
+          },
         });
-        
-        if (!collectionAddress || collectionAddress === "0x0000000000000000000000000000000000000000") {
-          throw new Error("Collection deployment failed - no valid address returned");
+
+        if (
+          !collectionAddress ||
+          collectionAddress === "0x0000000000000000000000000000000000000000"
+        ) {
+          throw new Error(
+            "Collection deployment failed - no valid address returned"
+          );
         }
-        
+
         return collectionAddress;
       }
 
@@ -305,8 +315,13 @@ export class CollectionService {
 
       try {
         const mintInfo = await collection.getMintInfo(minterAddress);
-        mintPrice = mintInfo.currentMintPrice || mintInfo[4] || ethers.parseEther("0");
-        console.log("💰 Mint price from contract:", ethers.formatEther(mintPrice), "ETH");
+        mintPrice =
+          mintInfo.currentMintPrice || mintInfo[4] || ethers.parseEther("0");
+        console.log(
+          "💰 Mint price from contract:",
+          ethers.formatEther(mintPrice),
+          "ETH"
+        );
       } catch (error) {
         // If getMintInfo fails, use the provided value or default
         console.log("⚠️ Could not get mint info, using provided value");
@@ -349,18 +364,29 @@ export class CollectionService {
         throw new Error("Signer not available - connect wallet first");
       }
 
-      const collectionContract = this.getCollectionContract(collection, "ERC1155");
-      
+      const collectionContract = this.getCollectionContract(
+        collection,
+        "ERC1155"
+      );
+
       // Calculate total mint price
       const minterAddress = await this.signer.getAddress();
       let totalMintPrice = ethers.parseEther("0");
-      
+
       try {
         const mintInfo = await collectionContract.getMintInfo(minterAddress);
-        const pricePerItem = mintInfo.currentMintPrice || mintInfo[4] || ethers.parseEther("0");
-        const totalAmount = amounts.reduce((sum, amount) => sum + BigInt(amount), BigInt(0));
+        const pricePerItem =
+          mintInfo.currentMintPrice || mintInfo[4] || ethers.parseEther("0");
+        const totalAmount = amounts.reduce(
+          (sum, amount) => sum + BigInt(amount),
+          BigInt(0)
+        );
         totalMintPrice = pricePerItem * totalAmount;
-        console.log("💰 Total batch mint price:", ethers.formatEther(totalMintPrice), "ETH");
+        console.log(
+          "💰 Total batch mint price:",
+          ethers.formatEther(totalMintPrice),
+          "ETH"
+        );
       } catch (error) {
         // If getMintInfo fails, use the provided value
         if (value) {
@@ -375,12 +401,18 @@ export class CollectionService {
 
       // Call batchMint if available, otherwise mint multiple times
       if (collectionContract.batchMint) {
-        return await collectionContract.batchMint(to, amounts, { value: totalMintPrice });
+        return await collectionContract.batchMint(to, amounts, {
+          value: totalMintPrice,
+        });
       } else {
         // Fallback: mint one by one (less efficient)
         console.warn("⚠️ Batch mint not available, minting one by one");
-        const totalAmount = amounts.reduce((sum, amount) => sum + parseInt(amount), 0).toString();
-        return await collectionContract.mint(to, totalAmount, { value: totalMintPrice });
+        const totalAmount = amounts
+          .reduce((sum, amount) => sum + parseInt(amount), 0)
+          .toString();
+        return await collectionContract.mint(to, totalAmount, {
+          value: totalMintPrice,
+        });
       }
     } catch (error) {
       console.error("Error batch minting NFTs:", error);
@@ -454,18 +486,36 @@ export class CollectionService {
     mintStage: string;
   }> {
     try {
-      const collection = this.getCollectionContract(collectionAddress, tokenType);
-      
+      const collection = this.getCollectionContract(
+        collectionAddress,
+        tokenType
+      );
+
       const mintInfo = await collection.getMintInfo(userAddress);
-      
+
       // Parse mint info based on the return structure
-      const currentMintPrice = ethers.formatEther(mintInfo.currentMintPrice || mintInfo[4] || "0");
-      const isAllowlisted = mintInfo.accountInAllowlist || mintInfo[11] || false;
-      const mintedPerWallet = (mintInfo.mintedPerWallet || mintInfo[9] || "0").toString();
-      const mintLimitPerWallet = (mintInfo.mintLimitPerWallet || mintInfo[10] || "0").toString();
-      const totalMinted = (mintInfo.totalMinted || mintInfo[7] || "0").toString();
+      const currentMintPrice = ethers.formatEther(
+        mintInfo.currentMintPrice || mintInfo[4] || "0"
+      );
+      const isAllowlisted =
+        mintInfo.accountInAllowlist || mintInfo[11] || false;
+      const mintedPerWallet = (
+        mintInfo.mintedPerWallet ||
+        mintInfo[9] ||
+        "0"
+      ).toString();
+      const mintLimitPerWallet = (
+        mintInfo.mintLimitPerWallet ||
+        mintInfo[10] ||
+        "0"
+      ).toString();
+      const totalMinted = (
+        mintInfo.totalMinted ||
+        mintInfo[7] ||
+        "0"
+      ).toString();
       const maxSupply = (mintInfo.maxSupply || mintInfo[8] || "0").toString();
-      
+
       // Determine mint stage
       let mintStage = "not_started";
       const currentStageEnum = mintInfo.currentStage || mintInfo[3];
@@ -474,13 +524,13 @@ export class CollectionService {
         else if (currentStageEnum === 1) mintStage = "allowlist";
         else if (currentStageEnum === 2) mintStage = "public";
       }
-      
+
       // Check if user can mint
-      const canMint = 
+      const canMint =
         parseInt(mintedPerWallet) < parseInt(mintLimitPerWallet) &&
         parseInt(totalMinted) < parseInt(maxSupply) &&
         mintStage !== "not_started";
-      
+
       return {
         currentMintPrice,
         isAllowlisted,
@@ -489,7 +539,7 @@ export class CollectionService {
         totalMinted,
         maxSupply,
         canMint,
-        mintStage
+        mintStage,
       };
     } catch (error) {
       console.error("Error getting mint info:", error);
@@ -502,7 +552,7 @@ export class CollectionService {
         totalMinted: "0",
         maxSupply: "0",
         canMint: false,
-        mintStage: "unknown"
+        mintStage: "unknown",
       };
     }
   }
@@ -523,10 +573,32 @@ export class CollectionService {
       ]);
 
       let totalSupply = "0";
+      let maxSupply = "0";
+      let mintPrice = "0";
+      let baseURI = "";
+      
       try {
         totalSupply = (await collection.totalSupply()).toString();
       } catch {
         // Some collections may not have totalSupply
+      }
+      
+      try {
+        maxSupply = (await collection.maxSupply()).toString();
+      } catch {
+        // Some collections may not have maxSupply
+      }
+      
+      try {
+        mintPrice = ethers.formatEther(await collection.mintPrice());
+      } catch {
+        // Some collections may not have mintPrice
+      }
+      
+      try {
+        baseURI = await collection.baseTokenURI();
+      } catch {
+        // Some collections may not have baseTokenURI
       }
 
       return {
@@ -535,6 +607,9 @@ export class CollectionService {
         symbol,
         totalSupply,
         tokenType,
+        maxSupply,
+        mintPrice,
+        baseURI
       };
     } catch (error) {
       console.error("Error getting collection info:", error);
@@ -598,31 +673,33 @@ export class CollectionService {
     if (error.code === "ACTION_REJECTED" || error.code === 4001) {
       return new Error("Transaction was rejected by user");
     }
-    
+
     // Insufficient funds
     if (error.code === "INSUFFICIENT_FUNDS" || error.code === -32000) {
       return new Error("Insufficient funds to complete transaction");
     }
-    
+
     // Network errors
     if (error.code === "NETWORK_ERROR") {
       return new Error("Network error - please check your connection");
     }
-    
+
     // Timeout
     if (error.code === "TIMEOUT") {
       return new Error("Transaction timed out - please try again");
     }
-    
+
     // Gas estimation failed
     if (error.message?.includes("gas required exceeds allowance")) {
       return new Error("Gas estimation failed - transaction may fail");
     }
-    
+
     // Contract revert errors
     if (error.message?.includes("execution reverted")) {
-      const revertReason = error.message.split("execution reverted: ")[1]?.split('"')[0];
-      
+      const revertReason = error.message
+        .split("execution reverted: ")[1]
+        ?.split('"')[0];
+
       // Common mint errors
       if (revertReason?.includes("Mint not started")) {
         return new Error("Minting has not started yet");
@@ -642,15 +719,15 @@ export class CollectionService {
       if (revertReason?.includes("Allowlist stage ended")) {
         return new Error("The allowlist minting stage has ended");
       }
-      
+
       return new Error(revertReason || "Transaction failed");
     }
-    
+
     // Unparseable error
     if (error.error?.message) {
       return new Error(error.error.message);
     }
-    
+
     return new Error(error.message || "Transaction failed");
   }
 }

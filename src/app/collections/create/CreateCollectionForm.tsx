@@ -13,7 +13,7 @@ import * as z from 'zod';
 import { ethers } from 'ethers';
 import { useCollection } from '@/hooks/useCollection';
 import { useWallet } from '@/providers/WalletProvider';
-import { TokenType } from '@/types';
+import { TokenType, CreateCollectionParams } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -155,17 +155,17 @@ export default function CreateCollectionForm() {
 
   const onSubmit = async (data: FormData) => {
     try {
-      // Convert form data to contract parameters
-      const params = {
+      // Convert form data to contract parameters - keep as strings for CollectionService
+      const params: CreateCollectionParams = {
         tokenType: data.tokenType as TokenType,
         name: data.name,
         symbol: data.symbol,
         description: data.description,
         category: data.category,
-        mintPrice: ethers.parseEther(data.mintPrice),
-        royaltyFee: parseFloat(data.royaltyFee), // Will be converted to basis points in service
-        maxSupply: BigInt(data.maxSupply),
-        mintLimitPerWallet: BigInt(data.mintLimitPerWallet),
+        mintPrice: data.mintPrice, // Keep as string
+        royaltyFee: data.royaltyFee, // Keep as string
+        maxSupply: data.maxSupply, // Keep as string
+        mintLimitPerWallet: data.mintLimitPerWallet, // Keep as string
         baseTokenURI: data.baseTokenURI || `https://api.example.com/metadata/`,
         image: logoImage,
         banner: bannerImage,
