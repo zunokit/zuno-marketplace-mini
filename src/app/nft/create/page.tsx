@@ -1,11 +1,7 @@
 "use client";
 
-/**
- * Mint NFT Page
- * Migrated from frontend-foundry/src/components/MintNFT.jsx
- */
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { ethers } from "ethers";
 import {
   Card,
   CardContent,
@@ -26,228 +22,344 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useAppSelector, useAppDispatch } from "@/lib/store/hooks";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAppSelector } from "@/lib/store/hooks";
 import { useToast } from "@/hooks/use-toast";
-import { ENV } from "@/lib/config/env";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
-import { getMockDataService } from "@/lib/services/mock/mockDataService";
-import { AlertCircle, CheckCircle2, Loader2, Info } from "lucide-react";
+import { 
+  AlertCircle, 
+  Loader2, 
+  Info, 
+  Wallet,
+  Package,
+  Sparkles,
+  TrendingUp
+} from "lucide-react";
+import { collectionService } from "@/lib/services/contracts/CollectionService";
 
-interface CollectionInfo {
-  name: string;
-  symbol: string;
-  mintPrice: string;
-  type: "ERC721" | "ERC1155";
-}
-
-interface MintDebugInfo {
-  currentTime: number;
-  mintStartTime: number;
-  allowlistStageEnd: number;
-  currentStage: number;
-  currentMintPrice: string;
-  allowlistPrice: string;
-  publicPrice: string;
-  totalMinted: number;
-  maxSupply: number;
-  mintedPerWallet: number;
-  mintLimitPerWallet: number;
-  isInAllowlist: boolean;
-  stageNames: string[];
-  timeUntilStart: number;
-  timeUntilPublic: number;
-  canMint: boolean;
-  mintingIssues: string[];
+// Types
+interface MintPageState {
+  selectedCollection: string;
+  mintAmount: number;
+  recipient: string;
+  isMinting: boolean;
+  isLoadingInfo: boolean;
+  collectionInfo: {
+    name: string;
+    symbol: string;
+    type: "ERC721" | "ERC1155";
+  } | null;
+  mintInfo: {
+    currentMintPrice: string;
+    mintStage: string;
+    canMint: boolean;
+    mintedPerWallet: string;
+    mintLimitPerWallet: string;
+    totalMinted: string;
+    maxSupply: string;
+    isAllowlisted: boolean;
+  } | null;
 }
 
 export default function MintNFTPage() {
-  const dispatch = useAppDispatch();
   const { toast } = useToast();
-
-  // Redux state
   const { account, isConnected } = useAppSelector((state) => state.wallet);
   const { items: collections } = useAppSelector((state) => state.collections);
 
-  // Local state
-  const [selectedCollection, setSelectedCollection] = useState("");
-  const [mintAmount, setMintAmount] = useState(1);
-  const [recipient, setRecipient] = useState("");
-  const [isMinting, setIsMinting] = useState(false);
-  const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(
-    null
-  );
-  const [debugInfo, setDebugInfo] = useState<MintDebugInfo | null>(null);
-  const [useMockData] = useState(isMockDataEnabled());
+  // Consolidated state
+  const [state, setState] = useState<MintPageState>({
+    selectedCollection: "",
+    mintAmount: 1,
+    recipient: "",
+    isMinting: false,
+    isLoadingInfo: false,
+    collectionInfo: null,
+    mintInfo: null,
+  });
 
-  // Set recipient to connected account
+  // Initialize recipient with connected account
   useEffect(() => {
     if (account) {
-      setRecipient(account);
+      setState(prev => ({ ...prev, recipient: account }));
     }
   }, [account]);
 
   // Load collection info when selection changes
   useEffect(() => {
-    if (selectedCollection) {
+    if (state.selectedCollection && account) {
       loadCollectionInfo();
     }
-  }, [selectedCollection, account]);
+  }, [state.selectedCollection, account]);
 
   /**
-   * Load collection information
+   * Load collection and mint information
    */
-  const loadCollectionInfo = async () => {
-    if (!selectedCollection) return;
+  const loadCollectionInfo = useCallback(async () => {
+    if (!state.selectedCollection || !window.ethereum) return;
+
+    setState(prev => ({ ...prev, isLoadingInfo: true }));
 
     try {
       const collection = collections.find(
-        (c) => c.address === selectedCollection
+        c => c.address === state.selectedCollection
       );
-      if (!collection) return;
+      if (!collection) throw new Error("Collection not found");
 
-      if (useMockData) {
-        // Mock data
-        const mockService = getMockDataService();
-        const mockCollection = await mockService.getCollection(
-          selectedCollection
-        );
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      await collectionService.initialize(provider);
 
-        if (mockCollection) {
-          setCollectionInfo({
-            name: mockCollection.name,
-            symbol: mockCollection.symbol,
-            mintPrice: mockCollection.mintPrice,
-            type: mockCollection.type,
-          });
-        }
-      } else {
-        // Real contract interaction
-        // TODO: Implement real contract interaction
-        toast({
-          title: "Contract Integration",
-          description: "Real contract integration coming soon",
-          variant: "default",
-        });
-      }
+      const tokenType = collection.type as "ERC721" | "ERC1155";
+      
+      // Fetch collection info
+      const collectionData = await collectionService.getCollectionInfo(
+        state.selectedCollection,
+        tokenType
+      );
+
+      // Fetch mint info for current user
+      const signer = await provider.getSigner();
+      const userAddress = account || await signer.getAddress();
+      const mintData = await collectionService.getMintInfo(
+        state.selectedCollection,
+        userAddress,
+        tokenType
+      );
+
+      setState(prev => ({
+        ...prev,
+        collectionInfo: {
+          name: collectionData.name,
+          symbol: collectionData.symbol,
+          type: tokenType,
+        },
+        mintInfo: mintData,
+        isLoadingInfo: false,
+      }));
     } catch (error) {
       console.error("Error loading collection info:", error);
       toast({
         title: "Error",
-        description: `Failed to load collection information: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+        description: "Failed to load collection information",
         variant: "destructive",
       });
+      setState(prev => ({ ...prev, isLoadingInfo: false }));
     }
-  };
+  }, [state.selectedCollection, collections, account, toast]);
 
   /**
-   * Handle mint NFT
+   * Validate mint inputs
    */
-  const handleMint = async (isBatch: boolean = false) => {
+  const validateMintInputs = (): boolean => {
     if (!account) {
       toast({
         title: "Wallet Not Connected",
         description: "Please connect your wallet first",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
-    if (!selectedCollection) {
+    if (!state.selectedCollection) {
       toast({
         title: "No Collection Selected",
         description: "Please select a collection",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
-    if (!recipient || !recipient.startsWith("0x") || recipient.length !== 42) {
+    if (!ethers.isAddress(state.recipient)) {
       toast({
         title: "Invalid Address",
         description: "Please enter a valid recipient address",
         variant: "destructive",
       });
-      return;
+      return false;
     }
 
-    if (isBatch && mintAmount < 2) {
+    if (state.mintAmount < 1 || state.mintAmount > 50) {
       toast({
         title: "Invalid Amount",
+        description: "Mint amount must be between 1 and 50",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
+  /**
+   * Handle mint NFT
+   */
+  const handleMint = async (isBatch: boolean = false) => {
+    if (!validateMintInputs() || !state.mintInfo || !state.collectionInfo) return;
+
+    // Additional batch validation
+    if (isBatch && state.mintAmount < 2) {
+      toast({
+        title: "Invalid Batch Amount",
         description: "Batch mint requires at least 2 NFTs",
         variant: "destructive",
       });
       return;
     }
 
-    setIsMinting(true);
+    // Check if minting is allowed
+    if (!state.mintInfo.canMint) {
+      toast({
+        title: "Cannot Mint",
+        description: getMintErrorMessage(state.mintInfo),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setState(prev => ({ ...prev, isMinting: true }));
 
     try {
-      if (useMockData) {
-        // Mock minting
-        const mockService = getMockDataService();
-        const mintedNFTs = await mockService.mintNFT(
-          selectedCollection,
-          recipient,
-          isBatch ? mintAmount : 1
-        );
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      await collectionService.initialize(provider, signer);
 
+      const tokenType = state.collectionInfo.type;
+      let tx;
+
+      if (isBatch && tokenType === "ERC1155") {
+        // Batch mint for ERC1155
+        const amounts = Array(state.mintAmount).fill("1");
+        const totalPrice = (
+          parseFloat(state.mintInfo.currentMintPrice) * state.mintAmount
+        ).toString();
+
+        tx = await collectionService.batchMint(
+          state.selectedCollection,
+          state.recipient,
+          amounts,
+          totalPrice
+        );
+      } else if (isBatch && tokenType === "ERC721") {
+        // Multiple single mints for ERC721
+        const promises = [];
+        for (let i = 0; i < state.mintAmount; i++) {
+          const promise = collectionService.mint({
+            collection: state.selectedCollection,
+            to: state.recipient,
+            tokenType,
+            value: state.mintInfo.currentMintPrice,
+          }).then(async (tx) => {
+            toast({
+              title: "Transaction Sent",
+              description: `Minting NFT ${i + 1}/${state.mintAmount}...`,
+            });
+            return tx.wait();
+          });
+          promises.push(promise);
+        }
+        await Promise.all(promises);
+      } else {
+        // Single mint
+        tx = await collectionService.mint({
+          collection: state.selectedCollection,
+          to: state.recipient,
+          amount: tokenType === "ERC1155" ? state.mintAmount.toString() : undefined,
+          tokenType,
+          value: state.mintInfo.currentMintPrice,
+        });
+      }
+
+      if (tx) {
         toast({
-          title: "Minting Successful!",
-          description: `Successfully minted ${mintedNFTs.length} NFT${
-            mintedNFTs.length > 1 ? "s" : ""
-          }`,
+          title: "Transaction Sent",
+          description: "Waiting for confirmation...",
+        });
+
+        const receipt = await tx.wait();
+        
+        toast({
+          title: "Success! 🎉",
+          description: `Successfully minted ${
+            isBatch ? state.mintAmount : 1
+          } NFT${state.mintAmount > 1 ? "s" : ""}`,
         });
 
         // Refresh collection info
         await loadCollectionInfo();
-      } else {
-        // Real contract interaction
-        // TODO: Implement real minting
+        
+        // Reset amount
+        setState(prev => ({ ...prev, mintAmount: 1 }));
+      }
+    } catch (error: any) {
+      console.error("Minting error:", error);
+      
+      // Handle user rejection
+      if (error.code === "ACTION_REJECTED" || error.code === 4001) {
         toast({
-          title: "Contract Integration",
-          description: "Real contract minting coming soon",
-          variant: "default",
+          title: "Transaction Cancelled",
+          description: "You rejected the transaction",
+        });
+      } else {
+        toast({
+          title: "Minting Failed",
+          description: error.message || "Failed to mint NFT",
+          variant: "destructive",
         });
       }
-    } catch (error) {
-      console.error("Error minting NFT:", error);
-      toast({
-        title: "Minting Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to mint NFT",
-        variant: "destructive",
-      });
     } finally {
-      setIsMinting(false);
+      setState(prev => ({ ...prev, isMinting: false }));
     }
   };
 
-  // Check if wallet is connected
+  /**
+   * Get mint error message
+   */
+  const getMintErrorMessage = (mintInfo: any): string => {
+    if (mintInfo.mintStage === "not_started") {
+      return "Minting has not started yet";
+    }
+    if (parseInt(mintInfo.mintedPerWallet) >= parseInt(mintInfo.mintLimitPerWallet)) {
+      return `You've reached your mint limit (${mintInfo.mintLimitPerWallet} NFTs)`;
+    }
+    if (parseInt(mintInfo.totalMinted) >= parseInt(mintInfo.maxSupply)) {
+      return "Collection is sold out";
+    }
+    if (mintInfo.mintStage === "allowlist" && !mintInfo.isAllowlisted) {
+      return "You are not on the allowlist";
+    }
+    return "Cannot mint at this time";
+  };
+
+  /**
+   * Calculate total mint cost
+   */
+  const getTotalCost = (): string => {
+    if (!state.mintInfo) return "0";
+    return (parseFloat(state.mintInfo.currentMintPrice) * state.mintAmount).toFixed(4);
+  };
+
+  // Not connected state
   if (!isConnected || !account) {
     return (
       <div className="container mx-auto p-6">
         <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Wallet Not Connected</AlertTitle>
+          <Wallet className="h-4 w-4" />
+          <AlertTitle>Connect Wallet</AlertTitle>
           <AlertDescription>
-            Please connect your wallet to mint NFTs.
+            Please connect your wallet to mint NFTs
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  // Check if collections exist
+  // No collections state
   if (collections.length === 0) {
     return (
       <div className="container mx-auto p-6">
         <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>No Collections Found</AlertTitle>
+          <Package className="h-4 w-4" />
+          <AlertTitle>No Collections</AlertTitle>
           <AlertDescription>
-            Please create a collection first before minting NFTs.
+            Create a collection first before minting NFTs
           </AlertDescription>
         </Alert>
       </div>
@@ -256,226 +368,228 @@ export default function MintNFTPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Mint NFT</h1>
+        <h1 className="text-3xl font-bold mb-2">Mint NFTs</h1>
         <p className="text-muted-foreground">
-          Mint new NFTs from your collections
+          Create new NFTs from your collections
         </p>
-        {useMockData && (
-          <Badge variant="outline" className="mt-2">
-            🎭 Mock Data Mode
-          </Badge>
-        )}
       </div>
 
+      {/* Main Card */}
       <Card>
         <CardHeader>
           <CardTitle>Mint Configuration</CardTitle>
           <CardDescription>
-            Select a collection and configure minting parameters
+            Select a collection and configure mint parameters
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Collection Selection */}
+          {/* Collection Selector */}
           <div className="space-y-2">
-            <Label htmlFor="collection">Select Collection</Label>
+            <Label htmlFor="collection">Collection</Label>
             <Select
-              value={selectedCollection}
-              onValueChange={setSelectedCollection}
-              disabled={isMinting}
+              value={state.selectedCollection}
+              onValueChange={(value) => setState(prev => ({ 
+                ...prev, 
+                selectedCollection: value,
+                collectionInfo: null,
+                mintInfo: null 
+              }))}
+              disabled={state.isMinting}
             >
               <SelectTrigger id="collection">
-                <SelectValue placeholder="Choose a collection..." />
+                <SelectValue placeholder="Select a collection..." />
               </SelectTrigger>
               <SelectContent>
                 {collections.map((collection) => (
-                  <SelectItem
-                    key={collection.address}
-                    value={collection.address}
-                  >
-                    {collection.name} ({collection.symbol}) - {collection.type}
+                  <SelectItem key={collection.address} value={collection.address}>
+                    <div className="flex items-center gap-2">
+                      <span>{collection.name}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {collection.type}
+                      </Badge>
+                    </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Collection Info */}
-          {collectionInfo && (
-            <Card className="bg-muted/50">
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {collectionInfo.name} ({collectionInfo.symbol})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Type:</span>
-                  <Badge variant="secondary">{collectionInfo.type}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Mint Price:</span>
-                  <span className="font-semibold">
-                    {collectionInfo.mintPrice} ETH
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Loading State */}
+          {state.isLoadingInfo && (
+            <div className="space-y-3">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
           )}
 
-          {/* Debug Info - Only show in mock mode */}
-          {debugInfo && useMockData && (
-            <Card
-              className={
-                debugInfo.canMint ? "border-green-500" : "border-red-500"
-              }
-            >
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  🔧 Debug Info{" "}
-                  {debugInfo.canMint ? (
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {debugInfo.mintingIssues.length > 0 && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Minting Issues</AlertTitle>
+          {/* Collection Info */}
+          {state.collectionInfo && !state.isLoadingInfo && (
+            <>
+              <Card className="bg-muted/50">
+                <CardContent className="pt-6 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Collection</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{state.collectionInfo.name}</span>
+                      <Badge variant="secondary">{state.collectionInfo.symbol}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Type</span>
+                    <Badge>{state.collectionInfo.type}</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Price per NFT</span>
+                    <span className="font-semibold">
+                      {state.mintInfo?.currentMintPrice || "0"} ETH
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Mint Status */}
+              {state.mintInfo && (
+                <Card className="border-blue-200 dark:border-blue-800">
+                  <CardContent className="pt-6 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Mint Stage</span>
+                      <Badge 
+                        variant={state.mintInfo.canMint ? "default" : "destructive"}
+                        className="flex items-center gap-1"
+                      >
+                        {state.mintInfo.mintStage === "public" && <TrendingUp className="h-3 w-3" />}
+                        {state.mintInfo.mintStage === "allowlist" && <Sparkles className="h-3 w-3" />}
+                        {state.mintInfo.mintStage === "public" ? "Public Sale" : 
+                         state.mintInfo.mintStage === "allowlist" ? "Allowlist" : 
+                         "Not Started"}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Your Progress</span>
+                      <span className="font-semibold">
+                        {state.mintInfo.mintedPerWallet} / {state.mintInfo.mintLimitPerWallet}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total Supply</span>
+                      <span className="font-semibold">
+                        {state.mintInfo.totalMinted} / {state.mintInfo.maxSupply}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{
+                            width: `${(parseInt(state.mintInfo.totalMinted) / parseInt(state.mintInfo.maxSupply)) * 100}%`
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center">
+                        {Math.round((parseInt(state.mintInfo.totalMinted) / parseInt(state.mintInfo.maxSupply)) * 100)}% Minted
+                      </p>
+                    </div>
+
+                    {!state.mintInfo.canMint && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Cannot Mint</AlertTitle>
+                        <AlertDescription>
+                          {getMintErrorMessage(state.mintInfo)}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              <Separator />
+
+              {/* Mint Controls */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipient">Recipient Address</Label>
+                    <Input
+                      id="recipient"
+                      type="text"
+                      value={state.recipient}
+                      onChange={(e) => setState(prev => ({ ...prev, recipient: e.target.value }))}
+                      placeholder="0x..."
+                      disabled={state.isMinting}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={state.mintAmount}
+                      onChange={(e) => setState(prev => ({ 
+                        ...prev, 
+                        mintAmount: Math.min(50, Math.max(1, parseInt(e.target.value) || 1))
+                      }))}
+                      min={1}
+                      max={50}
+                      disabled={state.isMinting}
+                    />
+                  </div>
+                </div>
+
+                {/* Cost Summary */}
+                {state.mintInfo && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Total Cost</AlertTitle>
                     <AlertDescription>
-                      <ul className="list-disc list-inside mt-2">
-                        {debugInfo.mintingIssues.map((issue, index) => (
-                          <li key={index}>{issue}</li>
-                        ))}
-                      </ul>
+                      {state.mintAmount} NFT{state.mintAmount > 1 ? "s" : ""} × {state.mintInfo.currentMintPrice} ETH = {" "}
+                      <span className="font-bold">{getTotalCost()} ETH</span>
                     </AlertDescription>
                   </Alert>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Current Stage:</p>
-                    <p className="font-semibold">
-                      {debugInfo.stageNames[debugInfo.currentStage]} (
-                      {debugInfo.currentStage})
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Current Price:</p>
-                    <p className="font-semibold">
-                      {debugInfo.currentMintPrice} ETH
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Total Minted:</p>
-                    <p className="font-semibold">
-                      {debugInfo.totalMinted} / {debugInfo.maxSupply}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Your Minted:</p>
-                    <p className="font-semibold">
-                      {debugInfo.mintedPerWallet} /{" "}
-                      {debugInfo.mintLimitPerWallet}
-                    </p>
-                  </div>
+                {/* Action Buttons */}
+                <div className="flex gap-4">
+                  <Button
+                    onClick={() => handleMint(false)}
+                    disabled={state.isMinting || !state.mintInfo?.canMint}
+                    className="flex-1"
+                  >
+                    {state.isMinting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Minting...
+                      </>
+                    ) : (
+                      "Mint Single NFT"
+                    )}
+                  </Button>
+
+                  {state.collectionInfo?.type === "ERC1155" && (
+                    <Button
+                      onClick={() => handleMint(true)}
+                      disabled={state.isMinting || !state.mintInfo?.canMint || state.mintAmount < 2}
+                      variant="secondary"
+                      className="flex-1"
+                    >
+                      {state.isMinting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Minting...
+                        </>
+                      ) : (
+                        `Batch Mint ${state.mintAmount} NFTs`
+                      )}
+                    </Button>
+                  )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </>
           )}
-
-          <Separator />
-
-          {/* Recipient Address */}
-          <div className="space-y-2">
-            <Label htmlFor="recipient">Recipient Address</Label>
-            <Input
-              id="recipient"
-              type="text"
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
-              placeholder="0x..."
-              disabled={isMinting}
-            />
-          </div>
-
-          {/* Mint Amount */}
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (for batch minting)</Label>
-            <Input
-              id="amount"
-              type="number"
-              value={mintAmount}
-              onChange={(e) => setMintAmount(parseInt(e.target.value) || 1)}
-              min={1}
-              max={50}
-              disabled={isMinting}
-            />
-          </div>
-
-          {/* Price Info */}
-          {collectionInfo && (
-            <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-              <CardContent className="pt-6 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Single Mint Cost:
-                  </span>
-                  <span className="font-semibold">
-                    {collectionInfo.mintPrice} ETH
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Batch Mint Cost ({mintAmount} NFTs):
-                  </span>
-                  <span className="font-semibold">
-                    {(
-                      parseFloat(collectionInfo.mintPrice) * mintAmount
-                    ).toFixed(6)}{" "}
-                    ETH
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <Button
-              onClick={() => handleMint(false)}
-              disabled={isMinting || !selectedCollection}
-              className="flex-1"
-            >
-              {isMinting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Minting...
-                </>
-              ) : (
-                "Mint Single NFT"
-              )}
-            </Button>
-
-            <Button
-              onClick={() => handleMint(true)}
-              disabled={isMinting || !selectedCollection || mintAmount < 2}
-              variant="secondary"
-              className="flex-1"
-            >
-              {isMinting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Minting...
-                </>
-              ) : (
-                `Batch Mint ${mintAmount} NFTs`
-              )}
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

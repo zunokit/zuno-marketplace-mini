@@ -51,20 +51,19 @@ export class MarketplaceHubService {
 
     // Check if hub address is configured
     if (!hubAddress || hubAddress === "0x0000000000000000000000000000000000000000") {
-      console.warn(`⚠️ MarketplaceHub not configured for chain ${chainId}`);
-      // Set default addresses for development/testing
-      this.setDefaultAddresses();
-      return;
+      throw new Error(
+        `MarketplaceHub not configured for chain ${chainId}. ` +
+        `Please deploy contracts and configure hub address in .env file.`
+      );
     }
 
     // Validate contract exists at address
     const code = await provider.getCode(hubAddress);
     if (code === "0x") {
-      console.warn(`⚠️ No contract deployed at MarketplaceHub address ${hubAddress} on chain ${chainId}`);
-      console.log("Using default addresses for development/testing");
-      // Set default addresses for development/testing
-      this.setDefaultAddresses();
-      return;
+      throw new Error(
+        `No contract deployed at MarketplaceHub address ${hubAddress} on chain ${chainId}. ` +
+        `Please ensure contracts are deployed to the network.`
+      );
     }
 
     this.hub = new ethers.Contract(
@@ -83,8 +82,10 @@ export class MarketplaceHubService {
       });
     } catch (error: any) {
       console.error("❌ Failed to load addresses from hub:", error?.message || error);
-      console.warn("⚠️ Hub may not be properly initialized or ABI mismatch");
-      this.setDefaultAddresses();
+      throw new Error(
+        `Failed to initialize MarketplaceHub: ${error?.message || 'Unknown error'}. ` +
+        `Please check contract deployment and ABI compatibility.`
+      );
     }
   }
 
@@ -113,30 +114,7 @@ export class MarketplaceHubService {
     };
   }
 
-  /**
-   * Set default addresses for development/testing when hub is not available
-   */
-  private setDefaultAddresses(): void {
-    // Use zero addresses as placeholders for development
-    const zeroAddress = "0x0000000000000000000000000000000000000000";
-    
-    this.addresses = {
-      hub: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL || zeroAddress,
-      erc721Exchange: zeroAddress,
-      erc1155Exchange: zeroAddress,
-      erc721Factory: zeroAddress,
-      erc1155Factory: zeroAddress,
-      englishAuction: zeroAddress,
-      dutchAuction: zeroAddress,
-      auctionFactory: zeroAddress,
-      feeRegistry: zeroAddress,
-      bundleManager: zeroAddress,
-      offerManager: zeroAddress,
-    };
 
-    console.log("⚠️ Using default placeholder addresses for development");
-    console.log("To use real contracts, deploy the contracts and update the .env file");
-  }
 
   /**
    * Get all marketplace addresses

@@ -163,9 +163,15 @@ export class CollectionQueryService {
                 console.log("⚠️ Could not get block timestamp:", e);
               }
 
-              const collectionInfo = await this.getCollectionInfo(collectionAddress, tokenType, createdAt);
-              if (collectionInfo) {
-                collections.push(collectionInfo);
+              try {
+                const collectionInfo = await this.getCollectionInfo(collectionAddress, tokenType, createdAt);
+                if (collectionInfo) {
+                  collections.push(collectionInfo);
+                }
+              } catch (infoError: any) {
+                console.error(`Failed to get info for collection ${collectionAddress}:`, infoError.message);
+                // Continue to next collection instead of stopping completely
+                continue;
               }
             }
           }
@@ -217,32 +223,32 @@ export class CollectionQueryService {
       let owner = "0x0000000000000000000000000000000000000000";
       let totalSupply = BigInt(0);
 
-      // Try to get name
+      // Get name - required
       try {
         name = await contract.name();
         if (!name || name.trim() === "") {
-          name = `Collection ${address.slice(0, 8)}`;
-          console.log(`⚠️ Empty name, using fallback: ${name}`);
-        } else {
-          console.log(`✅ Name: ${name}`);
+          throw new Error(`Collection at ${address} has empty name`);
         }
+        // Filter out implementation contracts
+        if (name.toLowerCase() === "implementation" || name.toLowerCase().includes("impl")) {
+          throw new Error(`Skipping implementation contract at ${address} with name: ${name}`);
+        }
+        console.log(`✅ Name: ${name}`);
       } catch (e) {
-        name = `Collection ${address.slice(0, 8)}`;
-        console.log(`⚠️ Could not get name, using fallback: ${name}`, e);
+        console.error(`❌ Failed to get collection name for ${address}:`, e);
+        throw e; // Re-throw to see the actual error
       }
 
-      // Try to get symbol
+      // Get symbol - required  
       try {
         symbol = await contract.symbol();
         if (!symbol || symbol.trim() === "") {
-          symbol = `COL${address.slice(2, 6).toUpperCase()}`;
-          console.log(`⚠️ Empty symbol, using fallback: ${symbol}`);
-        } else {
-          console.log(`✅ Symbol: ${symbol}`);
+          throw new Error(`Collection at ${address} has empty symbol`);
         }
+        console.log(`✅ Symbol: ${symbol}`);
       } catch (e) {
-        symbol = `COL${address.slice(2, 6).toUpperCase()}`;
-        console.log(`⚠️ Could not get symbol, using fallback: ${symbol}`, e);
+        console.error(`❌ Failed to get collection symbol for ${address}:`, e);
+        throw e; // Re-throw to see the actual error
       }
 
       // Try to get description
@@ -257,13 +263,22 @@ export class CollectionQueryService {
       try {
         owner = await contract.owner();
         console.log(`✅ Owner: ${owner}`);
-      } catch (e) {
-        try {
-          // Some contracts use creator() instead of owner()
-          owner = await contract.creator();
-          console.log(`✅ Creator: ${owner}`);
-        } catch (e2) {
-          console.log(`⚠️ Could not get owner/creator:`, e2);
+        // Filter out contracts with dead address as owner (typically implementation contracts)
+        if (owner.toLowerCase() === "0x000000000000000000000000000000000000dead") {
+          throw new Error(`Contract at ${address} has dead address as owner - likely an implementation contract`);
+        }
+      } catch (e: any) {
+        // If owner() fails, try creator()
+        if (e.message && !e.message.includes('dead address')) {
+          try {
+            owner = await contract.creator();
+            console.log(`✅ Creator: ${owner}`);
+          } catch (e2) {
+            console.error(`❌ Could not get owner/creator for ${address}:`, e2);
+            throw new Error(`Failed to get owner/creator for collection at ${address}`);
+          }
+        } else {
+          throw e; // Re-throw if it's our dead address error
         }
       }
 
@@ -312,10 +327,10 @@ export class CollectionQueryService {
         }
       }
 
-      // Ensure we have valid name and symbol
-      const finalName = name && name.trim() !== "" ? name : `Collection ${address.slice(0, 8)}`;
-      const finalSymbol = symbol && symbol.trim() !== "" ? symbol : `COL${address.slice(2, 6).toUpperCase()}`;
-      const finalDescription = description && description.trim() !== "" ? description : `A unique NFT collection deployed at ${address}`;
+      // Use actual values from contract - no fallbacks
+      const finalName = name;
+      const finalSymbol = symbol;
+      const finalDescription = description || "";
 
       // Create collection info with more complete data
       const collectionInfo: CollectionData = {
@@ -351,9 +366,18 @@ export class CollectionQueryService {
 
       return collectionInfo;
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ Error getting collection info for ${address}:`, error);
-      return null;
+      // Log specific error details for debugging
+      console.error('Error details:', {
+        address,
+        tokenType,
+        errorMessage: error.message || 'Unknown error',
+        errorStack: error.stack
+      });
+      
+      // Re-throw error so we can see what's actually failing
+      throw error;
     }
   }
 
