@@ -10,17 +10,28 @@ const {
   ERC721_ABI
 } = require("../utils/config");
 
-// Extended ABI for minting functions
+// Extended ABI for minting functions (Updated for Zuno contracts)
+// Using a custom ABI without inheriting ERC721_ABI to avoid conflicts
 const MINT_ABI = [
-  ...ERC721_ABI,
-  "function mint(address to) external payable returns (uint256)",
-  "function publicMint(uint256 quantity) external payable",
-  "function mintTo(address to, uint256 quantity) external payable",
-  "function safeMint(address to) external returns (uint256)",
-  "function getMintPrice() view returns (uint256)",
-  "function mintPrice() view returns (uint256)",
-  "function totalSupply() view returns (uint256)",
-  "function maxSupply() view returns (uint256)"
+  // ERC721 standard functions
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function transferFrom(address from, address to, uint256 tokenId)",
+  "function safeTransferFrom(address from, address to, uint256 tokenId)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+  // Zuno custom minting functions
+  "function mint(address to) external payable",
+  "function batchMintERC721(address to, uint256 amount) external payable",
+  "function getMintPrice() external view returns (uint256)",
+  "function getMaxSupply() external view returns (uint256)",
+  "function getTotalMinted() external view returns (uint256)",
+  "function getMintLimitPerWallet() external view returns (uint256)",
+  "function getMintedPerWallet(address account) external view returns (uint256)",
+  "function getCurrentStage() external view returns (uint8)",
+  "function isInAllowlist(address account) external view returns (bool)",
+  "function getMintInfo(address account) external view returns (uint256,uint256,uint256,uint8,uint256,uint256,uint256,uint256,uint256,uint256,uint256,bool)"
 ];
 
 async function mintERC721(collectionAddress, quantity = 1, recipientAddress = null) {
@@ -41,7 +52,7 @@ async function mintERC721(collectionAddress, quantity = 1, recipientAddress = nu
     console.log("   Address:", collectionAddress);
     
     // Get collection info
-    let name, symbol, totalSupply, maxSupply, mintPrice;
+    let name, symbol, totalSupply, maxSupply, mintPrice, currentStage, isAllowlisted;
     try {
       name = await collection.name();
       symbol = await collection.symbol();
@@ -51,34 +62,58 @@ async function mintERC721(collectionAddress, quantity = 1, recipientAddress = nu
       console.log("   Name/Symbol: Unable to fetch");
     }
     
+    // Get minting stage
     try {
-      totalSupply = await collection.totalSupply();
+      currentStage = await collection.getCurrentStage();
+      const stageNames = ["INACTIVE", "ALLOWLIST", "PUBLIC"];
+      console.log("   Current Stage:", stageNames[currentStage] || "UNKNOWN");
+      
+      // Check if user is in allowlist
+      if (currentStage === 1) { // ALLOWLIST stage
+        isAllowlisted = await collection.isInAllowlist(recipient);
+        console.log("   Allowlist Status:", isAllowlisted ? "✅ Whitelisted" : "❌ Not whitelisted");
+      }
+    } catch (e) {
+      console.log("   Minting Stage: Unable to fetch");
+    }
+    
+    try {
+      totalSupply = await collection.getTotalMinted();
       console.log("   Current Supply:", totalSupply.toString());
     } catch (e) {
       console.log("   Current Supply: Unable to fetch");
     }
     
     try {
-      maxSupply = await collection.maxSupply();
+      maxSupply = await collection.getMaxSupply();
       console.log("   Max Supply:", maxSupply.toString());
     } catch (e) {
       console.log("   Max Supply: Unable to fetch");
     }
     
-    // Try to get mint price
+    // Try to get mint price (getMintPrice returns current price based on stage)
     try {
       mintPrice = await collection.getMintPrice();
-    } catch (e1) {
-      try {
-        mintPrice = await collection.mintPrice();
-      } catch (e2) {
-        mintPrice = ethers.parseEther("0.01"); // Default fallback
-        console.log("   Mint Price: Using default 0.01 ETH");
-      }
+    } catch (e) {
+      mintPrice = ethers.parseEther("0.01"); // Default fallback
+      console.log("   Mint Price: Using default 0.01 ETH");
     }
     
     if (mintPrice) {
       console.log("   Mint Price:", ethers.formatEther(mintPrice), "ETH");
+    }
+    
+    // Check mint limits
+    try {
+      const mintLimitPerWallet = await collection.getMintLimitPerWallet();
+      const mintedPerWallet = await collection.getMintedPerWallet(recipient);
+      console.log(`   Mint Limit: ${mintedPerWallet}/${mintLimitPerWallet} already minted`);
+      
+      if (mintedPerWallet + BigInt(quantity) > mintLimitPerWallet) {
+        console.log(`   ⚠️  Warning: Exceeds mint limit! Max remaining: ${mintLimitPerWallet - mintedPerWallet}`);
+      }
+    } catch (e) {
+      // Ignore if unable to fetch
     }
     
     const totalCost = mintPrice * BigInt(quantity);
@@ -92,29 +127,18 @@ async function mintERC721(collectionAddress, quantity = 1, recipientAddress = nu
     let tx;
     let success = false;
     
-    // Method 1: Try publicMint with quantity
+    // Method 1: Try batchMintERC721 for multiple NFTs
     if (!success && quantity > 1) {
       try {
-        console.log("\n🔄 Attempting publicMint(quantity)...");
-        tx = await collection.publicMint(quantity, { value: totalCost });
+        console.log("\n🔄 Attempting batchMintERC721(address, amount)...");
+        tx = await collection.batchMintERC721(recipient, quantity, { value: totalCost });
         success = true;
       } catch (e) {
-        console.log("   publicMint not available");
+        console.log("   batchMintERC721 failed:", e.message || e);
       }
     }
     
-    // Method 2: Try mintTo
-    if (!success) {
-      try {
-        console.log("\n🔄 Attempting mintTo(address, quantity)...");
-        tx = await collection.mintTo(recipient, quantity, { value: totalCost });
-        success = true;
-      } catch (e) {
-        console.log("   mintTo not available");
-      }
-    }
-    
-    // Method 3: Try simple mint
+    // Method 2: Try single mint (works for both single and multiple)
     if (!success) {
       try {
         console.log("\n🔄 Attempting mint(address)...");
@@ -131,29 +155,8 @@ async function mintERC721(collectionAddress, quantity = 1, recipientAddress = nu
           success = true;
         }
       } catch (e) {
-        console.log("   mint not available");
-      }
-    }
-    
-    // Method 4: Try safeMint
-    if (!success) {
-      try {
-        console.log("\n🔄 Attempting safeMint(address)...");
-        if (quantity > 1) {
-          console.log("   Minting one by one...");
-          for (let i = 0; i < quantity; i++) {
-            tx = await collection.safeMint(recipient);
-            await waitForTransaction(tx, `Safe Mint NFT ${i + 1}/${quantity}`);
-          }
-          console.log(`\n✅ Successfully minted ${quantity} NFTs!`);
-          return;
-        } else {
-          tx = await collection.safeMint(recipient);
-          success = true;
-        }
-      } catch (e) {
-        console.log("   safeMint not available");
-        throw new Error("No compatible mint function found on this collection");
+        console.log("   mint failed:", e.message || e);
+        throw new Error("No compatible mint function found on this collection. Error: " + (e.message || e));
       }
     }
     

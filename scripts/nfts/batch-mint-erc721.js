@@ -10,16 +10,23 @@ const {
   ERC721_ABI
 } = require("../utils/config");
 
-// Extended ABI for batch minting
+// Extended ABI for batch minting (Updated for Zuno contracts)
 const BATCH_MINT_ABI = [
-  ...ERC721_ABI,
-  "function mintBatch(address to, uint256 quantity) external payable",
-  "function batchMint(address[] recipients, uint256[] quantities) external payable",
-  "function mintMultiple(address to, uint256 quantity) external payable returns (uint256[] memory)",
-  "function getMintPrice() view returns (uint256)",
-  "function mintPrice() view returns (uint256)",
-  "function totalSupply() view returns (uint256)",
-  "function maxSupply() view returns (uint256)"
+  // ERC721 standard functions
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function balanceOf(address owner) view returns (uint256)",
+  "function ownerOf(uint256 tokenId) view returns (address)",
+  "function transferFrom(address from, address to, uint256 tokenId)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+  // Zuno custom minting functions
+  "function mint(address to) external payable",
+  "function batchMintERC721(address to, uint256 amount) external payable",
+  "function getMintPrice() external view returns (uint256)",
+  "function getMaxSupply() external view returns (uint256)",
+  "function getTotalMinted() external view returns (uint256)",
+  "function getMintLimitPerWallet() external view returns (uint256)",
+  "function getMintedPerWallet(address account) external view returns (uint256)"
 ];
 
 async function batchMintERC721(collectionAddress, quantity = 10, recipients = null) {
@@ -50,14 +57,14 @@ async function batchMintERC721(collectionAddress, quantity = 10, recipients = nu
     }
     
     try {
-      totalSupply = await collection.totalSupply();
+      totalSupply = await collection.getTotalMinted();
       console.log("   Current Supply:", totalSupply.toString());
     } catch (e) {
       console.log("   Current Supply: Unable to fetch");
     }
     
     try {
-      maxSupply = await collection.maxSupply();
+      maxSupply = await collection.getMaxSupply();
       console.log("   Max Supply:", maxSupply.toString());
       
       // Check if we have enough supply
@@ -83,13 +90,9 @@ async function batchMintERC721(collectionAddress, quantity = 10, recipients = nu
     // Try to get mint price
     try {
       mintPrice = await collection.getMintPrice();
-    } catch (e1) {
-      try {
-        mintPrice = await collection.mintPrice();
-      } catch (e2) {
-        mintPrice = ethers.parseEther("0.01"); // Default
-        console.log("   Mint Price: Using default 0.01 ETH");
-      }
+    } catch (e) {
+      mintPrice = ethers.parseEther("0.01"); // Default
+      console.log("   Mint Price: Using default 0.01 ETH");
     }
     
     if (mintPrice) {
@@ -117,37 +120,14 @@ async function batchMintERC721(collectionAddress, quantity = 10, recipients = nu
     let tx;
     let success = false;
     
-    // Method 1: Try mintBatch (single recipient, multiple tokens)
+    // Method 1: Try batchMintERC721 (Zuno's batch mint function)
     if (!success && recipientList.length === 1) {
       try {
-        console.log("\n🔄 Attempting mintBatch(to, quantity)...");
-        tx = await collection.mintBatch(recipientList[0], quantity, { value: totalCost });
+        console.log("\n🔄 Attempting batchMintERC721(to, amount)...");
+        tx = await collection.batchMintERC721(recipientList[0], quantity, { value: totalCost });
         success = true;
       } catch (e) {
-        console.log("   mintBatch not available");
-      }
-    }
-    
-    // Method 2: Try mintMultiple
-    if (!success && recipientList.length === 1) {
-      try {
-        console.log("\n🔄 Attempting mintMultiple(to, quantity)...");
-        tx = await collection.mintMultiple(recipientList[0], quantity, { value: totalCost });
-        success = true;
-      } catch (e) {
-        console.log("   mintMultiple not available");
-      }
-    }
-    
-    // Method 3: Try batchMint (multiple recipients)
-    if (!success && recipientList.length > 1) {
-      try {
-        console.log("\n🔄 Attempting batchMint(recipients[], quantities[])...");
-        const quantities = new Array(recipientList.length).fill(Math.floor(quantity / recipientList.length));
-        tx = await collection.batchMint(recipientList, quantities, { value: totalCost });
-        success = true;
-      } catch (e) {
-        console.log("   batchMint not available");
+        console.log("   batchMintERC721 failed:", e.message || e);
       }
     }
     
@@ -167,17 +147,8 @@ async function batchMintERC721(collectionAddress, quantity = 10, recipients = nu
         console.log(`\n📦 Batch ${Math.floor(minted / batchSize) + 1}:`);
         for (let i = 0; i < currentBatch; i++) {
           try {
-            // Try different single mint methods
-            let singleTx;
-            try {
-              singleTx = await collection.mint(recipient, { value: mintPrice });
-            } catch (e) {
-              try {
-                singleTx = await collection.publicMint(1, { value: mintPrice });
-              } catch (e2) {
-                singleTx = await collection.safeMint(recipient);
-              }
-            }
+            // Use the single mint function from Zuno contracts
+            const singleTx = await collection.mint(recipient, { value: mintPrice });
             
             console.log(`   Minting NFT ${minted + i + 1}/${quantity}...`);
             const receipt = await singleTx.wait();
