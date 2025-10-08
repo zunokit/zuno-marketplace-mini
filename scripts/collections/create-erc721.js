@@ -34,7 +34,7 @@ async function createERC721Collection(customParams = {}) {
       mintPrice: "0.01",
       royaltyFee: 500, // 5%
       maxSupply: 10000,
-      mintLimitPerWallet: 5,
+      mintLimitPerWallet: 1000,
       tokenURI: "https://api.example.com/erc721/metadata/",
       ...customParams
     }, account);

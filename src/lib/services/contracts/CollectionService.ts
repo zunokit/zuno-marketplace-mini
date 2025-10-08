@@ -370,17 +370,44 @@ export class CollectionService {
           throw new Error("Mint function not found in contract ABI");
         }
         
-        // Try to call mint with proper parameters
-        const txOptions = { 
+        // Estimate gas first for accurate limit
+        let gasEstimate: bigint;
+        try {
+          gasEstimate = await collection.mint.estimateGas(params.to, { value: mintPrice });
+          console.log("⛽ Gas estimate:", gasEstimate.toString());
+        } catch (error: any) {
+          console.error("❌ Gas estimation failed - transaction will likely revert!");
+          console.error("Error details:", {
+            message: error.message,
+            code: error.code,
+            reason: error.reason,
+            data: error.data
+          });
+
+          // Try to extract revert reason
+          if (error.reason) {
+            throw new Error(`Mint will fail: ${error.reason}`);
+          } else if (error.message) {
+            throw new Error(`Gas estimation failed: ${error.message}`);
+          }
+
+          throw error;
+        }
+
+        // Add 20% buffer to gas estimate
+        const gasLimit = (gasEstimate * 120n) / 100n;
+
+        const txOptions = {
           value: mintPrice,
-          gasLimit: 300000n // Use a reasonable gas limit
+          gasLimit
         };
-        
+
         console.log("📤 Transaction options:", {
           value: ethers.formatEther(txOptions.value),
-          gasLimit: txOptions.gasLimit.toString()
+          gasLimit: txOptions.gasLimit.toString(),
+          estimatedGas: gasEstimate.toString()
         });
-        
+
         return await collection.mint(params.to, txOptions);
       } else {
         // ERC1155: mint(address to, uint256 amount) payable
@@ -397,17 +424,44 @@ export class CollectionService {
           throw new Error("Mint function not found in contract ABI");
         }
         
-        // Try to call mint with proper parameters
-        const txOptions = { 
+        // Estimate gas first for accurate limit
+        let gasEstimate: bigint;
+        try {
+          gasEstimate = await collection.mint.estimateGas(params.to, amount, { value: mintPrice });
+          console.log("⛽ Gas estimate:", gasEstimate.toString());
+        } catch (error: any) {
+          console.error("❌ Gas estimation failed - transaction will likely revert!");
+          console.error("Error details:", {
+            message: error.message,
+            code: error.code,
+            reason: error.reason,
+            data: error.data
+          });
+
+          // Try to extract revert reason
+          if (error.reason) {
+            throw new Error(`Mint will fail: ${error.reason}`);
+          } else if (error.message) {
+            throw new Error(`Gas estimation failed: ${error.message}`);
+          }
+
+          throw error;
+        }
+
+        // Add 20% buffer to gas estimate
+        const gasLimit = (gasEstimate * 120n) / 100n;
+
+        const txOptions = {
           value: mintPrice,
-          gasLimit: 300000n // Use a reasonable gas limit
+          gasLimit
         };
-        
+
         console.log("📤 Transaction options:", {
           value: ethers.formatEther(txOptions.value),
-          gasLimit: txOptions.gasLimit.toString()
+          gasLimit: txOptions.gasLimit.toString(),
+          estimatedGas: gasEstimate.toString()
         });
-        
+
         return await collection.mint(params.to, amount, txOptions);
       }
     } catch (error) {

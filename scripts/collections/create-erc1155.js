@@ -34,7 +34,7 @@ async function createERC1155Collection(customParams = {}) {
       mintPrice: "0.005",
       royaltyFee: 750, // 7.5%
       maxSupply: 100000, // Higher for multi-token
-      mintLimitPerWallet: 20,
+      mintLimitPerWallet: 1000,
       tokenURI: "https://api.example.com/erc1155/metadata/{id}.json",
       ...customParams
     }, account);
