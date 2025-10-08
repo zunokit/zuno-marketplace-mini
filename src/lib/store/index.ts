@@ -1,9 +1,6 @@
-import { configureStore } from '@reduxjs/toolkit'
-import { persistStore, persistReducer } from 'redux-persist'
-import { combineReducers } from '@reduxjs/toolkit'
-import storage from 'redux-persist/lib/storage'
+import { configureStore, combineReducers } from '@reduxjs/toolkit'
 
-// Import slices (will be created next)
+// Import slices
 import walletReducer from './slices/walletSlice'
 import collectionsReducer from './slices/collectionsSlice'
 import nftsReducer from './slices/nftsSlice'
@@ -14,20 +11,6 @@ import feesReducer from './slices/feesSlice'
 import notificationReducer from './slices/notificationSlice'
 import securityReducer from './slices/securitySlice'
 import accessControlReducer from './slices/accessControlSlice'
-
-const persistConfig = {
-  key: 'root',
-  storage,
-  whitelist: [
-    'collections',
-    'nfts',
-    'auctions',
-    'listing',
-    'offers',
-    'fees',
-    'notifications',
-  ], // Persist main data, not wallet for security
-}
 
 const rootReducer = combineReducers({
   wallet: walletReducer,
@@ -42,15 +25,12 @@ const rootReducer = combineReducers({
   accessControl: accessControlReducer,
 })
 
-const persistedReducer = persistReducer(persistConfig, rootReducer)
-
 export const makeStore = () => {
   return configureStore({
-    reducer: persistedReducer,
+    reducer: rootReducer,
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
         serializableCheck: {
-          ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
           ignoredActionPaths: ['payload.timestamp', 'payload.error'],
           ignoredPaths: [
             'notifications.items',
@@ -65,6 +45,3 @@ export const makeStore = () => {
 export type AppStore = ReturnType<typeof makeStore>
 export type RootState = ReturnType<AppStore['getState']>
 export type AppDispatch = AppStore['dispatch']
-
-export const store = makeStore()
-export const persistor = persistStore(store)

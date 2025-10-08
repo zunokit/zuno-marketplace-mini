@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ModeToggle } from "@/components/ui/mode-toggle";
-import { WalletConnect } from "@/components/features/wallet/WalletConnect";
+import { WalletConnectButton } from "@/components/wallet/WalletConnectButton";
 import {
   Store,
   Palette,
@@ -255,7 +255,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <WalletConnect />
+            <WalletConnectButton />
           )}
         </div>
       </div>

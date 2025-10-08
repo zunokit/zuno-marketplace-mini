@@ -150,6 +150,59 @@
   },
   {
     "type": "function",
+    "name": "calculatePlatformFee",
+    "inputs": [
+      {
+        "name": "salePrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "calculateRoyalty",
+    "inputs": [
+      {
+        "name": "nftContract",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "salePrice",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "collectionRegistry",
     "inputs": [],
     "outputs": [
@@ -241,6 +294,60 @@
         "name": "offerManagerAddr",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAllAuctions",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "types",
+        "type": "uint8[]",
+        "internalType": "enum IAuctionRegistry.AuctionType[]"
+      },
+      {
+        "name": "contracts",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAllExchanges",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "standards",
+        "type": "uint8[]",
+        "internalType": "enum IExchangeRegistry.TokenStandard[]"
+      },
+      {
+        "name": "exchanges",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getAllFactories",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "tokenTypes",
+        "type": "string[]",
+        "internalType": "string[]"
+      },
+      {
+        "name": "factories",
+        "type": "address[]",
+        "internalType": "address[]"
       }
     ],
     "stateMutability": "view"
@@ -402,6 +509,29 @@
   },
   {
     "type": "function",
+    "name": "getFeeContracts",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "baseFeeContract",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "feeManagerContract",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "royaltyManagerContract",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getFeeRegistry",
     "inputs": [],
     "outputs": [
@@ -487,6 +617,63 @@
       },
       {
         "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isRegisteredAuction",
+    "inputs": [
+      {
+        "name": "auctionContract",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isRegisteredExchange",
+    "inputs": [
+      {
+        "name": "exchange",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isRegisteredFactory",
+    "inputs": [
+      {
+        "name": "factory",
         "type": "address",
         "internalType": "address"
       }

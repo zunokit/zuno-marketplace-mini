@@ -8,13 +8,19 @@ import { ENV } from "@/lib/config/env";
  * Only MarketplaceHub address is required per network
  */
 export const CONTRACT_ADDRESSES = {
+  // Ethereum Mainnet
+  1: {
+    // Single entry point - Hub provides all other addresses
+    MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET || "",
+  },
+
   // Sepolia Testnet
   11155111: {
     // Single entry point - Hub provides all other addresses
     MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA || "",
   },
 
-  // Local development
+  // Local development (Hardhat/Anvil)
   31337: {
     // Single entry point - Hub provides all other addresses
     MARKETPLACE_HUB:
@@ -30,7 +36,11 @@ export function getContractAddresses(chainId: number = 31337) {
     CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES];
   if (!addresses) {
     console.warn(`No contract addresses found for chain ID: ${chainId}`);
-    return CONTRACT_ADDRESSES[31337]; // Fallback to local
+    console.log(`Supported chains: ${Object.keys(CONTRACT_ADDRESSES).join(", ")}`);
+    // Return empty configuration for unsupported networks
+    return {
+      MARKETPLACE_HUB: "",
+    };
   }
   return addresses;
 }
@@ -42,37 +52,15 @@ export function getMarketplaceHubAddress(chainId: number = 31337): string {
   const addresses = getContractAddresses(chainId);
   const address = addresses.MARKETPLACE_HUB;
 
+  // Don't throw for unsupported networks, return empty string
   if (!address) {
-    throw new Error(
-      `MarketplaceHub address not found for chain ${chainId}`
+    console.warn(
+      `MarketplaceHub address not configured for chain ${chainId}`
     );
+    return "";
   }
 
   return address;
 }
 
-/**
- * Supported networks configuration
- */
-export const SUPPORTED_NETWORKS = {
-  11155111: {
-    name: "Ethereum Sepolia",
-    rpcUrl: "https://sepolia.infura.io/v3/",
-    blockExplorer: "https://sepolia.etherscan.io",
-    nativeCurrency: {
-      name: "Sepolia Ether",
-      symbol: "ETH",
-      decimals: 18,
-    },
-  },
-  31337: {
-    name: "Local Network",
-    rpcUrl: "http://localhost:8545",
-    blockExplorer: "http://localhost:8545",
-    nativeCurrency: {
-      name: "Ether",
-      symbol: "ETH",
-      decimals: 18,
-    },
-  },
-};
+

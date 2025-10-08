@@ -5,7 +5,7 @@
  */
 
 import { ethers } from "ethers";
-import { getMarketplaceHubAddress } from "@/lib/contracts/addresses";
+import { getHubAddress } from "@/lib/config/networks";
 import { MarketplaceHub_ABI } from "@/lib/contracts/abis";
 
 export interface MarketplaceAddresses {
@@ -47,7 +47,24 @@ export class MarketplaceHubService {
 
     const network = await provider.getNetwork();
     const chainId = Number(network.chainId);
-    const hubAddress = getMarketplaceHubAddress(chainId);
+    const hubAddress = getHubAddress(chainId);
+
+    // Check if hub address is configured
+    if (!hubAddress || hubAddress === "0x0000000000000000000000000000000000000000") {
+      throw new Error(
+        `MarketplaceHub not configured for chain ${chainId}. ` +
+        `Please deploy contracts and configure hub address in .env file.`
+      );
+    }
+
+    // Validate contract exists at address
+    const code = await provider.getCode(hubAddress);
+    if (code === "0x") {
+      throw new Error(
+        `No contract deployed at MarketplaceHub address ${hubAddress} on chain ${chainId}. ` +
+        `Please ensure contracts are deployed to the network.`
+      );
+    }
 
     this.hub = new ethers.Contract(
       hubAddress,
@@ -55,14 +72,21 @@ export class MarketplaceHubService {
       signer || provider
     );
 
-    // Load all addresses from hub
-    await this.loadAddresses();
-
-    console.log("✅ MarketplaceHub initialized:", {
-      hub: hubAddress,
-      chainId,
-      addresses: this.addresses,
-    });
+    try {
+      // Load all addresses from hub
+      await this.loadAddresses();
+      console.log("✅ MarketplaceHub initialized from contract:", {
+        hub: hubAddress,
+        chainId,
+        addresses: this.addresses,
+      });
+    } catch (error: any) {
+      console.error("❌ Failed to load addresses from hub:", error?.message || error);
+      throw new Error(
+        `Failed to initialize MarketplaceHub: ${error?.message || 'Unknown error'}. ` +
+        `Please check contract deployment and ABI compatibility.`
+      );
+    }
   }
 
   /**
@@ -89,6 +113,8 @@ export class MarketplaceHubService {
       offerManager: result[9],
     };
   }
+
+
 
   /**
    * Get all marketplace addresses
