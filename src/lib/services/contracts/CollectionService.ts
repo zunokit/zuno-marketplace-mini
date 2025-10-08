@@ -304,13 +304,34 @@ export class CollectionService {
         throw new Error("Signer not available - connect wallet first");
       }
 
+      console.log("🎯 Mint params:", {
+        collection: params.collection,
+        to: params.to,
+        tokenType: params.tokenType,
+        amount: params.amount,
+        value: params.value
+      });
+
       const collection = this.getCollectionContract(
         params.collection,
         params.tokenType
       );
 
+      // Verify contract exists
+      const code = await this.provider?.getCode(params.collection);
+      if (!code || code === '0x') {
+        throw new Error(`No contract found at address ${params.collection}`);
+      }
+      console.log("✅ Contract found at address:", params.collection);
+
       // Get mint info to determine the correct price
       const minterAddress = await this.signer.getAddress();
+      console.log("👤 Minter address:", minterAddress);
+      
+      // Check network
+      const network = await this.provider?.getNetwork();
+      console.log("🌐 Network:", network?.name, "Chain ID:", network?.chainId);
+      
       let mintPrice = ethers.parseEther("0");
 
       try {
@@ -344,22 +365,23 @@ export class CollectionService {
           valueInWei: mintPrice.toString()
         });
         
-        // Try with explicit gas limit to avoid estimation issues
-        try {
-          const gasEstimate = await collection.mint.estimateGas(params.to, { value: mintPrice });
-          console.log("⛽ Estimated gas:", gasEstimate.toString());
-          return await collection.mint(params.to, { 
-            value: mintPrice,
-            gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
-          });
-        } catch (estimateError) {
-          console.log("⚠️ Gas estimation failed, using default:", estimateError);
-          // If estimation fails, try with a reasonable default
-          return await collection.mint(params.to, { 
-            value: mintPrice,
-            gasLimit: 200000n 
-          });
+        // First, let's check if the function exists
+        if (!collection.mint) {
+          throw new Error("Mint function not found in contract ABI");
         }
+        
+        // Try to call mint with proper parameters
+        const txOptions = { 
+          value: mintPrice,
+          gasLimit: 300000n // Use a reasonable gas limit
+        };
+        
+        console.log("📤 Transaction options:", {
+          value: ethers.formatEther(txOptions.value),
+          gasLimit: txOptions.gasLimit.toString()
+        });
+        
+        return await collection.mint(params.to, txOptions);
       } else {
         // ERC1155: mint(address to, uint256 amount) payable
         const amount = params.amount || "1";
@@ -370,22 +392,23 @@ export class CollectionService {
           valueInWei: mintPrice.toString()
         });
         
-        // Try with explicit gas limit to avoid estimation issues
-        try {
-          const gasEstimate = await collection.mint.estimateGas(params.to, amount, { value: mintPrice });
-          console.log("⛽ Estimated gas:", gasEstimate.toString());
-          return await collection.mint(params.to, amount, { 
-            value: mintPrice,
-            gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
-          });
-        } catch (estimateError) {
-          console.log("⚠️ Gas estimation failed, using default:", estimateError);
-          // If estimation fails, try with a reasonable default
-          return await collection.mint(params.to, amount, { 
-            value: mintPrice,
-            gasLimit: 200000n 
-          });
+        // First, let's check if the function exists
+        if (!collection.mint) {
+          throw new Error("Mint function not found in contract ABI");
         }
+        
+        // Try to call mint with proper parameters
+        const txOptions = { 
+          value: mintPrice,
+          gasLimit: 300000n // Use a reasonable gas limit
+        };
+        
+        console.log("📤 Transaction options:", {
+          value: ethers.formatEther(txOptions.value),
+          gasLimit: txOptions.gasLimit.toString()
+        });
+        
+        return await collection.mint(params.to, amount, txOptions);
       }
     } catch (error) {
       console.error("Error minting NFT:", error);
