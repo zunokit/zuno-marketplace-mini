@@ -128,6 +128,7 @@ export interface MintParams {
   to?: string;
   quantity?: number;
   tokenIds?: number[]; // For ERC1155 specific token IDs
+  value?: string; // ETH value to send with transaction
 }
 
 export interface BatchMintParams {

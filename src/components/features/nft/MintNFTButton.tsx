@@ -100,10 +100,14 @@ export function MintNFTButton({
 
     setIsMinting(true);
     try {
+      // Calculate total price for the quantity
+      const totalPrice = getTotalPrice();
+      
       await mint({
         collection: collectionAddress,
         quantity,
-        to: account
+        to: account,
+        value: totalPrice // Pass the mint price as value
       });
       
       setShowDialog(false);

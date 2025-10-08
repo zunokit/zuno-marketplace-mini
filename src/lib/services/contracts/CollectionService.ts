@@ -338,11 +338,54 @@ export class CollectionService {
 
       if (params.tokenType === "ERC721") {
         // ERC721: mint(address to) payable
-        return await collection.mint(params.to, { value: mintPrice });
+        console.log("🔧 Calling ERC721 mint with:", {
+          to: params.to,
+          value: ethers.formatEther(mintPrice),
+          valueInWei: mintPrice.toString()
+        });
+        
+        // Try with explicit gas limit to avoid estimation issues
+        try {
+          const gasEstimate = await collection.mint.estimateGas(params.to, { value: mintPrice });
+          console.log("⛽ Estimated gas:", gasEstimate.toString());
+          return await collection.mint(params.to, { 
+            value: mintPrice,
+            gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
+          });
+        } catch (estimateError) {
+          console.log("⚠️ Gas estimation failed, using default:", estimateError);
+          // If estimation fails, try with a reasonable default
+          return await collection.mint(params.to, { 
+            value: mintPrice,
+            gasLimit: 200000n 
+          });
+        }
       } else {
         // ERC1155: mint(address to, uint256 amount) payable
         const amount = params.amount || "1";
-        return await collection.mint(params.to, amount, { value: mintPrice });
+        console.log("🔧 Calling ERC1155 mint with:", {
+          to: params.to,
+          amount,
+          value: ethers.formatEther(mintPrice),
+          valueInWei: mintPrice.toString()
+        });
+        
+        // Try with explicit gas limit to avoid estimation issues
+        try {
+          const gasEstimate = await collection.mint.estimateGas(params.to, amount, { value: mintPrice });
+          console.log("⛽ Estimated gas:", gasEstimate.toString());
+          return await collection.mint(params.to, amount, { 
+            value: mintPrice,
+            gasLimit: gasEstimate * 120n / 100n // Add 20% buffer
+          });
+        } catch (estimateError) {
+          console.log("⚠️ Gas estimation failed, using default:", estimateError);
+          // If estimation fails, try with a reasonable default
+          return await collection.mint(params.to, amount, { 
+            value: mintPrice,
+            gasLimit: 200000n 
+          });
+        }
       }
     } catch (error) {
       console.error("Error minting NFT:", error);
