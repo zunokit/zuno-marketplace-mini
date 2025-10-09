@@ -371,19 +371,33 @@ export class CollectionService {
       let mintPrice = ethers.parseEther("0");
 
       try {
+        // Try getMintInfo first
         const mintInfo = await collection.getMintInfo(minterAddress);
         mintPrice =
           mintInfo.currentMintPrice || mintInfo[4] || ethers.parseEther("0");
         console.log(
-          "💰 Mint price from contract:",
+          "💰 Mint price from getMintInfo:",
           ethers.formatEther(mintPrice),
           "ETH"
         );
       } catch (error) {
-        // If getMintInfo fails, use the provided value or default
-        console.log("⚠️ Could not get mint info, using provided value");
-        if (params.value) {
-          mintPrice = ethers.parseEther(params.value);
+        // If getMintInfo fails, try getMintPrice directly
+        console.log("⚠️ getMintInfo failed, trying getMintPrice...");
+        try {
+          mintPrice = await collection.getMintPrice();
+          console.log(
+            "💰 Mint price from getMintPrice:",
+            ethers.formatEther(mintPrice),
+            "ETH"
+          );
+        } catch (error2) {
+          // If both fail, use default based on token type
+          console.log("⚠️ Could not get mint price from contract, using default");
+          if (params.tokenType === "ERC1155") {
+            mintPrice = ethers.parseEther("0.01"); // Default for ERC1155
+          } else {
+            mintPrice = ethers.parseEther("0.01"); // Default for ERC721
+          }
         }
       }
 
@@ -448,11 +462,16 @@ export class CollectionService {
       } else {
         // ERC1155: mint(address to, uint256 amount) payable
         const amount = params.amount || "1";
+        
+        // Calculate total mint price (price per token * amount)
+        const totalMintPrice = mintPrice * BigInt(amount);
+        
         console.log("🔧 Calling ERC1155 mint with:", {
           to: params.to,
           amount,
-          value: ethers.formatEther(mintPrice),
-          valueInWei: mintPrice.toString()
+          pricePerToken: ethers.formatEther(mintPrice),
+          totalPrice: ethers.formatEther(totalMintPrice),
+          totalPriceInWei: totalMintPrice.toString()
         });
         
         // First, let's check if the function exists
@@ -463,7 +482,7 @@ export class CollectionService {
         // Estimate gas first for accurate limit
         let gasEstimate: bigint;
         try {
-          gasEstimate = await collection.mint.estimateGas(params.to, amount, { value: mintPrice });
+          gasEstimate = await collection.mint.estimateGas(params.to, amount, { value: totalMintPrice });
           console.log("⛽ Gas estimate:", gasEstimate.toString());
         } catch (error: any) {
           console.error("❌ Gas estimation failed - transaction will likely revert!");
@@ -488,7 +507,7 @@ export class CollectionService {
         const gasLimit = (gasEstimate * 120n) / 100n;
 
         const txOptions = {
-          value: mintPrice,
+          value: totalMintPrice,
           gasLimit
         };
 
