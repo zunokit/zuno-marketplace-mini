@@ -92,6 +92,7 @@ export interface CreateCollectionParams extends CollectionMetadata {
   allowlistMintPrice?: string;
   publicMintPrice?: string;
   allowlistStageDuration?: string;
+  allowlist?: string[]; // Array of addresses for allowlist
   revealed?: boolean;
 }
 

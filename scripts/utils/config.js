@@ -64,7 +64,9 @@ const ERC721_ABI = [
   "function mintBatch(address to, uint256[] calldata tokenIds) external",
   "function safeMint(address to, string memory uri) external returns (uint256)",
   "function setApprovalForAll(address operator, bool approved) external",
-  "function approve(address to, uint256 tokenId) external"
+  "function approve(address to, uint256 tokenId) external",
+  "function addToAllowlist(address[] calldata addresses) external",
+  "function removeFromAllowlist(address[] calldata addresses) external"
 ];
 
 const ERC1155_ABI = [
@@ -75,7 +77,9 @@ const ERC1155_ABI = [
   "function balanceOf(address account, uint256 id) view returns (uint256)",
   "function mint(address to, uint256 id, uint256 amount, bytes data) external",
   "function mintBatch(address to, uint256[] ids, uint256[] amounts, bytes data) external",
-  "function setApprovalForAll(address operator, bool approved) external"
+  "function setApprovalForAll(address operator, bool approved) external",
+  "function addToAllowlist(address[] calldata addresses) external",
+  "function removeFromAllowlist(address[] calldata addresses) external"
 ];
 
 /**

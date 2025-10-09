@@ -85,9 +85,25 @@ export class CollectionService {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    const factoryAddress = await marketplaceHubService.getCollectionFactory(
-      tokenType
-    );
+    // Ensure hub is initialized first
+    if (!this.provider || !this.signer) {
+      throw new Error("CollectionService not initialized - call initialize() first");
+    }
+
+    // Try to get factory address, catching any hub initialization errors
+    let factoryAddress: string;
+    try {
+      factoryAddress = marketplaceHubService.getCollectionFactory(tokenType);
+    } catch (error: any) {
+      // If hub not initialized, try to initialize it
+      if (error.message?.includes("Hub not initialized")) {
+        console.log("🔄 Hub not initialized, attempting to initialize...");
+        await marketplaceHubService.initialize(this.provider, this.signer);
+        factoryAddress = marketplaceHubService.getCollectionFactory(tokenType);
+      } else {
+        throw error;
+      }
+    }
 
     console.log(`🏭 ${tokenType} Factory Address:`, factoryAddress);
 
@@ -198,6 +214,26 @@ export class CollectionService {
             tokenType: params.tokenType,
           },
         });
+
+        // Add allowlist addresses if provided
+        if (params.allowlist && params.allowlist.length > 0) {
+          try {
+            console.log("📝 Adding allowlist addresses:", params.allowlist);
+            const collectionContract = new ethers.Contract(
+              collectionAddress,
+              params.tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI,
+              this.signer
+            );
+            
+            // Check if addToAllowlist function exists
+            const allowlistTx = await collectionContract.addToAllowlist(params.allowlist);
+            await allowlistTx.wait();
+            console.log("✅ Allowlist addresses added successfully");
+          } catch (error: any) {
+            console.warn("⚠️ Failed to add allowlist addresses:", error.message);
+            // Don't throw - collection was created successfully
+          }
+        }
 
         if (
           !collectionAddress ||
