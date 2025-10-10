@@ -1,23 +1,22 @@
-"use client";
+'use client';
 
 /**
  * Admin Dashboard Page
  * Main admin dashboard with platform overview
  */
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAppSelector } from "@/lib/store/hooks";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
+  CardTitle
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useAppSelector } from '@/lib/store/hooks';
 import {
   Shield,
   Users,
@@ -26,39 +25,38 @@ import {
   AlertTriangle,
   CheckCircle,
   Settings,
-  TrendingUp,
-} from "lucide-react";
+  TrendingUp
+} from 'lucide-react';
 
 export default function AdminDashboardPage() {
   const { account } = useAppSelector((state) => state.wallet);
-  const [useMockData] = useState(isMockDataEnabled());
 
   // Mock stats
   const [stats, setStats] = useState({
     totalUsers: 1234,
     totalCollections: 45,
-    totalVolume: "2,345.67",
+    totalVolume: '2,345.67',
     pendingVerifications: 8,
     activeBans: 3,
-    platformFee: "2.0%",
+    platformFee: '2.0%'
   });
 
   const [recentActivity, setRecentActivity] = useState([
     {
-      type: "verification",
-      message: "CryptoPunks collection verified",
-      timestamp: Date.now() - 1000 * 60 * 15,
+      type: 'verification',
+      message: 'CryptoPunks collection verified',
+      timestamp: Date.now() - 1000 * 60 * 15
     },
     {
-      type: "fee",
-      message: "Platform fee updated to 2.0%",
-      timestamp: Date.now() - 1000 * 60 * 45,
+      type: 'fee',
+      message: 'Platform fee updated to 2.0%',
+      timestamp: Date.now() - 1000 * 60 * 45
     },
     {
-      type: "emergency",
-      message: "Auction contract paused for maintenance",
-      timestamp: Date.now() - 1000 * 60 * 120,
-    },
+      type: 'emergency',
+      message: 'Auction contract paused for maintenance',
+      timestamp: Date.now() - 1000 * 60 * 120
+    }
   ]);
 
   /**
@@ -66,7 +64,7 @@ export default function AdminDashboardPage() {
    */
   const formatTimeAgo = (timestamp: number): string => {
     const minutes = Math.floor((Date.now() - timestamp) / (1000 * 60));
-    if (minutes < 1) return "Just now";
+    if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours}h ago`;
@@ -76,16 +74,6 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      {useMockData && (
-        <Alert className="mb-6">
-          <AlertDescription>
-            ⚠️ <strong>Mock Data Mode:</strong> This admin panel is displaying mock data.
-            Real admin functions will interact with AccessControl, FeeManager, and other
-            contracts.
-          </AlertDescription>
-        </Alert>
-      )}
-
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <Card>
@@ -123,7 +111,9 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalVolume} ETH</div>
-            <p className="text-xs text-muted-foreground">Platform fee: {stats.platformFee}</p>
+            <p className="text-xs text-muted-foreground">
+              Platform fee: {stats.platformFee}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -149,7 +139,9 @@ export default function AdminDashboardPage() {
                   </p>
                 </div>
               </div>
-              <Badge variant="secondary">{stats.pendingVerifications} pending</Badge>
+              <Badge variant="secondary">
+                {stats.pendingVerifications} pending
+              </Badge>
             </Link>
 
             <Link
@@ -197,13 +189,13 @@ export default function AdminDashboardPage() {
             <div className="space-y-4">
               {recentActivity.map((activity, idx) => (
                 <div key={idx} className="flex items-start gap-3">
-                  {activity.type === "verification" && (
+                  {activity.type === 'verification' && (
                     <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
                   )}
-                  {activity.type === "fee" && (
+                  {activity.type === 'fee' && (
                     <Settings className="h-5 w-5 text-blue-500 mt-0.5" />
                   )}
-                  {activity.type === "emergency" && (
+                  {activity.type === 'emergency' && (
                     <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
                   )}
                   <div className="flex-1">
@@ -264,4 +256,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-

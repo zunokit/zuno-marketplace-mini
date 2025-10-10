@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * Activity History Page
@@ -6,35 +6,29 @@
  * Tracks all NFT transactions and activities using blockchain events
  */
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+  CardTitle
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { useAppSelector } from "@/lib/store/hooks";
-import { useToast } from "@/hooks/use-toast";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
-import {
-  getMockActivityService,
-  Activity,
-  ActivityType,
-} from "@/lib/services/mock/mockActivityService";
+  SelectValue
+} from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useAppSelector } from '@/lib/store/hooks';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertCircle,
   Loader2,
@@ -46,8 +40,8 @@ import {
   Gavel,
   Repeat,
   Sparkles,
-  X,
-} from "lucide-react";
+  X
+} from 'lucide-react';
 
 export default function ActivityHistoryPage() {
   const { toast } = useToast();
@@ -56,35 +50,34 @@ export default function ActivityHistoryPage() {
   const { account, isConnected } = useAppSelector((state) => state.wallet);
 
   // Local state
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [filteredActivities, setFilteredActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState<ActivityType | "all">("all");
+  const [filter, setFilter] = useState<string | 'all'>('all');
   const [timeRange, setTimeRange] = useState<
-    "7d" | "30d" | "90d" | "1y" | "all"
-  >("30d");
-  const [useMockData] = useState(isMockDataEnabled());
+    '7d' | '30d' | '90d' | '1y' | 'all'
+  >('30d');
 
   // Activity type labels
-  const activityTypes = {
-    all: "All Activities",
-    buy: "Purchases",
-    sell: "Sales",
-    list: "Listings",
-    offer: "Offers",
-    bid: "Bids",
-    mint: "Mints",
-    transfer: "Transfers",
-    cancel: "Cancellations",
+  const activityTypes: Record<string, string> = {
+    all: 'All Activities',
+    buy: 'Purchases',
+    sell: 'Sales',
+    list: 'Listings',
+    offer: 'Offers',
+    bid: 'Bids',
+    mint: 'Mints',
+    transfer: 'Transfers',
+    cancel: 'Cancellations'
   };
 
   // Time range labels
   const timeRanges = {
-    "7d": "Last 7 days",
-    "30d": "Last 30 days",
-    "90d": "Last 90 days",
-    "1y": "Last year",
-    all: "All time",
+    '7d': 'Last 7 days',
+    '30d': 'Last 30 days',
+    '90d': 'Last 90 days',
+    '1y': 'Last year',
+    all: 'All time'
   };
 
   /**
@@ -104,40 +97,28 @@ export default function ActivityHistoryPage() {
 
     setLoading(true);
     try {
-      if (useMockData) {
-        // Mock data
-        const mockService = getMockActivityService();
-        const fetchedActivities = await mockService.getActivities(account, {
-          type: filter,
-          timeRange,
-          limit: 100,
-        });
-        setActivities(fetchedActivities);
-        setFilteredActivities(fetchedActivities);
-      } else {
-        // Real blockchain data
-        // TODO: Implement real contract interaction
-        // Should listen to events from:
-        // - ListingHistoryTracker: TransactionRecorded, PricePointAdded, UserStatsUpdated
-        // - Exchange contracts: ItemListed, ItemSold, ListingCancelled
-        // - Auction contracts: BidPlaced, AuctionEnded
-        // - NFT contracts: Transfer, Minted
+      // Real blockchain data
+      // TODO: Implement real contract interaction
+      // Should listen to events from:
+      // - ListingHistoryTracker: TransactionRecorded, PricePointAdded, UserStatsUpdated
+      // - Exchange contracts: ItemListed, ItemSold, ListingCancelled
+      // - Auction contracts: BidPlaced, AuctionEnded
+      // - NFT contracts: Transfer, Minted
 
-        toast({
-          title: "Blockchain Integration",
-          description: "Real blockchain activity tracking coming soon",
-          variant: "default",
-        });
-        setActivities([]);
-        setFilteredActivities([]);
-      }
-    } catch (error) {
-      console.error("Error fetching user activity:", error);
       toast({
-        title: "Error Loading Activities",
+        title: 'Blockchain Integration',
+        description: 'Real blockchain activity tracking coming soon',
+        variant: 'default'
+      });
+      setActivities([]);
+      setFilteredActivities([]);
+    } catch (error) {
+      console.error('Error fetching user activity:', error);
+      toast({
+        title: 'Error Loading Activities',
         description:
-          error instanceof Error ? error.message : "Failed to load activities",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to load activities',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -154,7 +135,7 @@ export default function ActivityHistoryPage() {
       (now.getTime() - time.getTime()) / (1000 * 60)
     );
 
-    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 1) return 'Just now';
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
@@ -163,23 +144,23 @@ export default function ActivityHistoryPage() {
   /**
    * Get activity icon
    */
-  const getActivityIcon = (type: ActivityType) => {
+  const getActivityIcon = (type: string) => {
     switch (type) {
-      case "buy":
+      case 'buy':
         return <ShoppingCart className="h-4 w-4" />;
-      case "sell":
+      case 'sell':
         return <TrendingUp className="h-4 w-4" />;
-      case "list":
+      case 'list':
         return <Tag className="h-4 w-4" />;
-      case "offer":
+      case 'offer':
         return <TrendingDown className="h-4 w-4" />;
-      case "bid":
+      case 'bid':
         return <Gavel className="h-4 w-4" />;
-      case "mint":
+      case 'mint':
         return <Sparkles className="h-4 w-4" />;
-      case "transfer":
+      case 'transfer':
         return <Repeat className="h-4 w-4" />;
-      case "cancel":
+      case 'cancel':
         return <X className="h-4 w-4" />;
       default:
         return null;
@@ -189,26 +170,26 @@ export default function ActivityHistoryPage() {
   /**
    * Get activity color
    */
-  const getActivityColor = (type: ActivityType) => {
+  const getActivityColor = (type: string) => {
     switch (type) {
-      case "buy":
-        return "text-green-500 bg-green-50 dark:bg-green-950";
-      case "sell":
-        return "text-orange-500 bg-orange-50 dark:bg-orange-950";
-      case "list":
-        return "text-blue-500 bg-blue-50 dark:bg-blue-950";
-      case "offer":
-        return "text-purple-500 bg-purple-50 dark:bg-purple-950";
-      case "bid":
-        return "text-yellow-500 bg-yellow-50 dark:bg-yellow-950";
-      case "mint":
-        return "text-pink-500 bg-pink-50 dark:bg-pink-950";
-      case "transfer":
-        return "text-gray-500 bg-gray-50 dark:bg-gray-950";
-      case "cancel":
-        return "text-red-500 bg-red-50 dark:bg-red-950";
+      case 'buy':
+        return 'text-green-500 bg-green-50 dark:bg-green-950';
+      case 'sell':
+        return 'text-orange-500 bg-orange-50 dark:bg-orange-950';
+      case 'list':
+        return 'text-blue-500 bg-blue-50 dark:bg-blue-950';
+      case 'offer':
+        return 'text-purple-500 bg-purple-50 dark:bg-purple-950';
+      case 'bid':
+        return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-950';
+      case 'mint':
+        return 'text-pink-500 bg-pink-50 dark:bg-pink-950';
+      case 'transfer':
+        return 'text-gray-500 bg-gray-50 dark:bg-gray-950';
+      case 'cancel':
+        return 'text-red-500 bg-red-50 dark:bg-red-950';
       default:
-        return "text-gray-500 bg-gray-50 dark:bg-gray-950";
+        return 'text-gray-500 bg-gray-50 dark:bg-gray-950';
     }
   };
 
@@ -217,18 +198,18 @@ export default function ActivityHistoryPage() {
    */
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "active":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
-      case "expired":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
-      case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      case 'completed':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'active':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'expired':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
@@ -236,32 +217,32 @@ export default function ActivityHistoryPage() {
    * Format address
    */
   const formatAddress = (address: string | null): string => {
-    if (!address) return "—";
+    if (!address) return '—';
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   /**
    * Get activity description
    */
-  const getActivityDescription = (activity: Activity): string => {
+  const getActivityDescription = (activity: any): string => {
     const { type, nft, amount, currency } = activity;
 
     switch (type) {
-      case "buy":
+      case 'buy':
         return `Bought ${nft.name} for ${amount} ${currency}`;
-      case "sell":
+      case 'sell':
         return `Sold ${nft.name} for ${amount} ${currency}`;
-      case "list":
+      case 'list':
         return `Listed ${nft.name} for ${amount} ${currency}`;
-      case "offer":
+      case 'offer':
         return `Made offer on ${nft.name} for ${amount} ${currency}`;
-      case "bid":
+      case 'bid':
         return `Placed bid on ${nft.name} for ${amount} ${currency}`;
-      case "mint":
+      case 'mint':
         return `Minted ${nft.name}`;
-      case "transfer":
+      case 'transfer':
         return `Transferred ${nft.name} to ${formatAddress(activity.to)}`;
-      case "cancel":
+      case 'cancel':
         return `Cancelled listing for ${nft.name}`;
       default:
         return `${type} ${nft.name}`;
@@ -272,12 +253,12 @@ export default function ActivityHistoryPage() {
   const stats = {
     total: filteredActivities.length,
     trades: filteredActivities.filter(
-      (a) => a.type === "buy" || a.type === "sell"
+      (a) => a.type === 'buy' || a.type === 'sell'
     ).length,
     volume: filteredActivities
-      .filter((a) => a.type === "buy" || a.type === "sell")
+      .filter((a) => a.type === 'buy' || a.type === 'sell')
       .reduce((sum, a) => sum + parseFloat(a.amount), 0)
-      .toFixed(2),
+      .toFixed(2)
   };
 
   // Check if wallet is connected
@@ -303,11 +284,6 @@ export default function ActivityHistoryPage() {
         <p className="text-muted-foreground">
           Track all your NFT transactions and activities
         </p>
-        {useMockData && (
-          <Badge variant="outline" className="mt-2">
-            🎭 Mock Data Mode
-          </Badge>
-        )}
       </div>
 
       {/* Stats */}
@@ -389,7 +365,7 @@ export default function ActivityHistoryPage() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>No Activities Found</AlertTitle>
           <AlertDescription>
-            {filter === "all"
+            {filter === 'all'
               ? "You haven't made any transactions yet. Start by buying or minting your first NFT!"
               : `No ${activityTypes[
                   filter

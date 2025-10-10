@@ -1,60 +1,58 @@
-"use client";
+'use client';
 
 /**
  * Collection Verification Admin Page
  * Verify/reject collections using CollectionVerifierService
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+  CardTitle
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { useAppSelector } from "@/lib/store/hooks";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
+  SelectValue
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useAppSelector } from '@/lib/store/hooks';
 import {
   collectionVerifierService,
   CollectionVerification,
-  VerificationStatus,
-} from "@/lib/services/contracts/CollectionVerifierService";
-import { Shield, CheckCircle, XCircle, Clock } from "lucide-react";
+  VerificationStatus
+} from '@/lib/services/contracts/CollectionVerifierService';
+import { Shield, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export default function CollectionVerificationPage() {
   const { toast } = useToast();
   const { account } = useAppSelector((state) => state.wallet);
-  const [useMockData] = useState(isMockDataEnabled());
 
   const [verifiedCollections, setVerifiedCollections] = useState<string[]>([]);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [collection, setCollection] = useState("");
+  const [collection, setCollection] = useState('');
   const [verificationTier, setVerificationTier] = useState<
-    "basic" | "premium" | "featured"
-  >("basic");
-  const [reviewNotes, setReviewNotes] = useState("");
+    'basic' | 'premium' | 'featured'
+  >('basic');
+  const [reviewNotes, setReviewNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
   /**
@@ -72,7 +70,7 @@ export default function CollectionVerificationPage() {
         await collectionVerifierService.getAllVerifiedCollections();
       setVerifiedCollections(collections);
     } catch (error) {
-      console.error("Failed to load verified collections:", error);
+      console.error('Failed to load verified collections:', error);
     }
   };
 
@@ -82,9 +80,9 @@ export default function CollectionVerificationPage() {
   const handleVerifyCollection = async () => {
     if (!collection) {
       toast({
-        title: "Validation Error",
-        description: "Please enter collection address",
-        variant: "destructive",
+        title: 'Validation Error',
+        description: 'Please enter collection address',
+        variant: 'destructive'
       });
       return;
     }
@@ -94,8 +92,8 @@ export default function CollectionVerificationPage() {
     try {
       if (useMockData) {
         toast({
-          title: "Collection Verified",
-          description: `Successfully verified collection with ${verificationTier} tier`,
+          title: 'Collection Verified',
+          description: `Successfully verified collection with ${verificationTier} tier`
         });
         setVerifyDialogOpen(false);
       } else {
@@ -107,23 +105,23 @@ export default function CollectionVerificationPage() {
         );
 
         toast({
-          title: "Collection Verified",
-          description: "Successfully verified collection",
+          title: 'Collection Verified',
+          description: 'Successfully verified collection'
         });
 
         setVerifyDialogOpen(false);
-        setCollection("");
-        setReviewNotes("");
+        setCollection('');
+        setReviewNotes('');
         await loadVerifiedCollections();
       }
     } catch (error) {
       toast({
-        title: "Verification Failed",
+        title: 'Verification Failed',
         description:
           error instanceof Error
             ? error.message
-            : "Failed to verify collection",
-        variant: "destructive",
+            : 'Failed to verify collection',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -139,30 +137,30 @@ export default function CollectionVerificationPage() {
     try {
       if (useMockData) {
         toast({
-          title: "Verification Revoked",
-          description: "Successfully revoked collection verification",
+          title: 'Verification Revoked',
+          description: 'Successfully revoked collection verification'
         });
       } else {
         await collectionVerifierService.revokeVerification(
           collectionAddress,
-          "Verification revoked by admin"
+          'Verification revoked by admin'
         );
 
         toast({
-          title: "Verification Revoked",
-          description: "Successfully revoked verification",
+          title: 'Verification Revoked',
+          description: 'Successfully revoked verification'
         });
 
         await loadVerifiedCollections();
       }
     } catch (error) {
       toast({
-        title: "Revoke Failed",
+        title: 'Revoke Failed',
         description:
           error instanceof Error
             ? error.message
-            : "Failed to revoke verification",
-        variant: "destructive",
+            : 'Failed to revoke verification',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -296,7 +294,7 @@ export default function CollectionVerificationPage() {
               Cancel
             </Button>
             <Button onClick={handleVerifyCollection} disabled={loading}>
-              {loading ? "Verifying..." : "Verify Collection"}
+              {loading ? 'Verifying...' : 'Verify Collection'}
             </Button>
           </DialogFooter>
         </DialogContent>

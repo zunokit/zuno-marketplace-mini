@@ -1,37 +1,35 @@
-"use client";
+'use client';
 
 /**
  * Analytics Dashboard Page
  * Marketplace analytics using ListingHistoryTrackerService
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useAppSelector } from "@/lib/store/hooks";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
+  CardTitle
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useAppSelector } from '@/lib/store/hooks';
 import {
   listingHistoryTrackerService,
   GlobalStats,
-  ListingHistoryTrackerService,
-} from "@/lib/services/contracts/ListingHistoryTrackerService";
+  ListingHistoryTrackerService
+} from '@/lib/services/contracts/ListingHistoryTrackerService';
 import {
   TrendingUp,
   DollarSign,
   ShoppingCart,
   Users,
-  BarChart3,
-} from "lucide-react";
+  BarChart3
+} from 'lucide-react';
 
 export default function AnalyticsPage() {
   const { account } = useAppSelector((state) => state.wallet);
-  const [useMockData] = useState(isMockDataEnabled());
 
   const [globalStats, setGlobalStats] = useState<GlobalStats>({
     totalTransactions: BigInt(0),
@@ -40,7 +38,7 @@ export default function AnalyticsPage() {
     totalSales: BigInt(0),
     averagePrice: BigInt(0),
     uniqueCollections: BigInt(0),
-    uniqueUsers: BigInt(0),
+    uniqueUsers: BigInt(0)
   });
 
   const [loading, setLoading] = useState(true);
@@ -49,22 +47,10 @@ export default function AnalyticsPage() {
    * Load analytics data
    */
   useEffect(() => {
-    if (!useMockData && account) {
+    if (account) {
       loadAnalytics();
-    } else if (useMockData) {
-      // Mock data
-      setGlobalStats({
-        totalTransactions: BigInt(2834),
-        totalVolume: BigInt("2345670000000000000000"), // 2345.67 ETH
-        totalListings: BigInt(1456),
-        totalSales: BigInt(1234),
-        averagePrice: BigInt("1500000000000000000"), // 1.5 ETH
-        uniqueCollections: BigInt(45),
-        uniqueUsers: BigInt(892),
-      });
-      setLoading(false);
     }
-  }, [account, useMockData]);
+  }, [account]);
 
   const loadAnalytics = async () => {
     setLoading(true);
@@ -72,7 +58,7 @@ export default function AnalyticsPage() {
       const stats = await listingHistoryTrackerService.getGlobalStats();
       setGlobalStats(stats);
     } catch (error) {
-      console.error("Failed to load analytics:", error);
+      console.error('Failed to load analytics:', error);
     } finally {
       setLoading(false);
     }
@@ -87,14 +73,6 @@ export default function AnalyticsPage() {
         </p>
       </div>
 
-      {useMockData && (
-        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-          <p className="text-sm text-amber-600 dark:text-amber-400">
-            ⚠️ Mock Data Mode - Real contract integration disabled
-          </p>
-        </div>
-      )}
-
       {/* Global Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <Card>
@@ -106,7 +84,7 @@ export default function AnalyticsPage() {
             <div className="text-2xl font-bold">
               {ListingHistoryTrackerService.formatVolume(
                 globalStats.totalVolume
-              )}{" "}
+              )}{' '}
               ETH
             </div>
             <p className="text-xs text-muted-foreground">
@@ -174,7 +152,7 @@ export default function AnalyticsPage() {
             <div className="text-3xl font-bold">
               {ListingHistoryTrackerService.formatPrice(
                 globalStats.averagePrice
-              )}{" "}
+              )}{' '}
               ETH
             </div>
           </CardContent>

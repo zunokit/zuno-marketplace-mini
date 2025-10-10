@@ -1,52 +1,50 @@
-"use client";
+'use client';
 
 /**
  * Timelock Management Admin Page
  * Manage time-locked administrative actions for security
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+  CardTitle
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { useAppSelector } from "@/lib/store/hooks";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useAppSelector } from '@/lib/store/hooks';
 import {
   timelockService,
   TimelockService,
   PendingAction,
-  ActionStatus,
-} from "@/lib/services/contracts/TimelockService";
-import { Clock, Play, X, AlertCircle, CheckCircle2 } from "lucide-react";
+  ActionStatus
+} from '@/lib/services/contracts/TimelockService';
+import { Clock, Play, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function TimelockManagementPage() {
   const { toast } = useToast();
   const { account } = useAppSelector((state) => state.wallet);
-  const [useMockData] = useState(isMockDataEnabled());
 
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
-  const [targetContract, setTargetContract] = useState("");
-  const [callData, setCallData] = useState("");
-  const [description, setDescription] = useState("");
+  const [targetContract, setTargetContract] = useState('');
+  const [callData, setCallData] = useState('');
+  const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
 
   /**
@@ -63,7 +61,7 @@ export default function TimelockManagementPage() {
       const actions = await timelockService.getPendingActions();
       setPendingActions(actions);
     } catch (error) {
-      console.error("Failed to load pending actions:", error);
+      console.error('Failed to load pending actions:', error);
     }
   };
 
@@ -73,9 +71,9 @@ export default function TimelockManagementPage() {
   const handleScheduleAction = async () => {
     if (!targetContract || !callData) {
       toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
       });
       return;
     }
@@ -85,8 +83,8 @@ export default function TimelockManagementPage() {
     try {
       if (useMockData) {
         toast({
-          title: "Action Scheduled",
-          description: "Action has been scheduled successfully",
+          title: 'Action Scheduled',
+          description: 'Action has been scheduled successfully'
         });
         setScheduleDialogOpen(false);
       } else {
@@ -98,22 +96,22 @@ export default function TimelockManagementPage() {
         );
 
         toast({
-          title: "Action Scheduled",
-          description: `Action ID: ${actionId}`,
+          title: 'Action Scheduled',
+          description: `Action ID: ${actionId}`
         });
 
         setScheduleDialogOpen(false);
-        setTargetContract("");
-        setCallData("");
-        setDescription("");
+        setTargetContract('');
+        setCallData('');
+        setDescription('');
         await loadPendingActions();
       }
     } catch (error) {
       toast({
-        title: "Schedule Failed",
+        title: 'Schedule Failed',
         description:
-          error instanceof Error ? error.message : "Failed to schedule action",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to schedule action',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -129,25 +127,25 @@ export default function TimelockManagementPage() {
     try {
       if (useMockData) {
         toast({
-          title: "Action Executed",
-          description: "Action has been executed successfully",
+          title: 'Action Executed',
+          description: 'Action has been executed successfully'
         });
       } else {
         await timelockService.executeAction(actionId);
 
         toast({
-          title: "Action Executed",
-          description: "Action has been executed successfully",
+          title: 'Action Executed',
+          description: 'Action has been executed successfully'
         });
 
         await loadPendingActions();
       }
     } catch (error) {
       toast({
-        title: "Execution Failed",
+        title: 'Execution Failed',
         description:
-          error instanceof Error ? error.message : "Failed to execute action",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to execute action',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -163,25 +161,25 @@ export default function TimelockManagementPage() {
     try {
       if (useMockData) {
         toast({
-          title: "Action Cancelled",
-          description: "Action has been cancelled successfully",
+          title: 'Action Cancelled',
+          description: 'Action has been cancelled successfully'
         });
       } else {
         await timelockService.cancelAction(actionId);
 
         toast({
-          title: "Action Cancelled",
-          description: "Action has been cancelled successfully",
+          title: 'Action Cancelled',
+          description: 'Action has been cancelled successfully'
         });
 
         await loadPendingActions();
       }
     } catch (error) {
       toast({
-        title: "Cancellation Failed",
+        title: 'Cancellation Failed',
         description:
-          error instanceof Error ? error.message : "Failed to cancel action",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to cancel action',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -250,10 +248,10 @@ export default function TimelockManagementPage() {
                           </p>
                         </div>
                         <Badge
-                          variant={action.isReady ? "default" : "secondary"}
+                          variant={action.isReady ? 'default' : 'secondary'}
                         >
                           {action.isReady
-                            ? "Ready"
+                            ? 'Ready'
                             : TimelockService.formatTimeRemaining(
                                 action.timeRemaining
                               )}
@@ -356,7 +354,7 @@ export default function TimelockManagementPage() {
               Cancel
             </Button>
             <Button onClick={handleScheduleAction} disabled={loading}>
-              {loading ? "Scheduling..." : "Schedule Action"}
+              {loading ? 'Scheduling...' : 'Schedule Action'}
             </Button>
           </DialogFooter>
         </DialogContent>
