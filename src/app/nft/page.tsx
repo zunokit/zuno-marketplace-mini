@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * My NFTs Gallery Page
@@ -6,37 +6,33 @@
  * Simplified version with core features
  */
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  CardTitle
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAppSelector, useAppDispatch } from "@/lib/store/hooks";
-import { useToast } from "@/hooks/use-toast";
-import { ENV } from "@/lib/config/env";
-import {
-  isMockDataEnabled,
-  getMockDataService,
-} from "@/lib/services/mock/mockDataService";
+  SelectValue
+} from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAppSelector, useAppDispatch } from '@/lib/store/hooks';
+import { useToast } from '@/hooks/use-toast';
+import { ENV } from '@/lib/config/env';
 import {
   AlertCircle,
   Loader2,
@@ -44,15 +40,15 @@ import {
   Search,
   Grid3x3,
   List,
-  Filter,
-} from "lucide-react";
+  Filter
+} from 'lucide-react';
 
 interface NFTMetadata {
   tokenId: string;
   collectionAddress: string;
   collectionName: string;
   collectionSymbol: string;
-  collectionType: "ERC721" | "ERC1155";
+  collectionType: 'ERC721' | 'ERC1155';
   owner: string;
   tokenURI: string;
   amount: string;
@@ -78,25 +74,24 @@ export default function NFTGalleryPage() {
   // Local state
   const [allNFTs, setAllNFTs] = useState<NFTMetadata[]>([]);
   const [filteredNFTs, setFilteredNFTs] = useState<NFTMetadata[]>([]);
-  const [selectedCollection, setSelectedCollection] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "name">("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [typeFilter, setTypeFilter] = useState<"all" | "ERC721" | "ERC1155">(
-    "all"
+  const [selectedCollection, setSelectedCollection] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name'>('newest');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'ERC721' | 'ERC1155'>(
+    'all'
   );
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "listed" | "unlisted"
-  >("all");
+    'all' | 'listed' | 'unlisted'
+  >('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [useMockData] = useState(isMockDataEnabled());
 
   /**
-   * Load NFTs from Redux or mock data
+   * Load NFTs from Redux
    */
   useEffect(() => {
     loadNFTs();
-  }, [nfts, collections, useMockData, account]);
+  }, [nfts, collections, account]);
 
   /**
    * Apply filters
@@ -109,7 +104,7 @@ export default function NFTGalleryPage() {
     searchTerm,
     sortBy,
     typeFilter,
-    statusFilter,
+    statusFilter
   ]);
 
   /**
@@ -117,78 +112,45 @@ export default function NFTGalleryPage() {
    */
   const loadNFTs = async () => {
     try {
-      if (useMockData) {
-        // Load mock NFTs
-        const mockService = getMockDataService();
-        const mockCollections = await mockService.getCollections();
-        const nftPromises = mockCollections.map((c) =>
-          mockService.getNFTs(c.address)
-        );
-        const nftArrays = await Promise.all(nftPromises);
+      // Real contract data from Redux
+      const safeNfts = nfts || {};
+      const safeCollections = Array.isArray(collections) ? collections : [];
 
-        const loadedNFTs: NFTMetadata[] = nftArrays.flatMap((nftList, idx) => {
-          const collection = mockCollections[idx];
+      const loadedNFTs: NFTMetadata[] = Object.entries(safeNfts).flatMap(
+        ([collectionAddress, nftList]) => {
+          const collection = safeCollections.find(
+            (c) => c.address === collectionAddress
+          );
+          if (!Array.isArray(nftList) || !collection) return [];
+
           return nftList.map((nft) => ({
             tokenId: nft.tokenId,
-            collectionAddress: nft.collectionAddress,
-            collectionName: collection.name,
-            collectionSymbol: collection.symbol,
-            collectionType: collection.type,
+            collectionAddress,
+            collectionName:
+              collection.name || `Collection ${collectionAddress.slice(0, 6)}`,
+            collectionSymbol: collection.symbol || 'NFT',
+            collectionType: collection.type || 'ERC721',
             owner: nft.owner,
-            tokenURI: nft.tokenURI,
-            amount: nft.amount,
+            tokenURI: nft.tokenURI || '',
+            amount: nft.amount || '1',
             name: nft.name,
             description: nft.description,
             image: nft.image,
             attributes: nft.attributes,
-            isListed: Math.random() > 0.5, // Random listing status
-            listingPrice: "0.01",
+            isListed: nft.isListed,
+            listingPrice: nft.listingPrice
           }));
-        });
+        }
+      );
 
-        setAllNFTs(loadedNFTs);
-      } else {
-        // Real contract data from Redux
-        const safeNfts = nfts || {};
-        const safeCollections = Array.isArray(collections) ? collections : [];
-
-        const loadedNFTs: NFTMetadata[] = Object.entries(safeNfts).flatMap(
-          ([collectionAddress, nftList]) => {
-            const collection = safeCollections.find(
-              (c) => c.address === collectionAddress
-            );
-            if (!Array.isArray(nftList) || !collection) return [];
-
-            return nftList.map((nft) => ({
-              tokenId: nft.tokenId,
-              collectionAddress,
-              collectionName:
-                collection.name ||
-                `Collection ${collectionAddress.slice(0, 6)}`,
-              collectionSymbol: collection.symbol || "NFT",
-              collectionType: collection.type || "ERC721",
-              owner: nft.owner,
-              tokenURI: nft.tokenURI || "",
-              amount: nft.amount || "1",
-              name: nft.name,
-              description: nft.description,
-              image: nft.image,
-              attributes: nft.attributes,
-              isListed: nft.isListed,
-              listingPrice: nft.listingPrice,
-            }));
-          }
-        );
-
-        setAllNFTs(loadedNFTs);
-      }
+      setAllNFTs(loadedNFTs);
     } catch (error) {
-      console.error("Error loading NFTs:", error);
+      console.error('Error loading NFTs:', error);
       toast({
-        title: "Error Loading NFTs",
+        title: 'Error Loading NFTs',
         description:
-          error instanceof Error ? error.message : "Failed to load NFTs",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to load NFTs',
+        variant: 'destructive'
       });
     }
   };
@@ -200,21 +162,21 @@ export default function NFTGalleryPage() {
     let filtered = [...allNFTs];
 
     // Collection filter
-    if (selectedCollection !== "all") {
+    if (selectedCollection !== 'all') {
       filtered = filtered.filter(
         (nft) => nft.collectionAddress === selectedCollection
       );
     }
 
     // Type filter
-    if (typeFilter !== "all") {
+    if (typeFilter !== 'all') {
       filtered = filtered.filter((nft) => nft.collectionType === typeFilter);
     }
 
     // Status filter
-    if (statusFilter !== "all") {
+    if (statusFilter !== 'all') {
       filtered = filtered.filter((nft) =>
-        statusFilter === "listed" ? nft.isListed : !nft.isListed
+        statusFilter === 'listed' ? nft.isListed : !nft.isListed
       );
     }
 
@@ -233,12 +195,12 @@ export default function NFTGalleryPage() {
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "newest":
+        case 'newest':
           return parseInt(b.tokenId) - parseInt(a.tokenId);
-        case "oldest":
+        case 'oldest':
           return parseInt(a.tokenId) - parseInt(b.tokenId);
-        case "name":
-          return (a.name || "").localeCompare(b.name || "");
+        case 'name':
+          return (a.name || '').localeCompare(b.name || '');
         default:
           return 0;
       }
@@ -255,15 +217,15 @@ export default function NFTGalleryPage() {
     try {
       await loadNFTs();
       toast({
-        title: "Refreshed",
-        description: "NFT gallery has been refreshed",
+        title: 'Refreshed',
+        description: 'NFT gallery has been refreshed'
       });
     } catch (error) {
       toast({
-        title: "Refresh Failed",
+        title: 'Refresh Failed',
         description:
-          error instanceof Error ? error.message : "Failed to refresh",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to refresh',
+        variant: 'destructive'
       });
     } finally {
       setIsRefreshing(false);
@@ -295,11 +257,6 @@ export default function NFTGalleryPage() {
             <p className="text-muted-foreground">
               View and manage your NFT collection
             </p>
-            {useMockData && (
-              <Badge variant="outline" className="mt-2">
-                🎭 Mock Data Mode
-              </Badge>
-            )}
           </div>
           <div className="flex gap-2">
             <Button
@@ -309,16 +266,16 @@ export default function NFTGalleryPage() {
               size="sm"
             >
               <RefreshCw
-                className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
               />
               Refresh
             </Button>
             <Button
-              onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
+              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
               variant="outline"
               size="sm"
             >
-              {viewMode === "grid" ? (
+              {viewMode === 'grid' ? (
                 <List className="h-4 w-4" />
               ) : (
                 <Grid3x3 className="h-4 w-4" />
@@ -442,10 +399,10 @@ export default function NFTGalleryPage() {
           <AlertTitle>No NFTs Found</AlertTitle>
           <AlertDescription>
             {searchTerm ||
-            selectedCollection !== "all" ||
-            typeFilter !== "all" ||
-            statusFilter !== "all"
-              ? "Try adjusting your filters or search term."
+            selectedCollection !== 'all' ||
+            typeFilter !== 'all' ||
+            statusFilter !== 'all'
+              ? 'Try adjusting your filters or search term.'
               : "You don't have any NFTs yet. Start by minting some!"}
           </AlertDescription>
         </Alert>
@@ -457,9 +414,9 @@ export default function NFTGalleryPage() {
 
           <div
             className={
-              viewMode === "grid"
-                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                : "space-y-4"
+              viewMode === 'grid'
+                ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                : 'space-y-4'
             }
           >
             {filteredNFTs.map((nft) => (
@@ -467,7 +424,7 @@ export default function NFTGalleryPage() {
                 key={`${nft.collectionAddress}-${nft.tokenId}`}
                 className="overflow-hidden"
               >
-                {viewMode === "grid" && nft.image && (
+                {viewMode === 'grid' && nft.image && (
                   <div className="relative w-full h-64 bg-muted">
                     <Image
                       src={nft.image}
@@ -508,7 +465,7 @@ export default function NFTGalleryPage() {
                       <span className="text-muted-foreground">Token ID:</span>
                       <span className="font-mono">#{nft.tokenId}</span>
                     </div>
-                    {nft.amount !== "1" && (
+                    {nft.amount !== '1' && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Amount:</span>
                         <span>{nft.amount}</span>

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 /**
  * Auctions Page
@@ -6,36 +6,27 @@
  * Supports English Auction (price increases) & Dutch Auction (price decreases)
  */
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { useAppSelector } from "@/lib/store/hooks";
-import { useToast } from "@/hooks/use-toast";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
-import {
-  getMockAuctionService,
-  Auction,
-  AuctionType,
-  AuctionStatus,
-} from "@/lib/services/mock/mockAuctionService";
-import { auctionService } from "@/lib/services/contracts/AuctionService";
-import { RealTimeEventsService } from "@/lib/services/contracts/RealTimeEvents";
-import { isMockMode } from "@/lib/config/env";
-import { ethers } from "ethers";
+  CardTitle
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useAppSelector } from '@/lib/store/hooks';
+import { useToast } from '@/hooks/use-toast';
+import { auctionService } from '@/lib/services/contracts/AuctionService';
+import { ethers } from 'ethers';
 import {
   AlertCircle,
   Loader2,
@@ -44,8 +35,44 @@ import {
   TrendingDown,
   Gavel,
   Timer,
-  RefreshCw,
-} from "lucide-react";
+  RefreshCw
+} from 'lucide-react';
+
+// Define types locally since we removed mock service
+enum AuctionType {
+  ENGLISH = 0,
+  DUTCH = 1
+}
+
+enum AuctionStatus {
+  ACTIVE = 'ACTIVE',
+  ENDED = 'ENDED',
+  CANCELLED = 'CANCELLED',
+  SETTLED = 'SETTLED',
+  INACTIVE = 'INACTIVE'
+}
+
+interface Auction {
+  id: string;
+  type: AuctionType;
+  status: AuctionStatus;
+  nftContract: string;
+  tokenId: string;
+  seller: string;
+  nftName: string;
+  nftImage: string;
+  collectionName: string;
+  startPrice: string;
+  currentPrice: string;
+  reservePrice: string;
+  priceDropPerHour?: string;
+  startTime: number;
+  endTime: number;
+  highestBid?: string;
+  highestBidder?: string;
+  totalBids: number;
+  amount: bigint;
+}
 
 export default function AuctionsPage() {
   const { toast } = useToast();
@@ -57,18 +84,17 @@ export default function AuctionsPage() {
   const [activeAuctions, setActiveAuctions] = useState<Auction[]>([]);
   const [userAuctions, setUserAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState(false);
-  const [useMockData] = useState(isMockMode());
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Map on-chain AuctionInfo to UI Auction shape
   const mapAuctionInfoToAuction = (
-    info: import("@/lib/services/contracts/AuctionService").AuctionInfo
+    info: import('@/lib/services/contracts/AuctionService').AuctionInfo
   ): Auction => {
     const toEthString = (value: bigint) => {
       try {
         return ethers.formatEther(value);
       } catch {
-        return "0";
+        return '0';
       }
     };
 
@@ -95,10 +121,10 @@ export default function AuctionsPage() {
       status,
       nftContract: info.nftContract,
       tokenId: info.tokenId,
-      seller: info.highestBidder || "",
+      seller: info.highestBidder || '',
       nftName: `NFT #${info.tokenId}`,
       nftImage: `https://picsum.photos/seed/${info.tokenId}/400/400`,
-      collectionName: "Collection",
+      collectionName: 'Collection',
       startPrice: toEthString(info.startPrice),
       currentPrice: toEthString(info.currentPrice),
       reservePrice: toEthString(info.reservePrice),
@@ -108,7 +134,7 @@ export default function AuctionsPage() {
       highestBid: info.highestBid ? toEthString(info.highestBid) : undefined,
       highestBidder: info.highestBidder || undefined,
       totalBids: 0,
-      amount: info.amount,
+      amount: info.amount
     };
   };
 
@@ -118,36 +144,8 @@ export default function AuctionsPage() {
   useEffect(() => {
     if (account) {
       loadAuctions();
-
-      // TODO: Subscribe to real-time events if not in mock mode
-      // Requires provider to be available in component
-      // if (!useMockData) {
-      //   const realTimeEvents = new RealTimeEventsService();
-      //   realTimeEvents.initialize(provider).then(() => {
-      //     // Subscribe to auction events
-      //     realTimeEvents.subscribeToAuctionEvents({
-      //       onAuctionCreated: () => {
-      //         console.log("🏆 New auction created, refreshing auctions...");
-      //         loadAuctions();
-      //       },
-      //       onBidPlaced: () => {
-      //         console.log("💰 Bid placed, refreshing auctions...");
-      //         loadAuctions();
-      //       },
-      //       onAuctionEnded: () => {
-      //         console.log("🏁 Auction ended, refreshing auctions...");
-      //         loadAuctions();
-      //       },
-      //     });
-      //   });
-
-      //   // Cleanup on unmount
-      //   return () => {
-      //     realTimeEvents.unsubscribeAll();
-      //   };
-      // }
     }
-  }, [account, refreshKey, useMockData]);
+  }, [account, refreshKey]);
 
   /**
    * Auto-refresh every 30 seconds
@@ -170,30 +168,20 @@ export default function AuctionsPage() {
 
     setLoading(true);
     try {
-      if (useMockData) {
-        const mockService = getMockAuctionService();
-        const [active, user] = await Promise.all([
-          mockService.getActiveAuctions(),
-          mockService.getUserAuctions(account),
-        ]);
-        setActiveAuctions(active);
-        setUserAuctions(user);
-      } else {
-        // Real blockchain data
-        // Note: Services already initialized via initializeServices() in useWeb3
-        // TODO: These methods don't exist in current AuctionService
-        // Need to implement or remove this functionality
-        console.warn("Real auction data not yet implemented");
-        setActiveAuctions([]);
-        setUserAuctions([]);
-      }
+      // Real blockchain data
+      // Note: Services already initialized via initializeServices() in useWeb3
+      // TODO: These methods don't exist in current AuctionService
+      // Need to implement or remove this functionality
+      console.warn('Real auction data not yet implemented');
+      setActiveAuctions([]);
+      setUserAuctions([]);
     } catch (error) {
-      console.error("Error loading auctions:", error);
+      console.error('Error loading auctions:', error);
       toast({
-        title: "Error Loading Auctions",
+        title: 'Error Loading Auctions',
         description:
-          error instanceof Error ? error.message : "Failed to load auctions",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to load auctions',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -214,7 +202,7 @@ export default function AuctionsPage() {
     const now = Date.now();
     const remaining = endTime - now;
 
-    if (remaining <= 0) return "Ended";
+    if (remaining <= 0) return 'Ended';
 
     const hours = Math.floor(remaining / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
@@ -272,30 +260,20 @@ export default function AuctionsPage() {
    */
   const handlePlaceBid = async (auctionId: string, bidAmount: string) => {
     try {
-      if (useMockData) {
-        const mockService = getMockAuctionService();
-        await mockService.placeBid(auctionId, bidAmount);
-        toast({
-          title: "Bid Placed!",
-          description: `Successfully placed bid of ${bidAmount} ETH`,
-        });
-        handleRefresh();
-      } else {
-        // Real contract interaction
-        // Note: Service already initialized via initializeServices()
-        await auctionService.placeBid(auctionId, bidAmount);
-        toast({
-          title: "Bid Placed!",
-          description: `Successfully placed bid of ${bidAmount} ETH`,
-        });
-        handleRefresh();
-      }
+      // Real contract interaction
+      // Note: Service already initialized via initializeServices()
+      await auctionService.placeBid(auctionId, bidAmount);
+      toast({
+        title: 'Bid Placed!',
+        description: `Successfully placed bid of ${bidAmount} ETH`
+      });
+      handleRefresh();
     } catch (error) {
       toast({
-        title: "Bid Failed",
+        title: 'Bid Failed',
         description:
-          error instanceof Error ? error.message : "Failed to place bid",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to place bid',
+        variant: 'destructive'
       });
     }
   };
@@ -305,29 +283,19 @@ export default function AuctionsPage() {
    */
   const handleBuyNow = async (auctionId: string, price: string) => {
     try {
-      if (useMockData) {
-        const mockService = getMockAuctionService();
-        await mockService.buyDutchAuction(auctionId);
-        toast({
-          title: "Purchase Successful!",
-          description: `Successfully bought NFT for ${price} ETH`,
-        });
-        handleRefresh();
-      } else {
-        // Real contract interaction
-        // Note: Service already initialized, buyNow renamed to buyFromDutchAuction
-        await auctionService.buyFromDutchAuction(auctionId, price);
-        toast({
-          title: "Purchase Successful!",
-          description: `Successfully bought NFT for ${price} ETH`,
-        });
-        handleRefresh();
-      }
+      // Real contract interaction
+      // Note: Service already initialized, buyNow renamed to buyFromDutchAuction
+      await auctionService.buyFromDutchAuction(auctionId, price);
+      toast({
+        title: 'Purchase Successful!',
+        description: `Successfully bought NFT for ${price} ETH`
+      });
+      handleRefresh();
     } catch (error) {
       toast({
-        title: "Purchase Failed",
-        description: error instanceof Error ? error.message : "Failed to buy",
-        variant: "destructive",
+        title: 'Purchase Failed',
+        description: error instanceof Error ? error.message : 'Failed to buy',
+        variant: 'destructive'
       });
     }
   };
@@ -360,11 +328,6 @@ export default function AuctionsPage() {
             <p className="text-muted-foreground">
               Create and participate in NFT auctions
             </p>
-            {useMockData && (
-              <Badge variant="outline" className="mt-2">
-                🎭 Mock Data Mode
-              </Badge>
-            )}
           </div>
           <Button onClick={handleRefresh} variant="outline" size="sm">
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -440,8 +403,8 @@ export default function AuctionsPage() {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           {auction.type === AuctionType.ENGLISH
-                            ? "Current Bid"
-                            : "Current Price"}
+                            ? 'Current Bid'
+                            : 'Current Price'}
                         </span>
                         <span className="font-semibold">
                           {auction.currentPrice} ETH

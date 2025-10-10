@@ -1,54 +1,52 @@
-"use client";
+'use client';
 
 /**
  * Listing Validator Settings Admin Page
  * Configure validation rules for marketplace listings
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { useAppSelector } from "@/lib/store/hooks";
-import { isMockDataEnabled } from "@/lib/services/mock/mockDataService";
+  CardTitle
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { useAppSelector } from '@/lib/store/hooks';
 import {
   listingValidatorService,
-  ValidationSettings,
-} from "@/lib/services/contracts/ListingValidatorService";
+  ValidationSettings
+} from '@/lib/services/contracts/ListingValidatorService';
 import {
   Shield,
   Settings,
   CheckCircle,
   PlayCircle,
-  PauseCircle,
-} from "lucide-react";
-import { ethers } from "ethers";
+  PauseCircle
+} from 'lucide-react';
+import { ethers } from 'ethers';
 
 export default function ValidatorSettingsPage() {
   const { toast } = useToast();
   const { account } = useAppSelector((state) => state.wallet);
-  const [useMockData] = useState(isMockDataEnabled());
 
   const [globalSettings, setGlobalSettings] = useState<ValidationSettings>({
     minPrice: BigInt(0),
-    maxPrice: ethers.parseEther("10000"),
+    maxPrice: ethers.parseEther('10000'),
     minDuration: BigInt(3600), // 1 hour
     maxDuration: BigInt(7776000), // 90 days
     cooldownPeriod: BigInt(300), // 5 minutes
     maxListingsPerUser: BigInt(100),
     requireVerifiedCollection: false,
     enableQualityCheck: true,
-    isActive: true,
+    isActive: true
   });
 
   const [isPaused, setIsPaused] = useState(false);
@@ -75,7 +73,7 @@ export default function ValidatorSettingsPage() {
       const total = await listingValidatorService.getTotalValidatedListings();
       setTotalValidated(total);
     } catch (error) {
-      console.error("Failed to load settings:", error);
+      console.error('Failed to load settings:', error);
     }
   };
 
@@ -88,25 +86,25 @@ export default function ValidatorSettingsPage() {
     try {
       if (useMockData) {
         toast({
-          title: "Settings Updated",
-          description: "Validation settings have been updated",
+          title: 'Settings Updated',
+          description: 'Validation settings have been updated'
         });
       } else {
         await listingValidatorService.setGlobalSettings(globalSettings);
 
         toast({
-          title: "Settings Updated",
-          description: "Validation settings have been updated successfully",
+          title: 'Settings Updated',
+          description: 'Validation settings have been updated successfully'
         });
 
         await loadSettings();
       }
     } catch (error) {
       toast({
-        title: "Update Failed",
+        title: 'Update Failed',
         description:
-          error instanceof Error ? error.message : "Failed to update settings",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to update settings',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -123,21 +121,21 @@ export default function ValidatorSettingsPage() {
       if (useMockData) {
         setIsPaused(!isPaused);
         toast({
-          title: isPaused ? "Validator Unpaused" : "Validator Paused",
-          description: `Validator has been ${isPaused ? "unpaused" : "paused"}`,
+          title: isPaused ? 'Validator Unpaused' : 'Validator Paused',
+          description: `Validator has been ${isPaused ? 'unpaused' : 'paused'}`
         });
       } else {
         if (isPaused) {
           await listingValidatorService.unpause();
           toast({
-            title: "Validator Unpaused",
-            description: "Listing validator has been unpaused",
+            title: 'Validator Unpaused',
+            description: 'Listing validator has been unpaused'
           });
         } else {
           await listingValidatorService.pause();
           toast({
-            title: "Validator Paused",
-            description: "Listing validator has been paused",
+            title: 'Validator Paused',
+            description: 'Listing validator has been paused'
           });
         }
 
@@ -145,10 +143,10 @@ export default function ValidatorSettingsPage() {
       }
     } catch (error) {
       toast({
-        title: "Operation Failed",
+        title: 'Operation Failed',
         description:
-          error instanceof Error ? error.message : "Failed to toggle pause",
-        variant: "destructive",
+          error instanceof Error ? error.message : 'Failed to toggle pause',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -191,8 +189,8 @@ export default function ValidatorSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <Badge variant={isPaused ? "destructive" : "default"}>
-                  {isPaused ? "Paused" : "Active"}
+                <Badge variant={isPaused ? 'destructive' : 'default'}>
+                  {isPaused ? 'Paused' : 'Active'}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
                   Total Validated: {totalValidated.toString()}
@@ -200,7 +198,7 @@ export default function ValidatorSettingsPage() {
               </div>
             </div>
             <Button
-              variant={isPaused ? "default" : "outline"}
+              variant={isPaused ? 'default' : 'outline'}
               onClick={handleTogglePause}
               disabled={loading}
             >
@@ -239,8 +237,8 @@ export default function ValidatorSettingsPage() {
                 value={ethers.formatEther(globalSettings.minPrice)}
                 onChange={(e) =>
                   updateSetting(
-                    "minPrice",
-                    ethers.parseEther(e.target.value || "0")
+                    'minPrice',
+                    ethers.parseEther(e.target.value || '0')
                   )
                 }
               />
@@ -254,8 +252,8 @@ export default function ValidatorSettingsPage() {
                 value={ethers.formatEther(globalSettings.maxPrice)}
                 onChange={(e) =>
                   updateSetting(
-                    "maxPrice",
-                    ethers.parseEther(e.target.value || "10000")
+                    'maxPrice',
+                    ethers.parseEther(e.target.value || '10000')
                   )
                 }
               />
@@ -282,7 +280,7 @@ export default function ValidatorSettingsPage() {
                 value={Number(globalSettings.minDuration) / 3600}
                 onChange={(e) =>
                   updateSetting(
-                    "minDuration",
+                    'minDuration',
                     BigInt(Number(e.target.value) * 3600)
                   )
                 }
@@ -296,7 +294,7 @@ export default function ValidatorSettingsPage() {
                 value={Number(globalSettings.maxDuration) / 86400}
                 onChange={(e) =>
                   updateSetting(
-                    "maxDuration",
+                    'maxDuration',
                     BigInt(Number(e.target.value) * 86400)
                   )
                 }
@@ -321,7 +319,7 @@ export default function ValidatorSettingsPage() {
                 type="number"
                 value={Number(globalSettings.cooldownPeriod)}
                 onChange={(e) =>
-                  updateSetting("cooldownPeriod", BigInt(e.target.value))
+                  updateSetting('cooldownPeriod', BigInt(e.target.value))
                 }
               />
             </div>
@@ -332,7 +330,7 @@ export default function ValidatorSettingsPage() {
                 type="number"
                 value={Number(globalSettings.maxListingsPerUser)}
                 onChange={(e) =>
-                  updateSetting("maxListingsPerUser", BigInt(e.target.value))
+                  updateSetting('maxListingsPerUser', BigInt(e.target.value))
                 }
               />
             </div>
@@ -359,7 +357,7 @@ export default function ValidatorSettingsPage() {
             <Switch
               checked={globalSettings.requireVerifiedCollection}
               onCheckedChange={(checked) =>
-                updateSetting("requireVerifiedCollection", checked)
+                updateSetting('requireVerifiedCollection', checked)
               }
             />
           </div>
@@ -374,7 +372,7 @@ export default function ValidatorSettingsPage() {
             <Switch
               checked={globalSettings.enableQualityCheck}
               onCheckedChange={(checked) =>
-                updateSetting("enableQualityCheck", checked)
+                updateSetting('enableQualityCheck', checked)
               }
             />
           </div>
@@ -388,7 +386,7 @@ export default function ValidatorSettingsPage() {
             </div>
             <Switch
               checked={globalSettings.isActive}
-              onCheckedChange={(checked) => updateSetting("isActive", checked)}
+              onCheckedChange={(checked) => updateSetting('isActive', checked)}
             />
           </div>
         </CardContent>
@@ -398,7 +396,7 @@ export default function ValidatorSettingsPage() {
       <div className="flex justify-end">
         <Button onClick={handleUpdateSettings} disabled={loading}>
           <CheckCircle className="h-4 w-4 mr-2" />
-          {loading ? "Updating..." : "Save Settings"}
+          {loading ? 'Updating...' : 'Save Settings'}
         </Button>
       </div>
     </div>

@@ -13,7 +13,7 @@ const {
   ERC721_ABI
 } = require("../utils/config");
 
-async function createERC721Collection(customParams = {}) {
+async function createERC721Collection(customParams = {}, allowlistAddresses = []) {
   try {
     // Connect to network
     const { provider, signer, account, config } = await getProviderAndSigner();
@@ -73,6 +73,20 @@ async function createERC721Collection(customParams = {}) {
     console.log("\n🎉 ERC721 Collection created successfully!");
     console.log("📍 Collection Address:", collectionAddress);
     
+    // Add allowlist if provided
+    if (allowlistAddresses && allowlistAddresses.length > 0) {
+      console.log("\n📝 Adding allowlist addresses...");
+      const collection = new ethers.Contract(collectionAddress, ERC721_ABI, signer);
+      
+      try {
+        const allowlistTx = await collection.addToAllowlist(allowlistAddresses);
+        await waitForTransaction(allowlistTx, "Add Allowlist");
+        console.log("✅ Allowlist addresses added:", allowlistAddresses);
+      } catch (error) {
+        console.error("⚠️ Failed to add allowlist:", error.message);
+      }
+    }
+    
     // Verify the collection
     console.log("\n🔍 Verifying collection...");
     const collection = new ethers.Contract(collectionAddress, ERC721_ABI, provider);
@@ -104,7 +118,13 @@ async function createERC721Collection(customParams = {}) {
 
 // Run if called directly
 if (require.main === module) {
-  createERC721Collection()
+  // Default allowlist addresses for testing
+  const defaultAllowlist = [
+    "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", // Anvil account 0
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", // Anvil account 1
+  ];
+  
+  createERC721Collection({}, defaultAllowlist)
     .then((address) => {
       console.log("\n✨ Script completed successfully!");
       console.log("Collection deployed at:", address);

@@ -6,6 +6,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
+import { marketplaceHubService } from "@/lib/services/contracts/MarketplaceHubService";
 import { collectionService } from "@/lib/services/contracts/CollectionService";
 import { transactionService } from "@/lib/services/blockchain/TransactionService";
 import { eventService } from "@/lib/services/blockchain/EventService";
@@ -85,6 +86,10 @@ export function useCollection(): UseCollectionReturn {
       // Skip if already initialized with same provider/signer
       if (servicesInitialized) return;
 
+      // Initialize MarketplaceHub first (required for all other services)
+      await marketplaceHubService.initialize(provider, signer);
+      
+      // Then initialize dependent services
       await collectionService.initialize(provider, signer);
       await transactionService.initialize(provider, signer);
       await eventService.initialize(provider);
@@ -93,6 +98,8 @@ export function useCollection(): UseCollectionReturn {
       logger.info("Collection services initialized");
     } catch (err) {
       logger.error("Failed to initialize services", err);
+      // Don't throw - allow app to run in limited mode
+      toast.error("Contract services initialization failed. Some features may be unavailable.");
     }
   };
 

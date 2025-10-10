@@ -23,14 +23,14 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
+  SelectValue
 } from '@/components/ui/select';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  CardTitle
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -52,8 +52,15 @@ import { toast } from 'sonner';
 const formSchema = z.object({
   tokenType: z.enum(['ERC721', 'ERC1155']),
   name: z.string().min(2, 'Name must be at least 2 characters').max(50),
-  symbol: z.string().min(2, 'Symbol must be at least 2 characters').max(10).toUpperCase(),
-  description: z.string().min(10, 'Description must be at least 10 characters').max(1000),
+  symbol: z
+    .string()
+    .min(2, 'Symbol must be at least 2 characters')
+    .max(10)
+    .toUpperCase(),
+  description: z
+    .string()
+    .min(10, 'Description must be at least 10 characters')
+    .max(1000),
   category: z.string().min(1, 'Please select a category'),
   mintPrice: z.string().refine((val) => {
     try {
@@ -75,10 +82,11 @@ const formSchema = z.object({
     const limit = parseInt(val);
     return limit > 0 && limit <= 100;
   }, 'Mint limit must be between 1 and 100'),
+  allowlist: z.string().optional(),
   baseTokenURI: z.string().url('Invalid URL').optional().or(z.literal('')),
   website: z.string().url('Invalid URL').optional().or(z.literal('')),
   twitter: z.string().optional(),
-  discord: z.string().optional(),
+  discord: z.string().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -92,7 +100,7 @@ const CATEGORIES = [
   'Collectibles',
   'Utility',
   'Memes',
-  'Virtual Worlds',
+  'Virtual Worlds'
 ];
 
 export default function CreateCollectionForm() {
@@ -107,17 +115,23 @@ export default function CreateCollectionForm() {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors }
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      name: 'Test Collection' + Date.now(),
+      symbol: 'TC',
+      description:
+        'Test Description Test Description Test Description Test Description Test Description Test Description',
+      category: 'Art',
       tokenType: 'ERC721',
       royaltyFee: '5',
       maxSupply: '10000',
-      mintLimitPerWallet: '5',
-      mintPrice: '0.01',
-      baseTokenURI: 'https://api.example.com/metadata/',
-    },
+      mintLimitPerWallet: '50',
+      mintPrice: '10',
+      allowlist: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+      baseTokenURI: 'https://api.example.com/metadata/'
+    }
   });
 
   const tokenType = watch('tokenType');
@@ -155,6 +169,27 @@ export default function CreateCollectionForm() {
 
   const onSubmit = async (data: FormData) => {
     try {
+      // Parse allowlist addresses
+      let allowlistAddresses: string[] = [];
+      if (data.allowlist) {
+        // Split by newlines and filter out empty lines
+        allowlistAddresses = data.allowlist
+          .split('\n')
+          .map(addr => addr.trim())
+          .filter(addr => addr.length > 0 && ethers.isAddress(addr));
+        
+        // Validate addresses
+        const invalidAddresses = data.allowlist
+          .split('\n')
+          .map(addr => addr.trim())
+          .filter(addr => addr.length > 0 && !ethers.isAddress(addr));
+        
+        if (invalidAddresses.length > 0) {
+          toast.error(`Invalid addresses: ${invalidAddresses.join(', ')}`);
+          return;
+        }
+      }
+
       // Convert form data to contract parameters - keep as strings for CollectionService
       const params: CreateCollectionParams = {
         tokenType: data.tokenType as TokenType,
@@ -167,11 +202,12 @@ export default function CreateCollectionForm() {
         maxSupply: data.maxSupply, // Keep as string
         mintLimitPerWallet: data.mintLimitPerWallet, // Keep as string
         baseTokenURI: data.baseTokenURI || `https://api.example.com/metadata/`,
+        allowlist: allowlistAddresses, // Add parsed allowlist
         image: logoImage,
         banner: bannerImage,
         website: data.website,
         twitter: data.twitter,
-        discord: data.discord,
+        discord: data.discord
       };
 
       // Create collection
@@ -179,7 +215,6 @@ export default function CreateCollectionForm() {
 
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);
-      
     } catch (error: any) {
       console.error('Failed to create collection:', error);
       // Error is already handled in the hook
@@ -213,18 +248,25 @@ export default function CreateCollectionForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={tokenType} onValueChange={(value) => setValue('tokenType', value as any)}>
+          <Tabs
+            value={tokenType}
+            onValueChange={(value) => setValue('tokenType', value as any)}
+          >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ERC721">
                 <div className="space-y-1">
                   <div className="font-medium">ERC721</div>
-                  <div className="text-xs text-muted-foreground">Unique NFTs</div>
+                  <div className="text-xs text-muted-foreground">
+                    Unique NFTs
+                  </div>
                 </div>
               </TabsTrigger>
               <TabsTrigger value="ERC1155">
                 <div className="space-y-1">
                   <div className="font-medium">ERC1155</div>
-                  <div className="text-xs text-muted-foreground">Multiple editions</div>
+                  <div className="text-xs text-muted-foreground">
+                    Multiple editions
+                  </div>
                 </div>
               </TabsTrigger>
             </TabsList>
@@ -232,7 +274,8 @@ export default function CreateCollectionForm() {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  ERC721 tokens are unique, one-of-a-kind NFTs. Each token has a unique ID and can only be owned by one address.
+                  ERC721 tokens are unique, one-of-a-kind NFTs. Each token has a
+                  unique ID and can only be owned by one address.
                 </AlertDescription>
               </Alert>
             </TabsContent>
@@ -240,7 +283,8 @@ export default function CreateCollectionForm() {
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  ERC1155 tokens can have multiple copies. Perfect for editions, game items, or semi-fungible tokens.
+                  ERC1155 tokens can have multiple copies. Perfect for editions,
+                  game items, or semi-fungible tokens.
                 </AlertDescription>
               </Alert>
             </TabsContent>
@@ -266,7 +310,9 @@ export default function CreateCollectionForm() {
                 {...register('name')}
               />
               {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
@@ -276,10 +322,14 @@ export default function CreateCollectionForm() {
                 id="symbol"
                 placeholder="MAC"
                 {...register('symbol')}
-                onChange={(e) => setValue('symbol', e.target.value.toUpperCase())}
+                onChange={(e) =>
+                  setValue('symbol', e.target.value.toUpperCase())
+                }
               />
               {errors.symbol && (
-                <p className="text-sm text-destructive">{errors.symbol.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.symbol.message}
+                </p>
               )}
             </div>
           </div>
@@ -293,7 +343,9 @@ export default function CreateCollectionForm() {
               {...register('description')}
             />
             {errors.description && (
-              <p className="text-sm text-destructive">{errors.description.message}</p>
+              <p className="text-sm text-destructive">
+                {errors.description.message}
+              </p>
             )}
           </div>
 
@@ -312,7 +364,9 @@ export default function CreateCollectionForm() {
               </SelectContent>
             </Select>
             {errors.category && (
-              <p className="text-sm text-destructive">{errors.category.message}</p>
+              <p className="text-sm text-destructive">
+                {errors.category.message}
+              </p>
             )}
           </div>
         </CardContent>
@@ -322,9 +376,7 @@ export default function CreateCollectionForm() {
       <Card>
         <CardHeader>
           <CardTitle>Media</CardTitle>
-          <CardDescription>
-            Upload images for your collection
-          </CardDescription>
+          <CardDescription>Upload images for your collection</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -437,7 +489,9 @@ export default function CreateCollectionForm() {
                 {...register('mintPrice')}
               />
               {errors.mintPrice && (
-                <p className="text-sm text-destructive">{errors.mintPrice.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.mintPrice.message}
+                </p>
               )}
             </div>
 
@@ -451,7 +505,9 @@ export default function CreateCollectionForm() {
                 {...register('royaltyFee')}
               />
               {errors.royaltyFee && (
-                <p className="text-sm text-destructive">{errors.royaltyFee.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.royaltyFee.message}
+                </p>
               )}
             </div>
 
@@ -464,12 +520,16 @@ export default function CreateCollectionForm() {
                 {...register('maxSupply')}
               />
               {errors.maxSupply && (
-                <p className="text-sm text-destructive">{errors.maxSupply.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.maxSupply.message}
+                </p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="mintLimitPerWallet">Mint Limit Per Wallet *</Label>
+              <Label htmlFor="mintLimitPerWallet">
+                Mint Limit Per Wallet *
+              </Label>
               <Input
                 id="mintLimitPerWallet"
                 type="number"
@@ -477,7 +537,40 @@ export default function CreateCollectionForm() {
                 {...register('mintLimitPerWallet')}
               />
               {errors.mintLimitPerWallet && (
-                <p className="text-sm text-destructive">{errors.mintLimitPerWallet.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.mintLimitPerWallet.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="space-y-4">
+            <h4 className="text-sm font-medium">Allowlist Configuration</h4>
+            
+            <div className="space-y-2">
+              <Label htmlFor="allowlist">
+                Allowlist Addresses
+                <span className="text-xs text-muted-foreground ml-2">
+                  (One address per line, optional)
+                </span>
+              </Label>
+              <Textarea
+                id="allowlist"
+                placeholder="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266&#10;0x70997970C51812dc3A010C7d01b50e0d17dc79C8&#10;0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+                rows={5}
+                {...register('allowlist')}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Enter Ethereum addresses that will have early access to mint. 
+                Leave empty for no allowlist.
+              </p>
+              {errors.allowlist && (
+                <p className="text-sm text-destructive">
+                  {errors.allowlist.message}
+                </p>
               )}
             </div>
           </div>
@@ -486,7 +579,7 @@ export default function CreateCollectionForm() {
 
           <div className="space-y-4">
             <h4 className="text-sm font-medium">Optional Links</h4>
-            
+
             <div className="space-y-2">
               <Label htmlFor="baseTokenURI">Metadata Base URI</Label>
               <Input
@@ -496,7 +589,9 @@ export default function CreateCollectionForm() {
                 {...register('baseTokenURI')}
               />
               {errors.baseTokenURI && (
-                <p className="text-sm text-destructive">{errors.baseTokenURI.message}</p>
+                <p className="text-sm text-destructive">
+                  {errors.baseTokenURI.message}
+                </p>
               )}
             </div>
 
