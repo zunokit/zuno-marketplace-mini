@@ -126,6 +126,7 @@ export function MintNFTButton({
   const getTotalPrice = () => {
     if (!mintInfo || !mintInfo.currentPrice) return '0';
     const totalWei = mintInfo.currentPrice * BigInt(quantity);
+    // Return the price in ETH format for the value parameter
     return ethers.formatEther(totalWei);
   };
 

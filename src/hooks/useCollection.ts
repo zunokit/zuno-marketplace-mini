@@ -216,7 +216,8 @@ export function useCollection(): UseCollectionReturn {
               info.mintInfo = {
                 currentStage: mintInfo.mintStage === "allowlist" ? MintStage.ALLOWLIST : 
                              mintInfo.mintStage === "public" ? MintStage.PUBLIC : MintStage.INACTIVE,
-                currentPrice: ethers.parseEther(mintInfo.currentMintPrice || "0"),
+                // currentMintPrice is already in wei from CollectionService
+                currentPrice: BigInt(mintInfo.currentMintPrice || "0"),
                 isAllowlisted: mintInfo.isAllowlisted,
                 mintedPerWallet: BigInt(mintInfo.mintedPerWallet || 0),
                 mintLimitPerWallet: BigInt(mintInfo.mintLimitPerWallet || 0),

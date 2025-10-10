@@ -14,6 +14,10 @@ import {
 } from "@/lib/contracts/abis";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
+// Constants for development environment
+const MINT_START_TIME_OFFSET = 3600; // 1 hour in seconds - ensures mint is active immediately in dev
+const DEFAULT_ALLOWLIST_DURATION = 86400; // 24 hours in seconds
+
 export interface CreateCollectionParams {
   name: string;
   symbol: string;
@@ -141,8 +145,10 @@ export class CollectionService {
         royaltyFee: (parseInt(params.royaltyFee || "5") * 100).toString(), // Convert percentage to basis points (5% = 500)
         maxSupply: (params.maxSupply || "10000").toString(),
         mintLimitPerWallet: (params.mintLimitPerWallet || "10").toString(),
+        // IMPORTANT: Subtract MINT_START_TIME_OFFSET to ensure minting is active immediately
+        // This prevents "Collection__MintingNotActive" error in development environment
         mintStartTime: (
-          params.mintStartTime || Math.floor(Date.now() / 1000)
+          params.mintStartTime || Math.floor(Date.now() / 1000) - MINT_START_TIME_OFFSET
         ).toString(),
         allowlistMintPrice: ethers
           .parseEther(params.allowlistMintPrice || params.mintPrice || "0.001")
@@ -151,8 +157,8 @@ export class CollectionService {
           .parseEther(params.publicMintPrice || params.mintPrice || "0.001")
           .toString(),
         allowlistStageDuration: (
-          params.allowlistStageDuration || "86400"
-        ).toString(), // 24 hours default
+          params.allowlistStageDuration || DEFAULT_ALLOWLIST_DURATION.toString()
+        ).toString(),
         tokenURI: params.baseURI || "https://api.example.com/metadata/",
       };
 
@@ -401,10 +407,10 @@ export class CollectionService {
         }
       }
 
-      // Override with explicit value if provided
+      // Override with explicit value if provided (should be in ETH format from UI)
       if (params.value) {
         mintPrice = ethers.parseEther(params.value);
-        console.log("💰 Using provided mint price:", params.value, "ETH");
+        console.log("💰 Using provided mint price:", params.value, "ETH =>", mintPrice.toString(), "wei");
       }
 
       if (params.tokenType === "ERC721") {
@@ -696,11 +702,19 @@ export class CollectionService {
       );
 
       const mintInfo = await collection.getMintInfo(userAddress);
+      
+      // Debug log the raw mint info
+      console.log("🔍 Raw mintInfo from contract:", {
+        currentMintPrice: mintInfo.currentMintPrice?.toString(),
+        index4: mintInfo[4]?.toString(),
+        fullInfo: mintInfo
+      });
 
       // Parse mint info based on the return structure
-      const currentMintPrice = ethers.formatEther(
-        mintInfo.currentMintPrice || mintInfo[4] || "0"
-      );
+      // Keep the raw mint price in wei for accurate calculations
+      const mintPriceWei = mintInfo.currentMintPrice || mintInfo[4] || "0";
+      // Return the raw wei value, not formatted ETH
+      const currentMintPrice = mintPriceWei.toString();
       const isAllowlisted =
         mintInfo.accountInAllowlist || mintInfo[11] || false;
       const mintedPerWallet = (
@@ -743,7 +757,7 @@ export class CollectionService {
         mintLimitPerWallet,
         totalMinted,
         maxSupply,
-        currentMintPrice
+        currentMintPrice: `${currentMintPrice} wei (${ethers.formatEther(currentMintPrice)} ETH)`
       });
 
       // Check if user can mint
