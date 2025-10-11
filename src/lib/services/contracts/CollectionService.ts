@@ -12,56 +12,19 @@ import {
   ERC721CollectionFactory_ABI,
   ERC1155CollectionFactory_ABI,
 } from "@/lib/contracts/abis";
-import { ZERO_ADDRESS } from "@/lib/constants";
-
-// Constants for development environment
-const MINT_START_TIME_OFFSET = 3600; // 1 hour in seconds - ensures mint is active immediately in dev
-const DEFAULT_ALLOWLIST_DURATION = 86400; // 24 hours in seconds
-
-export interface CreateCollectionParams {
-  name: string;
-  symbol: string;
-  owner?: string;
-  description?: string;
-  mintPrice?: string;
-  royaltyFee?: string;
-  maxSupply?: string;
-  mintLimitPerWallet?: string;
-  mintStartTime?: string;
-  allowlistMintPrice?: string;
-  publicMintPrice?: string;
-  allowlistStageDuration?: string; // Duration in seconds (default 24h = 86400)
-  baseURI?: string;
-  tokenType: "ERC721" | "ERC1155";
-  allowlist?: string[]; // Array of addresses to add to allowlist
-}
-
-export interface MintParams {
-  collection: string;
-  to: string;
-  amount?: string; // For ERC1155, default 1
-  tokenType: "ERC721" | "ERC1155";
-  value?: string; // ETH value to send with transaction
-}
-
-export interface TransferParams {
-  collection: string;
-  tokenId: string;
-  amount: string;
-  tokenType: "ERC721" | "ERC1155";
-  to: string;
-}
-
-export interface CollectionInfo {
-  address: string;
-  name: string;
-  symbol: string;
-  totalSupply: string;
-  tokenType: "ERC721" | "ERC1155";
-  maxSupply?: string;
-  mintPrice?: string;
-  baseURI?: string;
-}
+import { ZERO_ADDRESS, INTERFACE_IDS, CONTRACT_CONSTANTS } from "@/lib/constants";
+import { safeContractCall, supportsInterface } from "@/lib/utils/contract";
+import type { NFTType } from "@/types/contract";
+import type {
+  CreateCollectionParams,
+  MintParams,
+  TransferParams,
+  CollectionInfo,
+  MintInfo,
+  MintStage,
+  CollectionVerification,
+  MintedToken
+} from "@/types/collection";
 
 export class CollectionService {
   private provider: ethers.Provider | null = null;
@@ -76,15 +39,13 @@ export class CollectionService {
   ): Promise<void> {
     this.provider = provider;
     this.signer = signer || null;
-
-
   }
 
   /**
    * Get collection factory for token type
    */
   private async getFactoryContract(
-    tokenType: "ERC721" | "ERC1155"
+    tokenType: NFTType
   ): Promise<ethers.Contract> {
     if (!this.signer) {
       throw new Error("Signer not available - connect wallet first");
@@ -92,25 +53,25 @@ export class CollectionService {
 
     // Ensure hub is initialized first
     if (!this.provider || !this.signer) {
-      throw new Error("CollectionService not initialized - call initialize() first");
+      throw new Error(
+        "CollectionService not initialized - call initialize() first"
+      );
     }
 
     // Try to get factory address, catching any hub initialization errors
     let factoryAddress: string;
     try {
       factoryAddress = marketplaceHubService.getCollectionFactory(tokenType);
-    } catch (error: any) {
+    } catch (error) {
       // If hub not initialized, try to initialize it
-      if (error.message?.includes("Hub not initialized")) {
-
+      const err = error as Error;
+      if (err.message?.includes("Hub not initialized")) {
         await marketplaceHubService.initialize(this.provider, this.signer);
         factoryAddress = marketplaceHubService.getCollectionFactory(tokenType);
       } else {
         throw error;
       }
     }
-
-
 
     if (!factoryAddress || factoryAddress === ZERO_ADDRESS) {
       throw new Error(
@@ -143,13 +104,12 @@ export class CollectionService {
         owner: params.owner || account,
         description: params.description || "",
         mintPrice: ethers.parseEther(params.mintPrice || "0.001").toString(),
-        royaltyFee: (parseInt(params.royaltyFee || "5") * 100).toString(), // Convert percentage to basis points (5% = 500)
+        royaltyFee: (parseInt(params.royaltyFee || "5") * 100).toString(),
         maxSupply: (params.maxSupply || "10000").toString(),
         mintLimitPerWallet: (params.mintLimitPerWallet || "10").toString(),
-        // IMPORTANT: Subtract MINT_START_TIME_OFFSET to ensure minting is active immediately
-        // This prevents "Collection__MintingNotActive" error in development environment
         mintStartTime: (
-          params.mintStartTime || Math.floor(Date.now() / 1000) - MINT_START_TIME_OFFSET
+          params.mintStartTime ||
+          Math.floor(Date.now() / 1000) - CONTRACT_CONSTANTS.MINT_START_TIME_OFFSET
         ).toString(),
         allowlistMintPrice: ethers
           .parseEther(params.allowlistMintPrice || params.mintPrice || "0.001")
@@ -158,13 +118,10 @@ export class CollectionService {
           .parseEther(params.publicMintPrice || params.mintPrice || "0.001")
           .toString(),
         allowlistStageDuration: (
-          params.allowlistStageDuration || DEFAULT_ALLOWLIST_DURATION.toString()
+          params.allowlistStageDuration || CONTRACT_CONSTANTS.DEFAULT_ALLOWLIST_DURATION.toString()
         ).toString(),
         tokenURI: params.baseURI || "https://api.example.com/metadata/",
       };
-
-
-
       // Use correct method name based on token type
       const methodName =
         params.tokenType === "ERC721"
@@ -191,34 +148,28 @@ export class CollectionService {
       if (event) {
         const parsed = factory.interface.parseLog(event);
 
-
-        // Try different possible field names
         const collectionAddress =
           parsed?.args?.collection ||
           parsed?.args?.collectionAddress ||
           parsed?.args?.[0] ||
           parsed?.args?.[1];
 
-
-
-
-
         // Add allowlist addresses if provided
         if (params.allowlist && params.allowlist.length > 0) {
           try {
-            // Adding allowlist addresses
             const collectionContract = new ethers.Contract(
               collectionAddress,
-              params.tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI,
+              params.tokenType === "ERC721"
+                ? ERC721Collection_ABI
+                : ERC1155Collection_ABI,
               this.signer
             );
-            
-            // Check if addToAllowlist function exists
-            const allowlistTx = await collectionContract.addToAllowlist(params.allowlist);
+
+            const allowlistTx = await collectionContract.addToAllowlist(
+              params.allowlist
+            );
             await allowlistTx.wait();
-            // Allowlist addresses added successfully
-          } catch (error: any) {
-            // Failed to add allowlist but collection was created
+          } catch (error) {
             // Don't throw - collection was created successfully
           }
         }
@@ -236,42 +187,28 @@ export class CollectionService {
       }
 
       // If event parsing fails, try to get the new contract address from transaction receipt
-      // CollectionCreated event not found, trying alternative method
-
-      // Get factory address for comparison
       const factoryAddress = await marketplaceHubService.getCollectionFactory(
         params.tokenType
       );
 
-      // For factory contracts, the new contract address is often in logs or receipt
       if (receipt.logs && receipt.logs.length > 0) {
-
-
-        // Try to find contract creation in logs
         for (const log of receipt.logs) {
-
-
           if (log.topics && log.topics.length > 0) {
             try {
-              // Check all topics for potential contract addresses
               for (let i = 1; i < log.topics.length; i++) {
                 const topic = log.topics[i];
                 if (topic && topic.length === 66) {
                   const contractAddress = "0x" + topic.slice(26);
-                  // Verify it's not zero address
                   if (
                     contractAddress !==
                     "0x0000000000000000000000000000000000000000"
                   ) {
-
                     return contractAddress;
                   }
                 }
               }
 
-              // Also check if the log.address itself is the new contract
               if (log.address && log.address !== factoryAddress) {
-
                 return log.address;
               }
             } catch (e) {
@@ -281,10 +218,8 @@ export class CollectionService {
         }
       }
 
-      // Using factory contract interaction as success indicator
       return "SUCCESS_BUT_ADDRESS_UNKNOWN";
     } catch (error) {
-      // Collection creation failed
       throw this.formatTransactionError(error);
     }
   }
@@ -294,7 +229,7 @@ export class CollectionService {
    */
   private getCollectionContract(
     address: string,
-    tokenType: "ERC721" | "ERC1155"
+    tokenType: NFTType
   ): ethers.Contract {
     if (!this.provider) {
       throw new Error("Provider not available");
@@ -304,6 +239,249 @@ export class CollectionService {
       tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
 
     return new ethers.Contract(address, abi, this.signer || this.provider);
+  }
+
+  /**
+   * Mint ERC721 NFT
+   */
+  private async mintERC721(
+    collection: ethers.Contract,
+    to: string,
+    quantity: number,
+    finalPricePerNFT: bigint,
+    finalTotalPrice: bigint,
+    collectionAddress: string
+  ): Promise<ethers.ContractTransactionResponse> {
+    if (quantity > 1) {
+      if (!collection.batchMintERC721) {
+        throw new Error("Batch mint function not found in contract ABI");
+      }
+
+      let gasEstimate: bigint;
+      try {
+        gasEstimate = await collection.batchMintERC721.estimateGas(
+          to,
+          quantity,
+          { value: finalTotalPrice }
+        );
+      } catch (error) {
+        const err = error as { reason?: string; message?: string };
+        if (err.reason) {
+          throw new Error(`Batch mint will fail: ${err.reason}`);
+        } else if (err.message) {
+          throw new Error(`Gas estimation failed: ${err.message}`);
+        }
+        throw error;
+      }
+
+      const gasLimit = (gasEstimate * 120n) / 100n;
+      const txOptions = {
+        value: finalTotalPrice,
+        gasLimit,
+      };
+
+      return await collection.batchMintERC721(to, quantity, txOptions);
+    } else {
+      if (!collection.mint) {
+        throw new Error("Mint function not found in contract ABI");
+      }
+
+      let gasEstimate: bigint;
+      try {
+        gasEstimate = await collection.mint.estimateGas(to, {
+          value: finalPricePerNFT,
+        });
+      } catch (error) {
+        const err = error as { reason?: string; message?: string };
+        if (err.reason) {
+          throw new Error(`Mint will fail: ${err.reason}`);
+        } else if (err.message) {
+          throw new Error(`Gas estimation failed: ${err.message}`);
+        }
+        throw error as Error;
+      }
+
+      const gasLimit = (gasEstimate * 120n) / 100n;
+      const txOptions = {
+        value: finalPricePerNFT,
+        gasLimit,
+      };
+
+      const tx = await collection.mint(to, txOptions);
+
+      // Wait for transaction and log minted NFT info
+      tx.wait()
+        .then((receipt: ethers.ContractTransactionReceipt | null) => {
+          if (receipt && receipt.status === 1) {
+            console.log(`\n✅ Successfully minted ${quantity} ERC721 NFT(s)`);
+            console.log(`   Contract: ${collectionAddress}`);
+            console.log(`   Transaction: ${receipt.hash}`);
+
+            // Parse Transfer events to get token IDs
+            const transferEvents = receipt.logs
+              .map((log: ethers.Log | ethers.EventLog) => {
+                try {
+                  return collection.interface.parseLog(log);
+                } catch {
+                  return null;
+                }
+              })
+              .filter(
+                (event: ethers.LogDescription | null) =>
+                  event && event.name === "Transfer"
+              );
+
+            if (transferEvents.length > 0) {
+              console.log(`   Token ID(s):`);
+              transferEvents.forEach((event: ethers.LogDescription | null) => {
+                if (event?.args?.tokenId) {
+                  console.log(`   - #${event.args.tokenId.toString()}`);
+                }
+              });
+            }
+
+            console.log(
+              `\n💡 To import to MetaMask: Add NFT with contract ${collectionAddress}`
+            );
+          }
+        })
+        .catch((err: Error) => {
+          console.error("Failed to get mint receipt:", err.message);
+        });
+
+      return tx;
+    }
+  }
+
+  /**
+   * Mint ERC1155 NFT
+   */
+  private async mintERC1155(
+    collection: ethers.Contract,
+    to: string,
+    amount: string,
+    finalTotalPrice: bigint,
+    collectionAddress: string
+  ): Promise<ethers.ContractTransactionResponse> {
+    if (!collection.batchMintERC1155) {
+      if (!collection.mint) {
+        throw new Error(
+          "Neither batchMintERC1155 nor mint function found in contract ABI"
+        );
+      }
+
+      let gasEstimate: bigint;
+      try {
+        gasEstimate = await collection.mint.estimateGas(to, amount, {
+          value: finalTotalPrice,
+        });
+      } catch (error) {
+        const err = error as { reason?: string; message?: string };
+        if (err.reason) {
+          throw new Error(`Mint will fail: ${err.reason}`);
+        } else if (err.message) {
+          throw new Error(`Gas estimation failed: ${err.message}`);
+        }
+        throw error as Error;
+      }
+
+      const gasLimit = (gasEstimate * 120n) / 100n;
+      const txOptions = {
+        value: finalTotalPrice,
+        gasLimit,
+      };
+
+      return await collection.mint(to, amount, txOptions);
+    }
+
+    let gasEstimate: bigint;
+    try {
+      gasEstimate = await collection.batchMintERC1155.estimateGas(to, amount, {
+        value: finalTotalPrice,
+      });
+    } catch (error) {
+      const err = error as { reason?: string; message?: string };
+      if (err.reason) {
+        throw new Error(`Batch mint will fail: ${err.reason}`);
+      } else if (err.message) {
+        throw new Error(`Gas estimation failed: ${err.message}`);
+      }
+      throw error as Error;
+    }
+
+    const gasLimit = (gasEstimate * 120n) / 100n;
+    const txOptions = {
+      value: finalTotalPrice,
+      gasLimit,
+    };
+
+    const tx = await collection.batchMintERC1155(to, amount, txOptions);
+
+    // Wait for transaction and log minted NFT info
+    tx.wait()
+      .then((receipt: ethers.ContractTransactionReceipt | null) => {
+        if (receipt && receipt.status === 1) {
+          console.log(`\n✅ Successfully minted ${amount} ERC1155 NFT(s)`);
+          console.log(`   Contract: ${collectionAddress}`);
+          console.log(`   Transaction: ${receipt.hash}`);
+
+          // Parse Transfer events to get token IDs
+          const mintedTokens: MintedToken[] = [];
+
+          for (const log of receipt.logs) {
+            try {
+              const parsed = collection.interface.parseLog(log);
+              if (parsed) {
+                if (parsed.name === "TransferSingle") {
+                  const id = parsed.args.id || parsed.args[3];
+                  const value = parsed.args.value || parsed.args[4];
+                  if (id) {
+                    mintedTokens.push({
+                      tokenId: id.toString(),
+                      amount: value?.toString() || "1",
+                    });
+                  }
+                } else if (parsed.name === "TransferBatch") {
+                  const ids = parsed.args.ids || parsed.args[3];
+                  const values = parsed.args.values || parsed.args[4];
+                  if (ids && values && Array.isArray(ids)) {
+                    for (let i = 0; i < ids.length; i++) {
+                      mintedTokens.push({
+                        tokenId: ids[i].toString(),
+                        amount: Array.isArray(values)
+                          ? values[i].toString()
+                          : "1",
+                      });
+                    }
+                  }
+                }
+              }
+            } catch {}
+          }
+
+          if (mintedTokens.length > 0) {
+            console.log(`   Token ID(s):`);
+            mintedTokens.forEach(({ tokenId, amount }) => {
+              console.log(`   - #${tokenId}: ${amount} NFT(s)`);
+            });
+
+            if (mintedTokens.length === 1) {
+              console.log(
+                `\n💡 To import to MetaMask: Add NFT with contract ${collectionAddress} and token ID ${mintedTokens[0].tokenId}`
+              );
+            } else {
+              console.log(
+                `\n💡 To import to MetaMask: Add each token ID separately in MetaMask NFTs tab`
+              );
+            }
+          }
+        }
+      })
+      .catch((err: Error) => {
+        console.error("Failed to get mint receipt:", err.message);
+      });
+
+    return tx;
   }
 
   /**
@@ -317,15 +495,11 @@ export class CollectionService {
       }
 
       // Auto-detect token type if provided type seems incorrect
-      try {
-        const detectedType = await this.detectTokenType(params.collection);
-        if (detectedType !== params.tokenType) {
-          // Use the detected type as it's more reliable
-          params.tokenType = detectedType;
-        }
-      } catch (error: any) {
-        // If detection fails, trust the provided type
-        // The contract call will fail later if type is wrong
+      const detectedType = await this.detectTokenType(params.collection).catch(
+        () => null
+      );
+      if (detectedType && detectedType !== params.tokenType) {
+        params.tokenType = detectedType;
       }
 
       const collection = this.getCollectionContract(
@@ -335,107 +509,67 @@ export class CollectionService {
 
       // Verify contract exists
       const code = await this.provider?.getCode(params.collection);
-      if (!code || code === '0x') {
+      if (!code || code === "0x") {
         throw new Error(`No contract found at address ${params.collection}`);
       }
-      
-      const minterAddress = await this.signer.getAddress();
-      
-      let mintPrice = ethers.parseEther("0");
 
-      try {
-        // Try getMintInfo first
-        const mintInfo = await collection.getMintInfo(minterAddress);
+      const minterAddress = await this.signer.getAddress();
+
+      // Get mint price with fallbacks
+      let mintPrice = ethers.parseEther("0");
+      const mintInfo = await collection
+        .getMintInfo(minterAddress)
+        .catch(() => null);
+      if (mintInfo) {
         mintPrice =
           mintInfo.currentMintPrice || mintInfo[4] || ethers.parseEther("0");
-
-      } catch (error) {
-        // Fallback to getMintPrice if getMintInfo fails
-        try {
-          mintPrice = await collection.getMintPrice();
-        } catch (error2) {
-          // Use default if both methods fail
-          mintPrice = ethers.parseEther("0.01");
-        }
-      }
-
-      // Override with explicit value if provided
-      if (params.value) {
-        try {
-          // Clean the value - remove any trailing .0
-          let cleanValue = params.value;
-          if (typeof cleanValue === 'string' && cleanValue.endsWith('.0')) {
-            cleanValue = cleanValue.slice(0, -2);
-          }
-          
-          mintPrice = BigInt(cleanValue);
-        } catch (error) {
-          try {
-            // Fallback: try parsing as ETH
-            mintPrice = ethers.parseEther(params.value);
-          } catch (error2) {
-            // Keep the mintPrice from getMintInfo
-          }
-        }
-      }
-
-      if (params.tokenType === "ERC721") {
-        // ERC721: mint(address to) payable
-        if (!collection.mint) {
-          throw new Error("Mint function not found in contract ABI");
-        }
-        
-        let gasEstimate: bigint;
-        try {
-          gasEstimate = await collection.mint.estimateGas(params.to, { value: mintPrice });
-        } catch (error: any) {
-          if (error.reason) {
-            throw new Error(`Mint will fail: ${error.reason}`);
-          } else if (error.message) {
-            throw new Error(`Gas estimation failed: ${error.message}`);
-          }
-          throw error;
-        }
-
-        // Add 20% buffer to gas estimate
-        const gasLimit = (gasEstimate * 120n) / 100n;
-
-        const txOptions = {
-          value: mintPrice,
-          gasLimit
-        };
-
-        return await collection.mint(params.to, txOptions);
       } else {
-        // ERC1155: mint(address to, uint256 amount) payable
-        const amount = params.amount || "1";
-        const totalMintPrice = mintPrice * BigInt(amount);
-        
-        if (!collection.mint) {
-          throw new Error("Mint function not found in contract ABI");
+        mintPrice = await collection
+          .getMintPrice()
+          .catch(() => ethers.parseEther("0.01"));
+      }
+
+      const quantity = parseInt(params.amount || "1");
+
+      let finalPricePerNFT = mintPrice;
+      let finalTotalPrice = mintPrice * BigInt(quantity);
+
+      if (params.value) {
+        let cleanValue = params.value;
+        if (typeof cleanValue === "string" && cleanValue.endsWith(".0")) {
+          cleanValue = cleanValue.slice(0, -2);
         }
-        
-        let gasEstimate: bigint;
+
         try {
-          gasEstimate = await collection.mint.estimateGas(params.to, amount, { value: totalMintPrice });
-        } catch (error: any) {
-          if (error.reason) {
-            throw new Error(`Mint will fail: ${error.reason}`);
-          } else if (error.message) {
-            throw new Error(`Gas estimation failed: ${error.message}`);
-          }
-          throw error;
-        }
+          finalTotalPrice = BigInt(cleanValue);
+          finalPricePerNFT = finalTotalPrice / BigInt(quantity);
+        } catch {}
+      }
 
-        // Add 20% buffer to gas estimate
-        const gasLimit = (gasEstimate * 120n) / 100n;
+      // Use switch case for token type
+      switch (params.tokenType) {
+        case "ERC721":
+          return await this.mintERC721(
+            collection,
+            params.to,
+            quantity,
+            finalPricePerNFT,
+            finalTotalPrice,
+            params.collection
+          );
 
-        const txOptions = {
-          value: totalMintPrice,
-          gasLimit
-        };
+        case "ERC1155":
+          const amount = params.amount || "1";
+          return await this.mintERC1155(
+            collection,
+            params.to,
+            amount,
+            finalTotalPrice,
+            params.collection
+          );
 
-        return await collection.mint(params.to, amount, txOptions);
+        default:
+          throw new Error(`Unsupported token type: ${params.tokenType}`);
       }
     } catch (error) {
       throw this.formatTransactionError(error);
@@ -465,8 +599,10 @@ export class CollectionService {
       const minterAddress = await this.signer.getAddress();
       let totalMintPrice = ethers.parseEther("0");
 
-      try {
-        const mintInfo = await collectionContract.getMintInfo(minterAddress);
+      const mintInfo = await collectionContract
+        .getMintInfo(minterAddress)
+        .catch(() => null);
+      if (mintInfo) {
         const pricePerItem =
           mintInfo.currentMintPrice || mintInfo[4] || ethers.parseEther("0");
         const totalAmount = amounts.reduce(
@@ -474,12 +610,8 @@ export class CollectionService {
           BigInt(0)
         );
         totalMintPrice = pricePerItem * totalAmount;
-        // Calculated total batch mint price
-      } catch (error) {
-        // If getMintInfo fails, use the provided value
-        if (value) {
-          totalMintPrice = ethers.parseEther(value);
-        }
+      } else if (value) {
+        totalMintPrice = ethers.parseEther(value);
       }
 
       // Override with explicit value if provided
@@ -487,14 +619,11 @@ export class CollectionService {
         totalMintPrice = ethers.parseEther(value);
       }
 
-      // Call batchMint if available, otherwise mint multiple times
       if (collectionContract.batchMint) {
         return await collectionContract.batchMint(to, amounts, {
           value: totalMintPrice,
         });
       } else {
-        // Fallback: mint one by one (less efficient)
-        // Batch mint not available, falling back to single mint
         const totalAmount = amounts
           .reduce((sum, amount) => sum + parseInt(amount), 0)
           .toString();
@@ -503,7 +632,6 @@ export class CollectionService {
         });
       }
     } catch (error) {
-
       throw this.formatTransactionError(error);
     }
   }
@@ -515,23 +643,18 @@ export class CollectionService {
     collection: string,
     operator: string,
     approved: boolean,
-    tokenType: "ERC721" | "ERC1155"
+    tokenType: NFTType
   ): Promise<ethers.ContractTransactionResponse> {
-    try {
-      if (!this.signer) {
-        throw new Error("Signer not available - connect wallet first");
-      }
-
-      const collectionContract = this.getCollectionContract(
-        collection,
-        tokenType
-      );
-
-      return await collectionContract.setApprovalForAll(operator, approved);
-    } catch (error) {
-
-      throw this.formatTransactionError(error);
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
     }
+
+    const collectionContract = this.getCollectionContract(
+      collection,
+      tokenType
+    );
+
+    return await collectionContract.setApprovalForAll(operator, approved);
   }
 
   /**
@@ -541,7 +664,7 @@ export class CollectionService {
     collection: string,
     owner: string,
     operator: string,
-    tokenType: "ERC721" | "ERC1155"
+    tokenType: NFTType
   ): Promise<boolean> {
     try {
       const collectionContract = this.getCollectionContract(
@@ -551,7 +674,6 @@ export class CollectionService {
 
       return await collectionContract.isApprovedForAll(owner, operator);
     } catch (error) {
-
       return false;
     }
   }
@@ -562,27 +684,15 @@ export class CollectionService {
    */
   async updateMintStage(
     collectionAddress: string,
-    tokenType: "ERC721" | "ERC1155"
+    tokenType: NFTType
   ): Promise<ethers.ContractTransactionResponse> {
-    try {
-      if (!this.signer) {
-        throw new Error("Signer not available - connect wallet first");
-      }
-
-      const collection = this.getCollectionContract(
-        collectionAddress,
-        tokenType
-      );
-
-      // Call updateMintStage to progress to the next stage
-      const tx = await collection.updateMintStage();
-      // Updating mint stage for collection
-      
-      return tx;
-    } catch (error) {
-
-      throw this.formatTransactionError(error);
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
     }
+
+    const collection = this.getCollectionContract(collectionAddress, tokenType);
+
+    return await collection.updateMintStage();
   }
 
   /**
@@ -591,17 +701,8 @@ export class CollectionService {
   async getMintInfo(
     collectionAddress: string,
     userAddress: string,
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<{
-    currentMintPrice: string;
-    isAllowlisted: boolean;
-    mintedPerWallet: string;
-    mintLimitPerWallet: string;
-    totalMinted: string;
-    maxSupply: string;
-    canMint: boolean;
-    mintStage: string;
-  }> {
+    tokenType: NFTType
+  ): Promise<MintInfo> {
     try {
       const collection = this.getCollectionContract(
         collectionAddress,
@@ -610,10 +711,7 @@ export class CollectionService {
 
       const mintInfo = await collection.getMintInfo(userAddress);
 
-      // Parse mint info based on the return structure
-      // Keep the raw mint price in wei for accurate calculations
       const mintPriceWei = mintInfo.currentMintPrice || mintInfo[4] || "0";
-      // Return the raw wei value, not formatted ETH
       const currentMintPrice = mintPriceWei.toString();
       const isAllowlisted =
         mintInfo.accountInAllowlist || mintInfo[11] || false;
@@ -634,10 +732,9 @@ export class CollectionService {
       ).toString();
       const maxSupply = (mintInfo.maxSupply || mintInfo[8] || "0").toString();
 
-      // Determine mint stage
-      let mintStage = "not_started";
+      let mintStage: MintStage = "not_started";
       const currentStageEnum = mintInfo.currentStage || mintInfo[3];
-      
+
       if (currentStageEnum !== undefined) {
         const stageNum = Number(currentStageEnum);
         if (stageNum === 0) {
@@ -648,10 +745,12 @@ export class CollectionService {
           mintStage = "public";
         }
       }
-      // Check if user can mint
+
       const hasSupplyLeft = parseInt(totalMinted) < parseInt(maxSupply);
-      const underWalletLimit = parseInt(mintedPerWallet) < parseInt(mintLimitPerWallet);
-      const stageAllowsMinting = (mintStage === "allowlist" && isAllowlisted) || (mintStage === "public");
+      const underWalletLimit =
+        parseInt(mintedPerWallet) < parseInt(mintLimitPerWallet);
+      const stageAllowsMinting =
+        (mintStage === "allowlist" && isAllowlisted) || mintStage === "public";
       const canMint = hasSupplyLeft && underWalletLimit && stageAllowsMinting;
 
       return {
@@ -665,8 +764,6 @@ export class CollectionService {
         mintStage,
       };
     } catch (error) {
-
-      // Return default values if getMintInfo fails
       return {
         currentMintPrice: "0",
         isAllowlisted: false,
@@ -683,40 +780,30 @@ export class CollectionService {
   /**
    * Detect the token type of a collection by checking ERC165 interface support
    */
-  async detectTokenType(address: string): Promise<"ERC721" | "ERC1155"> {
+  async detectTokenType(address: string): Promise<NFTType> {
     if (!this.provider) {
       throw new Error("Provider not available");
     }
 
-    // ERC165 interface IDs
-    const ERC721_INTERFACE_ID = "0x80ac58cd";
-    const ERC1155_INTERFACE_ID = "0xd9b67a26";
+    // Create a minimal contract instance for interface checking
+    const contract = new ethers.Contract(
+      address,
+      ['function supportsInterface(bytes4) view returns (bool)'],
+      this.provider
+    );
 
-    try {
-      // Try with ERC1155 ABI first
-      const erc1155Contract = new ethers.Contract(
-        address,
-        ERC1155Collection_ABI,
-        this.provider
-      );
-      
-      const isERC1155 = await erc1155Contract.supportsInterface(ERC1155_INTERFACE_ID);
-      if (isERC1155) return "ERC1155";
+    // Check both interfaces in parallel
+    const [isERC1155, isERC721] = await Promise.all([
+      supportsInterface(contract, INTERFACE_IDS.ERC1155),
+      supportsInterface(contract, INTERFACE_IDS.ERC721)
+    ]);
 
-      // Try with ERC721 ABI
-      const erc721Contract = new ethers.Contract(
-        address,
-        ERC721Collection_ABI,
-        this.provider
-      );
-      
-      const isERC721 = await erc721Contract.supportsInterface(ERC721_INTERFACE_ID);
-      if (isERC721) return "ERC721";
+    if (isERC1155) return "ERC1155";
+    if (isERC721) return "ERC721";
 
-      throw new Error(`Contract at ${address} does not support ERC721 or ERC1155 interface`);
-    } catch (error: any) {
-      throw new Error(`Failed to detect token type: ${error.message}`);
-    }
+    throw new Error(
+      `Contract at ${address} does not support ERC721 or ERC1155 interface`
+    );
   }
 
   /**
@@ -724,76 +811,87 @@ export class CollectionService {
    */
   async getCollectionInfo(
     address: string,
-    tokenType: "ERC721" | "ERC1155"
+    tokenType: NFTType
   ): Promise<CollectionInfo> {
+    const collection = this.getCollectionContract(address, tokenType);
+
+    // Define method configurations with their fallback values and transformations
+    const methodConfigs = {
+      name: { fallback: "Unknown Collection" },
+      symbol: { fallback: "UNKNOWN" },
+      totalSupply: { 
+        fallback: "0", 
+        transform: (v: bigint) => v.toString() 
+      },
+      maxSupply: { 
+        fallback: "0", 
+        transform: (v: bigint) => v.toString() 
+      },
+      mintPrice: { 
+        fallback: "0", 
+        transform: (v: bigint) => ethers.formatEther(v) 
+      },
+    };
+
+    // Fetch all basic properties in parallel
+    const [name, symbol, totalSupply, maxSupply, mintPrice] = await Promise.all([
+      safeContractCall(collection, 'name', methodConfigs.name.fallback),
+      safeContractCall(collection, 'symbol', methodConfigs.symbol.fallback),
+      safeContractCall(collection, 'totalSupply', methodConfigs.totalSupply.fallback, methodConfigs.totalSupply.transform),
+      safeContractCall(collection, 'maxSupply', methodConfigs.maxSupply.fallback, methodConfigs.maxSupply.transform),
+      safeContractCall(collection, 'mintPrice', methodConfigs.mintPrice.fallback, methodConfigs.mintPrice.transform),
+    ]);
+
+    // Handle baseURI with multiple fallback strategies
+    const baseURI = await this.getBaseURI(collection);
+
+    return {
+      address,
+      name,
+      symbol,
+      totalSupply,
+      tokenType,
+      maxSupply,
+      mintPrice,
+      baseURI,
+    };
+  }
+
+  /**
+   * Get base URI with multiple fallback strategies
+   */
+  private async getBaseURI(collection: ethers.Contract): Promise<string> {
+    // Strategy 1: Try baseTokenURI method
+    const baseTokenURI = await safeContractCall(collection, 'baseTokenURI', null);
+    if (baseTokenURI) return baseTokenURI;
+
+    // Strategy 2: Try tokenURI with token ID 1
     try {
-      const collection = this.getCollectionContract(address, tokenType);
-
-      const [name, symbol] = await Promise.all([
-        collection.name(),
-        collection.symbol(),
-      ]);
-
-      let totalSupply = "0";
-      let maxSupply = "0";
-      let mintPrice = "0";
-      let baseURI = "";
-      
-      try {
-        totalSupply = (await collection.totalSupply()).toString();
-      } catch {
-        // Some collections may not have totalSupply
+      if (typeof collection.tokenURI === 'function') {
+        const uri = await collection.tokenURI(1);
+        // Extract base URI by removing token ID suffix
+        return uri.replace(/\/?\d+\/?$/, '/');
       }
-      
-      try {
-        maxSupply = (await collection.maxSupply()).toString();
-      } catch {
-        // Some collections may not have maxSupply
-      }
-      
-      try {
-        mintPrice = ethers.formatEther(await collection.mintPrice());
-      } catch {
-        // Some collections may not have mintPrice
-      }
-      
-      try {
-        baseURI = await collection.baseTokenURI();
-      } catch {
-        // Some collections may not have baseTokenURI
-      }
+    } catch {}
 
-      return {
-        address,
-        name,
-        symbol,
-        totalSupply,
-        tokenType,
-        maxSupply,
-        mintPrice,
-        baseURI
-      };
-    } catch (error) {
+    // Strategy 3: Try uri method (ERC1155 standard)
+    try {
+      if (typeof collection.uri === 'function') {
+        const uri = await collection.uri(1);
+        return uri.replace(/\{id\}/, '');
+      }
+    } catch {}
 
-      throw error;
-    }
+    return "";
   }
 
   /**
    * Get token owner (ERC721 only)
    */
   async getTokenOwner(collection: string, tokenId: string): Promise<string> {
-    try {
-      const collectionContract = this.getCollectionContract(
-        collection,
-        "ERC721"
-      );
+    const collectionContract = this.getCollectionContract(collection, "ERC721");
 
-      return await collectionContract.ownerOf(tokenId);
-    } catch (error) {
-
-      throw error;
-    }
+    return await collectionContract.ownerOf(tokenId);
   }
 
   /**
@@ -804,18 +902,13 @@ export class CollectionService {
     owner: string,
     tokenId: string
   ): Promise<string> {
-    try {
-      const collectionContract = this.getCollectionContract(
-        collection,
-        "ERC1155"
-      );
+    const collectionContract = this.getCollectionContract(
+      collection,
+      "ERC1155"
+    );
 
-      const balance = await collectionContract.balanceOf(owner, tokenId);
-      return balance.toString();
-    } catch (error) {
-
-      throw error;
-    }
+    const balance = await collectionContract.balanceOf(owner, tokenId);
+    return balance.toString();
   }
 
   /**
@@ -823,53 +916,61 @@ export class CollectionService {
    */
   async verifyCollection(
     collection: string
-  ): Promise<{ isValid: boolean; tokenType: string }> {
+  ): Promise<CollectionVerification> {
     return await marketplaceHubService.verifyCollection(collection);
   }
 
   /**
    * Format transaction error for user-friendly messages
    */
-  private formatTransactionError(error: any): Error {
-    // User rejection
-    if (error.code === "ACTION_REJECTED" || error.code === 4001) {
+  private formatTransactionError(error: unknown): Error {
+    // Type guard for error object
+    const err = error as {
+      code?: string | number;
+      message?: string;
+      reason?: string;
+      data?: string;
+      error?: { message?: string };
+    };
+    if (err.code === "ACTION_REJECTED" || err.code === 4001) {
       return new Error("Transaction was rejected by user");
     }
 
-    // Insufficient funds
-    if (error.code === "INSUFFICIENT_FUNDS" || error.code === -32000) {
+    if (err.code === "INSUFFICIENT_FUNDS" || err.code === -32000) {
       return new Error("Insufficient funds to complete transaction");
     }
 
-    // Network errors
-    if (error.code === "NETWORK_ERROR") {
+    if (err.code === "NETWORK_ERROR") {
       return new Error("Network error - please check your connection");
     }
 
-    // Timeout
-    if (error.code === "TIMEOUT") {
+    if (err.code === "TIMEOUT") {
       return new Error("Transaction timed out - please try again");
     }
 
-    // Gas estimation failed
-    if (error.message?.includes("gas required exceeds allowance")) {
+    if (err.message?.includes("gas required exceeds allowance")) {
       return new Error("Gas estimation failed - transaction may fail");
     }
 
-    // Contract revert errors
-    if (error.message?.includes("execution reverted")) {
-      const revertReason = error.message
+    if (err.message?.includes("execution reverted")) {
+      const revertReason = err.message
         .split("execution reverted: ")[1]
         ?.split('"')[0];
 
-      // Check for custom error data
-      if (error.data) {
-        const errorData = error.data;
-        // Custom error selectors
-        if (errorData === "0xf501eed5" || revertReason?.includes("MintingNotStarted")) {
-          return new Error("Minting has not started yet. Please wait for the mint to begin.");
+      if (err.data) {
+        const errorData = err.data;
+        if (
+          errorData === "0xf501eed5" ||
+          revertReason?.includes("MintingNotStarted")
+        ) {
+          return new Error(
+            "Minting has not started yet. Please wait for the mint to begin."
+          );
         }
-        if (errorData === "0x5a8a1c5c" || revertReason?.includes("MintingNotActive")) {
+        if (
+          errorData === "0x5a8a1c5c" ||
+          revertReason?.includes("MintingNotActive")
+        ) {
           return new Error("Minting is not currently active");
         }
         if (revertReason?.includes("MintLimitExceeded")) {
@@ -883,7 +984,6 @@ export class CollectionService {
         }
       }
 
-      // Common mint errors
       if (revertReason?.includes("Mint not started")) {
         return new Error("Minting has not started yet");
       }
@@ -906,14 +1006,12 @@ export class CollectionService {
       return new Error(revertReason || "Transaction failed");
     }
 
-    // Unparseable error
-    if (error.error?.message) {
-      return new Error(error.error.message);
+    if (err.error?.message) {
+      return new Error(err.error.message);
     }
 
-    return new Error(error.message || "Transaction failed");
+    return new Error(err.message || "Transaction failed");
   }
 }
 
-// Export singleton instance
 export const collectionService = new CollectionService();
