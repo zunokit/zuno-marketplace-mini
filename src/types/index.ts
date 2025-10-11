@@ -130,6 +130,7 @@ export interface MintParams {
   quantity?: number;
   tokenIds?: number[]; // For ERC1155 specific token IDs
   value?: string; // ETH value to send with transaction
+  tokenType?: "ERC721" | "ERC1155"; // Token type for the collection
 }
 
 export interface BatchMintParams {

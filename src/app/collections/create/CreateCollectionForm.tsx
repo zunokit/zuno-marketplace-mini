@@ -128,7 +128,7 @@ export default function CreateCollectionForm() {
       royaltyFee: '5',
       maxSupply: '10000',
       mintLimitPerWallet: '50',
-      mintPrice: '0.01',
+      mintPrice: '10',
       allowlist: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
       baseTokenURI: 'https://api.example.com/metadata/'
     }
