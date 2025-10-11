@@ -24,6 +24,27 @@ export const BLOCK_EXPLORERS: Record<number, string> = {
 // Contract Constants
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+/**
+ * ERC165 Interface IDs for NFT standards
+ */
+export const INTERFACE_IDS = {
+  ERC165: '0x01ffc9a7',
+  ERC721: '0x80ac58cd',
+  ERC721_METADATA: '0x5b5e139f',
+  ERC721_ENUMERABLE: '0x780e9d63',
+  ERC1155: '0xd9b67a26',
+  ERC1155_METADATA: '0x0e89341c',
+  ERC2981_ROYALTY: '0x2a55205a',
+} as const;
+
+/**
+ * Contract development constants
+ */
+export const CONTRACT_CONSTANTS = {
+  MINT_START_TIME_OFFSET: 3600, // 1 hour in seconds
+  DEFAULT_ALLOWLIST_DURATION: 86400, // 24 hours in seconds
+} as const;
+
 export const TOKEN_STANDARDS = {
   ERC721: "ERC721",
   ERC1155: "ERC1155",
