@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Bash(pnpm build:*)",
+      "Bash(xargs sed:*)",
+      "Read(//e/zuno-marketplace-contracts/**)",
+      "Bash(npx tsc:*)",
+      "Bash(npx eslint:*)",
+      "Bash(node:*)",
+      "Bash(npx hardhat node:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

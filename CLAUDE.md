@@ -1,0 +1,256 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, TypeScript, and smart contract integration. The project uses the **MarketplaceHub Pattern** - a single contract entry point that provides addresses for all other contracts.
+
+**Sister Repository**: `zuno-marketplace-contracts` (Foundry project with smart contracts)
+
+## Key Architecture Principles
+
+### 1. MarketplaceHub Pattern
+
+- **Single address per network** - All contract discovery happens through MarketplaceHub
+- MarketplaceHub provides `getAllAddresses()` to retrieve all contract addresses dynamically
+- Environment only needs one variable per network: `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL`
+- Supports local (chainId: 31337), Sepolia (11155111), and Mainnet (1)
+
+### 2. Service Layer Architecture
+
+- **13 service classes** wrapping 23 smart contracts
+- All services initialize through `initializeServices(provider, signer)`
+- Services auto-discover contract addresses via MarketplaceHubService
+- Each service is a singleton instance (e.g., `marketplaceHubService`, `exchangeService`)
+- Service naming: `{ContractName}Service` class, `{contractName}Service` instance
+
+**Core Services**:
+
+- `MarketplaceHubService` - Address discovery (MUST initialize first)
+- `ExchangeService` - ERC721/ERC1155 listings and purchases
+- `AuctionService` - English/Dutch auctions
+- `BundleService` - NFT bundles
+- `OfferService` - NFT and collection offers
+- `CollectionService` - Create/mint/manage collections
+- `FeeManagerService` - Fee tiers, VIP status, volume discounts
+- `RoyaltyManagerService` - ERC2981 royalty management
+- `AccessControlService` - Role-based permissions
+- `EmergencyManagerService` - Emergency pause/blacklist
+- `ListingValidatorService` - Pre-transaction validation
+- `ListingHistoryTrackerService` - Analytics and stats
+- `CollectionVerifierService` - Collection verification
+
+See `docs/SERVICE_ARCHITECTURE.md` for complete service documentation.
+
+### 3. Contract ABI Management
+
+- ABIs stored in `src/lib/contracts/abis/`
+- Auto-generated from Foundry artifacts using `node scripts/extract-abis.js`
+- ABI exports follow pattern: `{ContractName}_ABI`
+- Import from: `import { MarketplaceHub_ABI } from '@/lib/contracts/abis'`
+- **Never manually edit ABI files** - always regenerate from contracts
+
+### 4. Development Modes
+
+**Local Development** (requires Anvil + deployed contracts):
+
+```bash
+# Terminal 1: Start local blockchain
+anvil --port 8545
+
+# Terminal 2: Deploy contracts (in zuno-marketplace-contracts)
+cd ../zuno-marketplace-contracts
+make deploy-all-local
+
+# Terminal 3: Extract ABIs and run
+cd ../zuno-marketplace-mini
+node scripts/extract-abis.js
+npm run dev:local
+```
+
+**Testnet Development**:
+
+```bash
+npm run dev:testnet  # Uses Sepolia (chain ID 11155111)
+```
+
+## Common Development Tasks
+
+### Build & Development
+
+```bash
+npm run dev              # Development with Turbopack
+npm run build            # Production build
+npm run start            # Start production server
+npm run lint             # Run ESLint
+npm run type-check       # TypeScript type checking
+npm run clean            # Clean build artifacts
+```
+
+### Working with Contracts
+
+**When contracts are updated**:
+
+1. Deploy new contracts in `zuno-marketplace-contracts`
+2. Copy MarketplaceHub address to `.env.local`
+3. Run `node scripts/extract-abis.js` to update ABIs
+4. Restart dev server
+
+**Service initialization pattern**:
+
+```typescript
+import { initializeServices } from '@/lib/services/contracts';
+import { BrowserProvider } from 'ethers';
+
+const provider = new BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+
+// Initialize all services (MarketplaceHub must go first)
+await initializeServices(provider, signer);
+
+// Now use any service
+import { exchangeService } from '@/lib/services/contracts';
+await exchangeService.listNFT({ ... });
+```
+
+**Common service patterns**:
+
+```typescript
+// Pattern 1: Check before transaction
+const validation = await listingValidatorService.validateListing(
+  listing,
+  userAddress
+);
+if (!validation.isValid) throw new Error(validation.errors);
+
+// Pattern 2: Calculate fees first
+const fees = await marketplaceHubService.calculateFees(
+  nftAddress,
+  tokenId,
+  salePrice
+);
+
+// Pattern 3: Check permissions
+const hasRole = await accessControlService.hasRole(role, userAddress);
+```
+
+### Adding a New Feature
+
+1. Create component in `src/components/features/{feature-name}/`
+2. Add types in `src/types/`
+3. Create/update service in `src/lib/services/contracts/` if contract interaction needed
+4. Add Redux slice in `src/lib/store/` if global state needed
+5. Create page in `src/app/{route}/page.tsx`
+
+### Testing
+
+The project doesn't have formal tests yet. When testing manually:
+
+- Use Local Mode with Anvil for contract integration testing
+- Verify transactions on Sepolia before mainnet deployment
+
+## Important Notes
+
+### Environment Variables
+
+Required variables in `.env.local`:
+
+```bash
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337  # or 11155111 for Sepolia
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
+```
+
+### Path Aliases
+
+- `@/` maps to `src/`
+- Example: `import { Button } from '@/components/ui/button'`
+
+### Contract Naming Standards
+
+- Contracts: PascalCase (e.g., `MarketplaceHub`)
+- ABIs: `{ContractName}_ABI` (e.g., `MarketplaceHub_ABI`)
+- Services: `{ContractName}Service` class, `{contractName}Service` instance
+- See `docs/CONTRACT_NAMING_STANDARD.md` for complete standards
+
+### Security Notes
+
+- Contracts are **NOT audited** - testnet use only
+- Never use real funds during testing
+- Do not deploy to mainnet without professional audit
+
+### File Creation Rules
+
+- **IMPORTANT**: Do NOT create markdown files (\*.md) unless explicitly requested or confirmed by the user
+- Only create new files when absolutely necessary
+- Prefer editing existing files over creating new ones
+- When creating documentation files, always ask for user confirmation first
+
+### Code Style
+
+- TypeScript strict mode enabled
+- Use Ethers.js v6 for blockchain interactions
+- React 19 with Next.js 15 App Router
+- Tailwind CSS v4 for styling
+- ESLint for code quality
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── marketplace/       # Marketplace listings
+│   ├── collections/       # Collection browsing/creation
+│   ├── auctions/          # Auction pages
+│   ├── bundles/           # Bundle trading
+│   ├── offers/            # Offer management
+│   ├── admin/             # Admin dashboard
+│   └── analytics/         # Analytics dashboard
+├── components/
+│   ├── common/            # Shared components (Header, Footer, etc.)
+│   ├── features/          # Feature-specific components
+│   └── ui/                # shadcn/ui components
+├── lib/
+│   ├── contracts/
+│   │   ├── abis/          # Auto-generated contract ABIs
+│   │   └── addresses.ts   # Contract address configuration
+│   ├── services/
+│   │   ├── contracts/     # Contract service classes (13 services)
+│   │   ├── blockchain/    # Blockchain utilities
+│   │   └── web3/          # Web3 provider
+│   ├── hooks/             # Custom React hooks
+│   ├── store/             # Redux store and slices
+│   ├── utils/             # Utility functions
+│   ├── constants/         # App constants
+│   └── config/            # Configuration
+├── types/                  # TypeScript type definitions
+└── styles/                # Global styles
+```
+
+## Troubleshooting
+
+**"Hub not initialized"**
+
+- Ensure `initializeServices()` is called before using services
+- Check that `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` is set in `.env.local`
+
+**"Contract address not found"**
+
+- Verify correct chain ID (31337 = local, 11155111 = Sepolia)
+- Ensure contracts are deployed on the target network
+
+**"Transaction reverted: Not approved"**
+
+- NFT must be approved before listing: `await collectionService.setApprovalForAll(...)`
+
+**"ABIs outdated"**
+
+- Run `node scripts/extract-abis.js` to regenerate ABIs from latest contracts
+
+## Additional Documentation
+
+- `docs/SETUP_GUIDE.md` - Detailed setup instructions
+- `docs/CONTRACT_INTEGRATION.md` - Smart contract integration guide
+- `docs/CODE_STRUCTURE.md` - Architecture and patterns
+- `docs/SERVICE_ARCHITECTURE.md` - Complete service documentation
+- `docs/CONTRACT_NAMING_STANDARD.md` - Naming conventions
