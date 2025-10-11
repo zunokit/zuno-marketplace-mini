@@ -212,84 +212,90 @@ export default function CollectionsPage() {
   return (
     <MainLayout>
       {/* Header */}
-      <div className="flex flex-col gap-6 mb-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Collections</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl font-bold">Collections</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Discover amazing NFT collections from creators worldwide
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button asChild>
+            <Button asChild className="w-full sm:w-auto">
               <Link href="/collections/create">
                 <Plus className="mr-2 h-4 w-4" />
-                Create Collection
+                <span className="hidden sm:inline">Create Collection</span>
+                <span className="sm:hidden">Create</span>
               </Link>
             </Button>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          {/* Search */}
-          <div className="relative flex-1">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Search Bar */}
+          <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search collections..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 w-full"
             />
           </div>
 
-          {/* Filter */}
-          <Select value={filterBy} onValueChange={setFilterBy}>
-            <SelectTrigger className="w-full md:w-[180px]">
-              <Filter className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Filter by..." />
-            </SelectTrigger>
-            <SelectContent>
-              {filterOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Filters Row */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {/* Filter */}
+            <Select value={filterBy} onValueChange={setFilterBy}>
+              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filter by..." />
+              </SelectTrigger>
+              <SelectContent>
+                {filterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* Sort */}
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full md:w-[180px]">
-              <TrendingUp className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Sort by..." />
-            </SelectTrigger>
-            <SelectContent>
-              {sortOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {/* Sort */}
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px]">
+                <TrendingUp className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {/* View Mode */}
-          <div className="flex items-center gap-1 border rounded-md">
-            <Button
-              variant={viewMode === "grid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("grid")}
-            >
-              <Grid3X3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
+            {/* View Mode */}
+            <div className="flex items-center gap-1 border rounded-md ml-auto">
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="px-2 sm:px-3"
+              >
+                <Grid3X3 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className="px-2 sm:px-3"
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -349,10 +355,10 @@ export default function CollectionsPage() {
 
       {/* Collections Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="space-y-3">
-              <Skeleton className="h-48 w-full rounded-lg" />
+              <Skeleton className="h-40 sm:h-48 w-full rounded-lg" />
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-4 w-1/2" />
               <div className="flex gap-2">

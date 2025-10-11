@@ -139,32 +139,32 @@ export default function Home() {
   return (
     <MainLayout>
       {/* Hero Section */}
-      <section className="relative py-20 text-center">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-3xl" />
-        <div className="relative max-w-4xl mx-auto px-4">
-          <Badge variant="secondary" className="mb-4">
+      <section className="relative py-12 sm:py-16 md:py-20 text-center">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10 rounded-xl sm:rounded-2xl md:rounded-3xl" />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
+          <Badge variant="secondary" className="mb-3 sm:mb-4">
             <Star className="mr-1 h-3 w-3" />
-            The Premier NFT Marketplace
+            <span className="text-xs sm:text-sm">The Premier NFT Marketplace</span>
           </Badge>
 
-          <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4 sm:mb-6">
             Discover, Create & Trade Extraordinary NFTs
           </h1>
 
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
             Join the world's largest digital marketplace for crypto collectibles
             and non-fungible tokens. Buy, sell, and discover exclusive digital
             items.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+            <Button size="lg" asChild className="w-full sm:w-auto">
               <Link href="/marketplace">
                 Explore Marketplace
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
+            <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
               <Link href="/collections/create">Create Collection</Link>
             </Button>
           </div>
@@ -172,23 +172,23 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="py-8 sm:py-12 md:py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {stats.map((stat) => (
             <Card key={stat.title}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
+                <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
                   {stat.title}
                 </CardTitle>
                 <stat.icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="flex items-center justify-between mt-2">
+                <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
                   <p className="text-xs text-muted-foreground">
                     {stat.description}
                   </p>
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-xs w-fit">
                     <TrendingUp className="mr-1 h-3 w-3" />
                     {stat.trend}
                   </Badge>
@@ -200,15 +200,16 @@ export default function Home() {
       </section>
 
       {/* Featured NFTs */}
-      <section className="py-16">
-        <div className="flex items-center justify-between mb-8">
+      <section className="py-8 sm:py-12 md:py-16">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h2 className="text-3xl font-bold mb-2">Featured NFTs</h2>
-            <p className="text-muted-foreground">Handpicked by our curators</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Featured NFTs</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">Handpicked by our curators</p>
           </div>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/marketplace">
-              View All
+              <span className="sm:hidden">View All</span>
+              <span className="hidden sm:inline">View All</span>
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -218,17 +219,18 @@ export default function Home() {
       </section>
 
       {/* Trending Collections */}
-      <section className="py-16">
-        <div className="flex items-center justify-between mb-8">
+      <section className="py-8 sm:py-12 md:py-16">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h2 className="text-3xl font-bold mb-2">Trending Collections</h2>
-            <p className="text-muted-foreground">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Trending Collections</h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Most popular collections this week
             </p>
           </div>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/collections">
-              View All
+              <span className="sm:hidden">View All</span>
+              <span className="hidden sm:inline">View All</span>
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -238,15 +240,15 @@ export default function Home() {
       </section>
 
       {/* How It Works */}
-      <section className="py-16">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
+      <section className="py-8 sm:py-12 md:py-16">
+        <div className="text-center mb-8 sm:mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">How It Works</h2>
+          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
             Get started with Zuno in just a few simple steps
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           <Card className="text-center">
             <CardHeader>
               <div className="mx-auto w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4">

@@ -386,13 +386,13 @@ export default function OffersPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2">
           💰 NFT Offers
         </h1>
-        <p className="text-muted-foreground">Make and manage offers on NFTs</p>
+        <p className="text-sm sm:text-base text-muted-foreground">Make and manage offers on NFTs</p>
       </div>
 
       {/* Tabs */}

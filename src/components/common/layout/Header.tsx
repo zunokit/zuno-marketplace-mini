@@ -1,16 +1,9 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +14,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { WalletConnectButton } from "@/components/wallet/WalletConnectButton";
@@ -34,6 +34,11 @@ import {
   Settings,
   Bell,
   Search,
+  Menu,
+  X,
+  Plus,
+  ChevronDown,
+  LogOut,
 } from "lucide-react";
 import { useAppSelector } from "@/lib/store/hooks";
 
@@ -74,82 +79,180 @@ export function Header() {
   const pathname = usePathname();
   const wallet = useAppSelector((state) => state.wallet);
   const notifications = useAppSelector((state) => state.notifications);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [createDropdownOpen, setCreateDropdownOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center space-x-4">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-x-hidden">
+      <div className="max-w-screen-2xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Logo and Mobile Menu */}
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Mobile Menu Button - Show on tablets too */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" className="lg:hidden">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] sm:w-[350px]">
+              <SheetHeader>
+                <SheetTitle>Menu</SheetTitle>
+              </SheetHeader>
+              <nav className="mt-6 space-y-1">
+                {navigationItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={cn(
+                      "flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      pathname === item.href && "bg-accent text-accent-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                ))}
+                
+                {/* Create Section in Mobile */}
+                <div className="border-t pt-4 mt-4">
+                  <p className="px-3 text-sm font-semibold text-muted-foreground mb-2">Create</p>
+                  <Link
+                    href="/collections/create"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Palette className="h-4 w-4" />
+                    <span>Create Collection</span>
+                  </Link>
+                  <Link
+                    href="/nft/mint"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Mint NFT</span>
+                  </Link>
+                  <Link
+                    href="/auctions/create"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Gavel className="h-4 w-4" />
+                    <span>Create Auction</span>
+                  </Link>
+                  <Link
+                    href="/bundles/create"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Package className="h-4 w-4" />
+                    <span>Create Bundle</span>
+                  </Link>
+                </div>
+
+                {/* User Section in Mobile */}
+                {wallet.isConnected && (
+                  <div className="border-t pt-4 mt-4">
+                    <p className="px-3 text-sm font-semibold text-muted-foreground mb-2">Account</p>
+                    <Link
+                      href="/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <User className="h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                    <Link
+                      href="/profile/collections"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <Palette className="h-4 w-4" />
+                      <span>My Collections</span>
+                    </Link>
+                    <Link
+                      href="/profile/settings"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <Settings className="h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </div>
+                )}
+              </nav>
+            </SheetContent>
+          </Sheet>
+
           <Link href="/" className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
               <Palette className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-xl">Zuno</span>
+            <span className="font-bold text-xl hidden sm:block">Zuno</span>
           </Link>
         </div>
 
-        {/* Navigation */}
-        <NavigationMenu className="hidden md:flex">
-          <NavigationMenuList>
+        {/* Navigation - Only show on large screens */}
+        <nav className="hidden lg:flex items-center">
+          <div className="flex items-center space-x-1">
             {navigationItems.map((item) => (
-              <NavigationMenuItem key={item.href}>
-                <NavigationMenuLink asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      navigationMenuTriggerStyle(),
-                      pathname === item.href &&
-                        "bg-accent text-accent-foreground"
-                    )}
-                  >
-                    <item.icon className="h-4 w-4 mr-2" />
-                    {item.title}
-                  </Link>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 h-10 px-2 xl:px-4 py-2",
+                  pathname === item.href &&
+                    "bg-accent text-accent-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                <span className="hidden xl:inline">{item.title}</span>
+              </Link>
             ))}
 
             {/* Create Dropdown */}
-            <NavigationMenuItem>
-              <NavigationMenuTrigger>Create</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                  <li className="row-span-3">
-                    <NavigationMenuLink asChild>
-                      <Link
-                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
-                        href="/collections/create"
-                      >
-                        <Palette className="h-6 w-6" />
-                        <div className="mb-2 mt-4 text-lg font-medium">
-                          Create Collection
-                        </div>
-                        <p className="text-sm leading-tight text-muted-foreground">
-                          Deploy your own NFT collection with custom metadata
-                          and royalties.
-                        </p>
-                      </Link>
-                    </NavigationMenuLink>
-                  </li>
-                  <ListItem href="/nft/mint" title="Mint NFT">
-                    Create and mint individual NFTs to existing collections.
-                  </ListItem>
-                  <ListItem href="/auctions/create" title="Create Auction">
-                    Start an auction for your NFTs with custom parameters.
-                  </ListItem>
-                  <ListItem href="/bundles/create" title="Create Bundle">
-                    Bundle multiple NFTs together for sale.
-                  </ListItem>
-                </ul>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-10 px-2 xl:px-4">
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  <span className="hidden xl:inline">Create</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link href="/collections/create" className="flex items-center">
+                    <Palette className="mr-2 h-4 w-4" />
+                    Create Collection
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/nft/mint" className="flex items-center">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Mint NFT
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/auctions/create" className="flex items-center">
+                    <Gavel className="mr-2 h-4 w-4" />
+                    Create Auction
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/bundles/create" className="flex items-center">
+                    <Package className="mr-2 h-4 w-4" />
+                    Create Bundle
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </nav>
 
         {/* Right Side Actions */}
-        <div className="flex items-center space-x-4">
-          {/* Search */}
-          <Button variant="ghost" size="sm" className="hidden md:flex">
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Search - Hidden on mobile */}
+          <Button variant="ghost" size="sm" className="hidden lg:flex">
             <Search className="h-4 w-4" />
           </Button>
 
@@ -157,14 +260,14 @@ export function Header() {
           {wallet.isConnected && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative">
+                <Button variant="ghost" size="sm" className="relative p-2">
                   <Bell className="h-4 w-4" />
                   {notifications.unreadCount > 0 && (
                     <Badge
                       variant="destructive"
-                      className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs"
+                      className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 p-0 text-[10px] sm:text-xs flex items-center justify-center"
                     >
-                      {notifications.unreadCount}
+                      {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
                     </Badge>
                   )}
                 </Button>
@@ -263,35 +366,4 @@ export function Header() {
   );
 }
 
-const ListItem = ({
-  className,
-  title,
-  children,
-  href,
-  ...props
-}: {
-  className?: string;
-  title: string;
-  children: React.ReactNode;
-  href: string;
-}) => {
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <Link
-          href={href}
-          className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            className
-          )}
-          {...props}
-        >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
-            {children}
-          </p>
-        </Link>
-      </NavigationMenuLink>
-    </li>
-  );
-};
+
