@@ -129,7 +129,7 @@ export default function CreateCollectionForm() {
       maxSupply: '10000',
       mintLimitPerWallet: '50',
       mintPrice: '10',
-      allowlist: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+      allowlist: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
       baseTokenURI: 'https://api.example.com/metadata/'
     }
   });

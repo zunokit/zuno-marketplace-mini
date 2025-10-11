@@ -7,7 +7,11 @@ import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { listingHistoryTrackerService } from "./ListingHistoryTrackerService";
 import { exchangeService } from "./ExchangeService";
-import { ERC721Collection_ABI, ERC1155Collection_ABI } from "@/lib/contracts/abis";
+import {
+  ERC721Collection_ABI,
+  ERC1155Collection_ABI,
+} from "@/lib/contracts/abis";
+import { DEAD_ADDRESS } from "@/lib/constants";
 
 export interface CollectionData {
   address: string;
@@ -57,28 +61,46 @@ export class CollectionQueryService {
 
       console.log("🔍 Querying collections from factories:", {
         erc721Factory,
-        erc1155Factory
+        erc1155Factory,
       });
 
       // Check if factories are deployed
-      if (!erc721Factory || erc721Factory === "0x0000000000000000000000000000000000000000") {
+      if (
+        !erc721Factory ||
+        erc721Factory === "0x0000000000000000000000000000000000000000"
+      ) {
         console.log("⚠️ ERC721 Factory not deployed");
       }
-      if (!erc1155Factory || erc1155Factory === "0x0000000000000000000000000000000000000000") {
+      if (
+        !erc1155Factory ||
+        erc1155Factory === "0x0000000000000000000000000000000000000000"
+      ) {
         console.log("⚠️ ERC1155 Factory not deployed");
       }
 
       const collections: CollectionData[] = [];
 
       // Query ERC721 collections
-      if (erc721Factory && erc721Factory !== "0x0000000000000000000000000000000000000000") {
-        const erc721Collections = await this.getCollectionsFromFactory(erc721Factory, "ERC721");
+      if (
+        erc721Factory &&
+        erc721Factory !== "0x0000000000000000000000000000000000000000"
+      ) {
+        const erc721Collections = await this.getCollectionsFromFactory(
+          erc721Factory,
+          "ERC721"
+        );
         collections.push(...erc721Collections);
       }
 
       // Query ERC1155 collections
-      if (erc1155Factory && erc1155Factory !== "0x0000000000000000000000000000000000000000") {
-        const erc1155Collections = await this.getCollectionsFromFactory(erc1155Factory, "ERC1155");
+      if (
+        erc1155Factory &&
+        erc1155Factory !== "0x0000000000000000000000000000000000000000"
+      ) {
+        const erc1155Collections = await this.getCollectionsFromFactory(
+          erc1155Factory,
+          "ERC1155"
+        );
         collections.push(...erc1155Collections);
       }
 
@@ -86,24 +108,27 @@ export class CollectionQueryService {
       collections.sort((a, b) => b.createdAt - a.createdAt);
 
       console.log(`✅ Found ${collections.length} collections`);
-      console.log("🔍 Collections details:", collections.map(c => ({
-        address: c.address,
-        name: c.name,
-        symbol: c.symbol,
-        totalSupply: c.totalSupply,
-        hasValidData: !!(c.address && c.name)
-      })));
-      
-      // Filter out invalid collections (but allow empty names - we'll fix them)
-      const validCollections = collections.filter(c => 
-        c && 
-        c.address && 
-        c.address !== "0x0000000000000000000000000000000000000000"
+      console.log(
+        "🔍 Collections details:",
+        collections.map((c) => ({
+          address: c.address,
+          name: c.name,
+          symbol: c.symbol,
+          totalSupply: c.totalSupply,
+          hasValidData: !!(c.address && c.name),
+        }))
       );
-      
+
+      // Filter out invalid collections (but allow empty names - we'll fix them)
+      const validCollections = collections.filter(
+        (c) =>
+          c &&
+          c.address &&
+          c.address !== "0x0000000000000000000000000000000000000000"
+      );
+
       console.log(`✅ Valid collections: ${validCollections.length}`);
       return validCollections;
-
     } catch (error) {
       console.error("❌ Error fetching collections:", error);
       throw error;
@@ -114,7 +139,7 @@ export class CollectionQueryService {
    * Get collections from a specific factory
    */
   private async getCollectionsFromFactory(
-    factoryAddress: string, 
+    factoryAddress: string,
     tokenType: "ERC721" | "ERC1155"
   ): Promise<CollectionData[]> {
     if (!this.provider) {
@@ -126,7 +151,10 @@ export class CollectionQueryService {
     try {
       // Query factory events to find created collections
       // Note: This is a simplified approach - in production you'd want to use event filters
-      console.log(`🔍 Querying ${tokenType} collections from factory:`, factoryAddress);
+      console.log(
+        `🔍 Querying ${tokenType} collections from factory:`,
+        factoryAddress
+      );
 
       // Get recent blocks to search for collection creation events
       const currentBlock = await this.provider.getBlockNumber();
@@ -136,7 +164,7 @@ export class CollectionQueryService {
       const filter = {
         address: factoryAddress,
         fromBlock,
-        toBlock: 'latest'
+        toBlock: "latest",
       };
 
       const logs = await this.provider.getLogs(filter);
@@ -147,9 +175,14 @@ export class CollectionQueryService {
         try {
           // Try to extract collection address from log topics
           if (log.topics && log.topics.length > 1) {
-            const collectionAddress = this.extractAddressFromTopic(log.topics[1]);
-            
-            if (collectionAddress && collectionAddress !== "0x0000000000000000000000000000000000000000") {
+            const collectionAddress = this.extractAddressFromTopic(
+              log.topics[1]
+            );
+
+            if (
+              collectionAddress &&
+              collectionAddress !== "0x0000000000000000000000000000000000000000"
+            ) {
               // Get block timestamp for creation time
               let createdAt = Date.now();
               try {
@@ -164,12 +197,19 @@ export class CollectionQueryService {
               }
 
               try {
-                const collectionInfo = await this.getCollectionInfo(collectionAddress, tokenType, createdAt);
+                const collectionInfo = await this.getCollectionInfo(
+                  collectionAddress,
+                  tokenType,
+                  createdAt
+                );
                 if (collectionInfo) {
                   collections.push(collectionInfo);
                 }
               } catch (infoError: any) {
-                console.error(`Failed to get info for collection ${collectionAddress}:`, infoError.message);
+                console.error(
+                  `Failed to get info for collection ${collectionAddress}:`,
+                  infoError.message
+                );
                 // Continue to next collection instead of stopping completely
                 continue;
               }
@@ -180,7 +220,6 @@ export class CollectionQueryService {
           continue;
         }
       }
-
     } catch (error) {
       console.error(`❌ Error querying ${tokenType} factory:`, error);
     }
@@ -191,7 +230,11 @@ export class CollectionQueryService {
   /**
    * Get detailed info for a specific collection
    */
-  async getCollectionInfo(address: string, tokenType: "ERC721" | "ERC1155", createdAt?: number): Promise<CollectionData | null> {
+  async getCollectionInfo(
+    address: string,
+    tokenType: "ERC721" | "ERC1155",
+    createdAt?: number
+  ): Promise<CollectionData | null> {
     if (!this.provider) {
       throw new Error("Provider not available");
     }
@@ -210,13 +253,14 @@ export class CollectionQueryService {
       }
 
       // Create contract interface using the proper ABIs
-      const contractABI = tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
+      const contractABI =
+        tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
 
       const contract = new ethers.Contract(address, contractABI, this.provider);
 
       // Get basic collection info with better error handling
       console.log(`🔍 Getting info for ${tokenType} collection at ${address}`);
-      
+
       let name = "Unknown Collection";
       let symbol = "UNKNOWN";
       let description = "";
@@ -230,8 +274,14 @@ export class CollectionQueryService {
           throw new Error(`Collection at ${address} has empty name`);
         }
         // Filter out implementation contracts
-        if (name.toLowerCase() === "implementation" || name.toLowerCase().includes("impl")) {
-          throw new Error(`Skipping implementation contract at ${address} with name: ${name}`);
+        if (
+          name.toLowerCase() === "implementation" ||
+          name.toLowerCase().includes("impl")
+        ) {
+          console.warn(
+            `⚠️ Skipping implementation contract at ${address} with name: ${name}`
+          );
+          return null;
         }
         console.log(`✅ Name: ${name}`);
       } catch (e) {
@@ -239,7 +289,7 @@ export class CollectionQueryService {
         throw e; // Re-throw to see the actual error
       }
 
-      // Get symbol - required  
+      // Get symbol - required
       try {
         symbol = await contract.symbol();
         if (!symbol || symbol.trim() === "") {
@@ -264,18 +314,22 @@ export class CollectionQueryService {
         owner = await contract.owner();
         console.log(`✅ Owner: ${owner}`);
         // Filter out contracts with dead address as owner (typically implementation contracts)
-        if (owner.toLowerCase() === "0x000000000000000000000000000000000000dead") {
-          throw new Error(`Contract at ${address} has dead address as owner - likely an implementation contract`);
+        if (owner.toLowerCase() === DEAD_ADDRESS.toLowerCase()) {
+          throw new Error(
+            `Contract at ${address} has dead address as owner - likely an implementation contract`
+          );
         }
       } catch (e: any) {
         // If owner() fails, try creator()
-        if (e.message && !e.message.includes('dead address')) {
+        if (e.message && !e.message.includes("dead address")) {
           try {
             owner = await contract.creator();
             console.log(`✅ Creator: ${owner}`);
           } catch (e2) {
             console.error(`❌ Could not get owner/creator for ${address}:`, e2);
-            throw new Error(`Failed to get owner/creator for collection at ${address}`);
+            throw new Error(
+              `Failed to get owner/creator for collection at ${address}`
+            );
           }
         } else {
           throw e; // Re-throw if it's our dead address error
@@ -285,13 +339,17 @@ export class CollectionQueryService {
       // Get total supply using the correct function name
       try {
         totalSupply = await contract.getTotalMinted();
-        console.log(`✅ Total Supply (getTotalMinted): ${totalSupply.toString()}`);
+        console.log(
+          `✅ Total Supply (getTotalMinted): ${totalSupply.toString()}`
+        );
       } catch (e) {
         console.log(`⚠️ getTotalMinted() failed:`, e);
         // Fallback to other methods if needed
         try {
           totalSupply = await contract.totalSupply();
-          console.log(`✅ Total Supply (totalSupply): ${totalSupply.toString()}`);
+          console.log(
+            `✅ Total Supply (totalSupply): ${totalSupply.toString()}`
+          );
         } catch (e2) {
           console.log(`⚠️ Could not get total supply:`, e2);
           totalSupply = BigInt(0);
@@ -301,7 +359,7 @@ export class CollectionQueryService {
       // Get additional info if available
       let maxSupply = "0";
       let royaltyFee = "0";
-      
+
       try {
         maxSupply = (await contract.getMaxSupply()).toString();
       } catch (e) {
@@ -318,7 +376,10 @@ export class CollectionQueryService {
         console.log(`✅ Royalty Fee: ${royaltyFee}`);
       } catch (e) {
         try {
-          const royaltyInfo = await contract.royaltyInfo(1, ethers.parseEther("1"));
+          const royaltyInfo = await contract.royaltyInfo(
+            1,
+            ethers.parseEther("1")
+          );
           royaltyFee = ((Number(royaltyInfo[1]) / 10000) * 100).toString(); // Convert basis points to percentage
           console.log(`✅ Royalty Fee (royaltyInfo): ${royaltyFee}`);
         } catch (e2) {
@@ -349,33 +410,35 @@ export class CollectionQueryService {
           totalSupply: Number(totalSupply),
           totalOwners: Math.floor(Number(totalSupply) * 0.7), // Estimate 70% unique owners
           floorPrice: totalSupply > BigInt(0) ? "0.001" : "0", // Set a demo floor price
-          totalVolume: totalSupply > BigInt(0) ? (Number(totalSupply) * 0.05).toFixed(3) : "0", // Estimate volume
-          listed: Math.floor(Number(totalSupply) * 0.1) // Estimate 10% listed
-        }
+          totalVolume:
+            totalSupply > BigInt(0)
+              ? (Number(totalSupply) * 0.05).toFixed(3)
+              : "0", // Estimate volume
+          listed: Math.floor(Number(totalSupply) * 0.1), // Estimate 10% listed
+        },
       };
 
       // Cache the result
       this.collectionCache.set(address, collectionInfo);
-      
+
       console.log(`✅ Collection info loaded:`, {
         address,
         name,
         symbol,
-        totalSupply: totalSupply.toString()
+        totalSupply: totalSupply.toString(),
       });
 
       return collectionInfo;
-
     } catch (error: any) {
       console.error(`❌ Error getting collection info for ${address}:`, error);
       // Log specific error details for debugging
-      console.error('Error details:', {
+      console.error("Error details:", {
         address,
         tokenType,
-        errorMessage: error.message || 'Unknown error',
-        errorStack: error.stack
+        errorMessage: error.message || "Unknown error",
+        errorStack: error.stack,
       });
-      
+
       // Re-throw error so we can see what's actually failing
       throw error;
     }
@@ -388,9 +451,9 @@ export class CollectionQueryService {
     if (!topic || topic.length !== 66) {
       return null;
     }
-    
+
     // Remove '0x' and take last 40 characters (20 bytes = 40 hex chars)
-    const address = '0x' + topic.slice(26);
+    const address = "0x" + topic.slice(26);
     return address;
   }
 
@@ -417,7 +480,6 @@ export class CollectionQueryService {
       // Try ERC1155
       collectionInfo = await this.getCollectionInfo(address, "ERC1155");
       return collectionInfo;
-
     } catch (error) {
       console.error(`❌ Error getting collection ${address}:`, error);
       return null;
