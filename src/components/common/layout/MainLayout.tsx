@@ -40,19 +40,25 @@ export function MainLayout({
 
       {/* Main Content Area */}
       <div className="flex flex-1">
-        {/* Sidebar */}
-        {showSidebar && <Sidebar collapsed={sidebarCollapsed} />}
+        {/* Sidebar - Hidden on mobile */}
+        {showSidebar && (
+          <div className="hidden md:block">
+            <Sidebar collapsed={sidebarCollapsed} />
+          </div>
+        )}
 
         {/* Main Content */}
         <main
           className={cn(
             "flex-1 overflow-hidden",
-            showSidebar && !sidebarCollapsed && "ml-64",
-            showSidebar && sidebarCollapsed && "ml-16",
+            showSidebar && !sidebarCollapsed && "md:ml-64",
+            showSidebar && sidebarCollapsed && "md:ml-16",
             className
           )}
         >
-          <div className="container mx-auto px-4 py-6 h-full">{children}</div>
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 h-full">
+            {children}
+          </div>
         </main>
       </div>
 

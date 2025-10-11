@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { MainLayout } from '@/components/common/layout/MainLayout';
 import {
   Card,
   CardContent,
@@ -65,16 +66,16 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">📊 Marketplace Analytics</h1>
-        <p className="text-muted-foreground">
+    <MainLayout>
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold">📊 Marketplace Analytics</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Real-time marketplace statistics and insights
         </p>
       </div>
 
       {/* Global Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
@@ -213,6 +214,6 @@ export default function AnalyticsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </MainLayout>
   );
 }

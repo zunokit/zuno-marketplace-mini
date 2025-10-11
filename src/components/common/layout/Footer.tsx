@@ -71,11 +71,11 @@ const socialLinks = [
 export function Footer() {
   return (
     <footer className="border-t bg-background">
-      <div className="container py-12">
+      <div className="container px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8">
           {/* Brand Section */}
-          <div className="col-span-2 md:col-span-3 lg:col-span-2">
+          <div className="col-span-1 sm:col-span-2 md:col-span-3 lg:col-span-2 mb-6 lg:mb-0">
             <div className="flex items-center space-x-2 mb-4">
               <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
                 <Palette className="h-5 w-5 text-primary-foreground" />
@@ -83,7 +83,7 @@ export function Footer() {
               <span className="font-bold text-xl">Zuno</span>
             </div>
 
-            <p className="text-muted-foreground mb-6 max-w-sm">
+            <p className="text-sm sm:text-base text-muted-foreground mb-6 max-w-sm">
               The premier destination for discovering, creating, and trading
               extraordinary NFTs. Built on Ethereum with love for the community.
             </p>
@@ -186,9 +186,9 @@ export function Footer() {
         {/* Bottom Section */}
         <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
           {/* Copyright */}
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 text-xs sm:text-sm text-muted-foreground">
             <span>© 2024 Zuno. All rights reserved.</span>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <span className="flex items-center gap-1">
               Made with <Heart className="h-3 w-3 text-red-500 fill-current" />{" "}
               for the NFT community
@@ -196,9 +196,9 @@ export function Footer() {
           </div>
 
           {/* Legal Links */}
-          <div className="flex items-center space-x-6 text-sm">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
             {footerLinks.legal.map((link, index) => (
-              <span key={link.href} className="flex items-center space-x-6">
+              <div key={link.href} className="flex items-center">
                 <Link
                   href={link.href}
                   className="text-muted-foreground hover:text-foreground transition-colors"
@@ -206,27 +206,27 @@ export function Footer() {
                   {link.label}
                 </Link>
                 {index < footerLinks.legal.length - 1 && (
-                  <span className="text-muted-foreground">•</span>
+                  <span className="text-muted-foreground ml-2 sm:ml-4 hidden sm:inline">•</span>
                 )}
-              </span>
+              </div>
             ))}
           </div>
         </div>
 
         {/* Additional Info */}
-        <div className="mt-8 pt-8 border-t">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 text-xs text-muted-foreground">
-            <div>
+        <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs text-muted-foreground">
+            <div className="text-center sm:text-left">
               <p className="font-medium mb-1">Network Status</p>
               <p>Ethereum Mainnet • All systems operational</p>
             </div>
 
-            <div>
+            <div className="text-center sm:text-left">
               <p className="font-medium mb-1">Gas Tracker</p>
               <p>Standard: ~15 gwei • Fast: ~20 gwei</p>
             </div>
 
-            <div>
+            <div className="text-center sm:text-left">
               <p className="font-medium mb-1">Floor Prices</p>
               <p>Updated every 5 minutes</p>
             </div>

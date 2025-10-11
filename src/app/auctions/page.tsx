@@ -316,20 +316,20 @@ export default function AuctionsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-              <Gavel className="h-8 w-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2">
+              <Gavel className="h-6 w-6 sm:h-8 sm:w-8" />
               NFT Auctions
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm sm:text-base text-muted-foreground">
               Create and participate in NFT auctions
             </p>
           </div>
-          <Button onClick={handleRefresh} variant="outline" size="sm">
+          <Button onClick={handleRefresh} variant="outline" size="sm" className="w-full sm:w-auto">
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
