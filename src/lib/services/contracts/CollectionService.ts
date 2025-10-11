@@ -163,12 +163,7 @@ export class CollectionService {
         tokenURI: params.baseURI || "https://api.example.com/metadata/",
       };
 
-      console.log("🔍 DEBUG: Collection parameters being sent:", {
-        name: params.name,
-        symbol: params.symbol,
-        description: params.description,
-        collectionParams,
-      });
+
 
       // Use correct method name based on token type
       const methodName =
@@ -195,8 +190,7 @@ export class CollectionService {
 
       if (event) {
         const parsed = factory.interface.parseLog(event);
-        console.log("📋 Event parsed:", parsed);
-        console.log("📋 Event args:", parsed?.args);
+
 
         // Try different possible field names
         const collectionAddress =
@@ -205,27 +199,14 @@ export class CollectionService {
           parsed?.args?.[0] ||
           parsed?.args?.[1];
 
-        console.log("✅ Collection deployed at:", collectionAddress);
 
-        // Log detailed info about the deployment
-        console.log("📝 Deployment details:", {
-          collectionAddress,
-          transactionHash: receipt.hash,
-          blockNumber: receipt.blockNumber,
-          gasUsed: receipt.gasUsed?.toString(),
-          parameters: {
-            name: params.name,
-            symbol: params.symbol,
-            owner: params.owner || account,
-            description: params.description,
-            tokenType: params.tokenType,
-          },
-        });
+
+
 
         // Add allowlist addresses if provided
         if (params.allowlist && params.allowlist.length > 0) {
           try {
-            console.log("📝 Adding allowlist addresses:", params.allowlist);
+            // Adding allowlist addresses
             const collectionContract = new ethers.Contract(
               collectionAddress,
               params.tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI,
@@ -235,9 +216,9 @@ export class CollectionService {
             // Check if addToAllowlist function exists
             const allowlistTx = await collectionContract.addToAllowlist(params.allowlist);
             await allowlistTx.wait();
-            console.log("✅ Allowlist addresses added successfully");
+            // Allowlist addresses added successfully
           } catch (error: any) {
-            console.warn("⚠️ Failed to add allowlist addresses:", error.message);
+            // Failed to add allowlist but collection was created
             // Don't throw - collection was created successfully
           }
         }
@@ -255,9 +236,7 @@ export class CollectionService {
       }
 
       // If event parsing fails, try to get the new contract address from transaction receipt
-      console.log(
-        "⚠️ CollectionCreated event not found, trying alternative method..."
-      );
+      // CollectionCreated event not found, trying alternative method
 
       // Get factory address for comparison
       const factoryAddress = await marketplaceHubService.getCollectionFactory(
@@ -270,11 +249,7 @@ export class CollectionService {
 
         // Try to find contract creation in logs
         for (const log of receipt.logs) {
-          console.log("🔍 Checking log:", {
-            address: log.address,
-            topics: log.topics,
-            data: log.data,
-          });
+
 
           if (log.topics && log.topics.length > 0) {
             try {
@@ -288,10 +263,7 @@ export class CollectionService {
                     contractAddress !==
                     "0x0000000000000000000000000000000000000000"
                   ) {
-                    console.log(
-                      `✅ Found contract address in topic[${i}]:`,
-                      contractAddress
-                    );
+
                     return contractAddress;
                   }
                 }
@@ -299,10 +271,7 @@ export class CollectionService {
 
               // Also check if the log.address itself is the new contract
               if (log.address && log.address !== factoryAddress) {
-                console.log(
-                  "✅ Found contract address as log.address:",
-                  log.address
-                );
+
                 return log.address;
               }
             } catch (e) {
@@ -312,10 +281,10 @@ export class CollectionService {
         }
       }
 
-      console.log("⚠️ Using factory contract interaction as success indicator");
+      // Using factory contract interaction as success indicator
       return "SUCCESS_BUT_ADDRESS_UNKNOWN";
     } catch (error) {
-      console.error("❌ Collection creation failed:", error);
+      // Collection creation failed
       throw this.formatTransactionError(error);
     }
   }
@@ -347,10 +316,16 @@ export class CollectionService {
         throw new Error("Signer not available - connect wallet first");
       }
 
-      // Auto-detect token type if mismatch
-      const detectedType = await this.detectTokenType(params.collection);
-      if (detectedType !== params.tokenType) {
-        params.tokenType = detectedType;
+      // Auto-detect token type if provided type seems incorrect
+      try {
+        const detectedType = await this.detectTokenType(params.collection);
+        if (detectedType !== params.tokenType) {
+          // Use the detected type as it's more reliable
+          params.tokenType = detectedType;
+        }
+      } catch (error: any) {
+        // If detection fails, trust the provided type
+        // The contract call will fail later if type is wrong
       }
 
       const collection = this.getCollectionContract(
@@ -499,11 +474,7 @@ export class CollectionService {
           BigInt(0)
         );
         totalMintPrice = pricePerItem * totalAmount;
-        console.log(
-          "💰 Total batch mint price:",
-          ethers.formatEther(totalMintPrice),
-          "ETH"
-        );
+        // Calculated total batch mint price
       } catch (error) {
         // If getMintInfo fails, use the provided value
         if (value) {
@@ -523,7 +494,7 @@ export class CollectionService {
         });
       } else {
         // Fallback: mint one by one (less efficient)
-        console.warn("⚠️ Batch mint not available, minting one by one");
+        // Batch mint not available, falling back to single mint
         const totalAmount = amounts
           .reduce((sum, amount) => sum + parseInt(amount), 0)
           .toString();
@@ -532,7 +503,7 @@ export class CollectionService {
         });
       }
     } catch (error) {
-      console.error("Error batch minting NFTs:", error);
+
       throw this.formatTransactionError(error);
     }
   }
@@ -558,7 +529,7 @@ export class CollectionService {
 
       return await collectionContract.setApprovalForAll(operator, approved);
     } catch (error) {
-      console.error("Error setting approval:", error);
+
       throw this.formatTransactionError(error);
     }
   }
@@ -580,7 +551,7 @@ export class CollectionService {
 
       return await collectionContract.isApprovedForAll(owner, operator);
     } catch (error) {
-      console.error("Error checking approval:", error);
+
       return false;
     }
   }
@@ -605,11 +576,11 @@ export class CollectionService {
 
       // Call updateMintStage to progress to the next stage
       const tx = await collection.updateMintStage();
-      console.log("📋 Updating mint stage for collection:", collectionAddress);
+      // Updating mint stage for collection
       
       return tx;
     } catch (error) {
-      console.error("Error updating mint stage:", error);
+
       throw this.formatTransactionError(error);
     }
   }
@@ -694,7 +665,7 @@ export class CollectionService {
         mintStage,
       };
     } catch (error) {
-      console.error("Error getting mint info:", error);
+
       // Return default values if getMintInfo fails
       return {
         currentMintPrice: "0",
@@ -710,32 +681,41 @@ export class CollectionService {
   }
 
   /**
-   * Detect the token type of a collection
+   * Detect the token type of a collection by checking ERC165 interface support
    */
   async detectTokenType(address: string): Promise<"ERC721" | "ERC1155"> {
-    try {
-      if (!this.provider) {
-        throw new Error("Provider not available");
-      }
+    if (!this.provider) {
+      throw new Error("Provider not available");
+    }
 
-      // Try to call ERC1155-specific function (balanceOfBatch)
+    // ERC165 interface IDs
+    const ERC721_INTERFACE_ID = "0x80ac58cd";
+    const ERC1155_INTERFACE_ID = "0xd9b67a26";
+
+    try {
+      // Try with ERC1155 ABI first
       const erc1155Contract = new ethers.Contract(
         address,
-        ["function balanceOfBatch(address[] accounts, uint256[] ids) view returns (uint256[])"],
+        ERC1155Collection_ABI,
         this.provider
       );
+      
+      const isERC1155 = await erc1155Contract.supportsInterface(ERC1155_INTERFACE_ID);
+      if (isERC1155) return "ERC1155";
 
-      try {
-        // Try calling with empty arrays - if it doesn't revert, it's ERC1155
-        await erc1155Contract.balanceOfBatch([], []);
-        return "ERC1155";
-      } catch {
-        // If balanceOfBatch fails, it's likely ERC721
-        return "ERC721";
-      }
-    } catch (error) {
-      console.warn("Could not detect token type, defaulting to ERC721:", error);
-      return "ERC721";
+      // Try with ERC721 ABI
+      const erc721Contract = new ethers.Contract(
+        address,
+        ERC721Collection_ABI,
+        this.provider
+      );
+      
+      const isERC721 = await erc721Contract.supportsInterface(ERC721_INTERFACE_ID);
+      if (isERC721) return "ERC721";
+
+      throw new Error(`Contract at ${address} does not support ERC721 or ERC1155 interface`);
+    } catch (error: any) {
+      throw new Error(`Failed to detect token type: ${error.message}`);
     }
   }
 
@@ -794,7 +774,7 @@ export class CollectionService {
         baseURI
       };
     } catch (error) {
-      console.error("Error getting collection info:", error);
+
       throw error;
     }
   }
@@ -811,7 +791,7 @@ export class CollectionService {
 
       return await collectionContract.ownerOf(tokenId);
     } catch (error) {
-      console.error("Error getting token owner:", error);
+
       throw error;
     }
   }
@@ -833,7 +813,7 @@ export class CollectionService {
       const balance = await collectionContract.balanceOf(owner, tokenId);
       return balance.toString();
     } catch (error) {
-      console.error("Error getting token balance:", error);
+
       throw error;
     }
   }
