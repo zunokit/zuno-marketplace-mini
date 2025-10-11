@@ -990,9 +990,6 @@ console.log("User volume:", userStats.totalVolumeAsSeller);
 ### .env.example
 
 ```bash
-# Mode
-NEXT_PUBLIC_USE_MOCK_DATA=false
-
 # Network
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 
@@ -1132,7 +1129,6 @@ The contract integration layer provides:
 - **Single Address Configuration**: Only MarketplaceHub needed
 - **Type-Safe Services**: Full TypeScript support
 - **Clean Architecture**: Separation of concerns
-- **Easy Testing**: Mock mode for development
 - **Extensible**: Add new services easily
 
 For architecture details, see [Code Structure Guide](./CODE_STRUCTURE.md).

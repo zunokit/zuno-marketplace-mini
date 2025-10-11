@@ -22,7 +22,7 @@ import {
   Volume2,
 } from "lucide-react";
 
-// Mock data for demo
+// Demo data for landing page showcase
 const featuredNFTs = [
   {
     id: "1",

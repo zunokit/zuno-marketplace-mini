@@ -3,31 +3,31 @@
  * Shows all collections with filtering and stats
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { ethers } from 'ethers';
-import { TokenType } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ethers } from "ethers";
+import { TokenType } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Grid,
   List,
@@ -39,85 +39,41 @@ import {
   TrendingUp,
   Sparkles,
   Loader2,
-  ChevronRight
-} from 'lucide-react';
-import { toast } from 'sonner';
+  ChevronRight,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  collectionQueryService,
+  CollectionData,
+} from "@/lib/services/contracts/CollectionQueryService";
 
-// Mock data - in production this would come from your indexer/API
-const MOCK_COLLECTIONS = [
-  {
-    address: '0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c',
-    name: 'Cosmic Warriors',
-    symbol: 'CW',
-    description: 'A collection of 10,000 unique cosmic warriors',
-    image: 'https://picsum.photos/200/200?random=1',
-    tokenType: TokenType.ERC721,
-    stats: {
-      totalSupply: 10000,
-      totalMinted: 3542,
-      floorPrice: '0.05',
-      volume24h: '125.5',
-      owners: 1823
-    }
-  },
-  {
-    address: '0x123d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9123',
-    name: 'Digital Dreams',
-    symbol: 'DD',
-    description: 'Abstract digital art collection',
-    image: 'https://picsum.photos/200/200?random=2',
-    tokenType: TokenType.ERC1155,
-    stats: {
-      totalSupply: 50000,
-      totalMinted: 15234,
-      floorPrice: '0.02',
-      volume24h: '89.2',
-      owners: 4521
-    }
-  },
-  {
-    address: '0x456d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9456',
-    name: 'Pixel Legends',
-    symbol: 'PL',
-    description: 'Retro pixel art heroes',
-    image: 'https://picsum.photos/200/200?random=3',
-    tokenType: TokenType.ERC721,
-    stats: {
-      totalSupply: 5000,
-      totalMinted: 5000,
-      floorPrice: '0.15',
-      volume24h: '342.1',
-      owners: 2341
-    }
-  },
-  {
-    address: '0x789d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9789',
-    name: 'Nature\'s Canvas',
-    symbol: 'NC',
-    description: 'Beautiful nature photography NFTs',
-    image: 'https://picsum.photos/200/200?random=4',
-    tokenType: TokenType.ERC1155,
-    stats: {
-      totalSupply: 100000,
-      totalMinted: 42150,
-      floorPrice: '0.01',
-      volume24h: '67.8',
-      owners: 8932
-    }
-  }
-];
+interface CollectionDisplayData {
+  address: string;
+  name: string;
+  symbol: string;
+  description: string;
+  image: string;
+  tokenType: TokenType;
+  stats: {
+    totalSupply: number;
+    totalMinted: number;
+    floorPrice: string;
+    volume24h: string;
+    owners: number;
+  };
+}
 
 interface CollectionCardProps {
-  collection: typeof MOCK_COLLECTIONS[0];
-  view: 'grid' | 'list';
+  collection: CollectionDisplayData;
+  view: "grid" | "list";
 }
 
 function CollectionCard({ collection, view }: CollectionCardProps) {
   const router = useRouter();
 
-  if (view === 'list') {
+  if (view === "list") {
     return (
-      <Card 
+      <Card
         className="cursor-pointer hover:shadow-lg transition-shadow"
         onClick={() => router.push(`/collections/${collection.address}`)}
       >
@@ -143,8 +99,12 @@ function CollectionCard({ collection, view }: CollectionCardProps) {
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate">{collection.name}</h3>
-              <p className="text-sm text-muted-foreground truncate">{collection.description}</p>
+              <h3 className="font-semibold text-lg truncate">
+                {collection.name}
+              </h3>
+              <p className="text-sm text-muted-foreground truncate">
+                {collection.description}
+              </p>
             </div>
 
             {/* Stats */}
@@ -159,7 +119,9 @@ function CollectionCard({ collection, view }: CollectionCardProps) {
               </div>
               <div>
                 <p className="text-muted-foreground">Owners</p>
-                <p className="font-medium">{collection.stats.owners.toLocaleString()}</p>
+                <p className="font-medium">
+                  {collection.stats.owners.toLocaleString()}
+                </p>
               </div>
             </div>
 
@@ -171,7 +133,7 @@ function CollectionCard({ collection, view }: CollectionCardProps) {
   }
 
   return (
-    <Card 
+    <Card
       className="cursor-pointer hover:shadow-lg transition-shadow"
       onClick={() => router.push(`/collections/${collection.address}`)}
     >
@@ -204,21 +166,26 @@ function CollectionCard({ collection, view }: CollectionCardProps) {
         <p className="text-sm text-muted-foreground truncate mb-4">
           {collection.description}
         </p>
-        
+
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Floor Price</span>
-            <span className="font-medium">{collection.stats.floorPrice} ETH</span>
+            <span className="font-medium">
+              {collection.stats.floorPrice} ETH
+            </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Total Supply</span>
             <span className="font-medium">
-              {collection.stats.totalMinted.toLocaleString()} / {collection.stats.totalSupply.toLocaleString()}
+              {collection.stats.totalMinted.toLocaleString()} /{" "}
+              {collection.stats.totalSupply.toLocaleString()}
             </span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">24h Volume</span>
-            <span className="font-medium">{collection.stats.volume24h} ETH</span>
+            <span className="font-medium">
+              {collection.stats.volume24h} ETH
+            </span>
           </div>
         </div>
       </CardContent>
@@ -228,13 +195,17 @@ function CollectionCard({ collection, view }: CollectionCardProps) {
 
 export default function CollectionsPage() {
   const router = useRouter();
-  const [collections, setCollections] = useState(MOCK_COLLECTIONS);
-  const [filteredCollections, setFilteredCollections] = useState(MOCK_COLLECTIONS);
-  const [isLoading, setIsLoading] = useState(false);
-  const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [tokenTypeFilter, setTokenTypeFilter] = useState<'all' | TokenType>('all');
-  const [sortBy, setSortBy] = useState('volume');
+  const [collections, setCollections] = useState<CollectionDisplayData[]>([]);
+  const [filteredCollections, setFilteredCollections] = useState<
+    CollectionDisplayData[]
+  >([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [tokenTypeFilter, setTokenTypeFilter] = useState<"all" | TokenType>(
+    "all"
+  );
+  const [sortBy, setSortBy] = useState("volume");
 
   // Filter and sort collections
   useEffect(() => {
@@ -242,28 +213,31 @@ export default function CollectionsPage() {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(c => 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.description.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (c) =>
+          c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Filter by token type
-    if (tokenTypeFilter !== 'all') {
-      filtered = filtered.filter(c => c.tokenType === tokenTypeFilter);
+    if (tokenTypeFilter !== "all") {
+      filtered = filtered.filter((c) => c.tokenType === tokenTypeFilter);
     }
 
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'volume':
+        case "volume":
           return parseFloat(b.stats.volume24h) - parseFloat(a.stats.volume24h);
-        case 'floor':
-          return parseFloat(b.stats.floorPrice) - parseFloat(a.stats.floorPrice);
-        case 'minted':
+        case "floor":
+          return (
+            parseFloat(b.stats.floorPrice) - parseFloat(a.stats.floorPrice)
+          );
+        case "minted":
           return b.stats.totalMinted - a.stats.totalMinted;
-        case 'owners':
+        case "owners":
           return b.stats.owners - a.stats.owners;
         default:
           return 0;
@@ -273,7 +247,7 @@ export default function CollectionsPage() {
     setFilteredCollections(filtered);
   }, [collections, searchTerm, tokenTypeFilter, sortBy]);
 
-  // Load collections from blockchain (mock for now)
+  // Load collections from blockchain
   useEffect(() => {
     loadCollections();
   }, []);
@@ -281,12 +255,33 @@ export default function CollectionsPage() {
   const loadCollections = async () => {
     setIsLoading(true);
     try {
-      // In production, this would fetch from your indexer/API
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate loading
-      setCollections(MOCK_COLLECTIONS);
+      const fetchedCollections =
+        await collectionQueryService.getAllCollections();
+
+      // Transform to CollectionDisplayData format
+      const formattedCollections: CollectionDisplayData[] =
+        fetchedCollections.map((col) => ({
+          address: col.address,
+          name: col.name || "Unnamed Collection",
+          symbol: col.symbol || "",
+          description: col.description || "",
+          image: "", // Collections don't have images in the contract
+          tokenType:
+            col.type === "ERC721" ? TokenType.ERC721 : TokenType.ERC1155,
+          stats: {
+            totalSupply: Number(col.maxSupply || 0),
+            totalMinted: Number(col.totalSupply || 0),
+            floorPrice: col.stats.floorPrice,
+            volume24h: col.stats.totalVolume,
+            owners: col.stats.totalOwners,
+          },
+        }));
+
+      setCollections(formattedCollections);
     } catch (error) {
-      console.error('Failed to load collections:', error);
-      toast.error('Failed to load collections');
+      console.error("Failed to load collections:", error);
+      toast.error("Failed to load collections");
+      setCollections([]);
     } finally {
       setIsLoading(false);
     }
@@ -302,7 +297,7 @@ export default function CollectionsPage() {
             Explore all NFT collections on the marketplace
           </p>
         </div>
-        <Button onClick={() => router.push('/collections/create')}>
+        <Button onClick={() => router.push("/collections/create")}>
           <Plus className="h-4 w-4 mr-2" />
           Create Collection
         </Button>
@@ -318,36 +313,43 @@ export default function CollectionsPage() {
             <div className="text-2xl font-bold">{collections.length}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Volume (24h)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {collections.reduce((sum, c) => sum + parseFloat(c.stats.volume24h), 0).toFixed(1)} ETH
+              {collections
+                .reduce((sum, c) => sum + parseFloat(c.stats.volume24h), 0)
+                .toFixed(1)}{" "}
+              ETH
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Owners</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {collections.reduce((sum, c) => sum + c.stats.owners, 0).toLocaleString()}
+              {collections
+                .reduce((sum, c) => sum + c.stats.owners, 0)
+                .toLocaleString()}
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total NFTs</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {collections.reduce((sum, c) => sum + c.stats.totalMinted, 0).toLocaleString()}
+              {collections
+                .reduce((sum, c) => sum + c.stats.totalMinted, 0)
+                .toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -364,8 +366,11 @@ export default function CollectionsPage() {
             className="pl-10"
           />
         </div>
-        
-        <Select value={tokenTypeFilter} onValueChange={(value: any) => setTokenTypeFilter(value)}>
+
+        <Select
+          value={tokenTypeFilter}
+          onValueChange={(value: any) => setTokenTypeFilter(value)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Token Type" />
           </SelectTrigger>
@@ -375,7 +380,7 @@ export default function CollectionsPage() {
             <SelectItem value={TokenType.ERC1155}>ERC1155</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Sort by" />
@@ -387,19 +392,19 @@ export default function CollectionsPage() {
             <SelectItem value="owners">Owners</SelectItem>
           </SelectContent>
         </Select>
-        
+
         <div className="flex gap-2">
           <Button
-            variant={view === 'grid' ? 'default' : 'outline'}
+            variant={view === "grid" ? "default" : "outline"}
             size="icon"
-            onClick={() => setView('grid')}
+            onClick={() => setView("grid")}
           >
             <Grid className="h-4 w-4" />
           </Button>
           <Button
-            variant={view === 'list' ? 'default' : 'outline'}
+            variant={view === "list" ? "default" : "outline"}
             size="icon"
-            onClick={() => setView('list')}
+            onClick={() => setView("list")}
           >
             <List className="h-4 w-4" />
           </Button>
@@ -408,7 +413,13 @@ export default function CollectionsPage() {
 
       {/* Collections Grid/List */}
       {isLoading ? (
-        <div className={view === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'space-y-4'}>
+        <div
+          className={
+            view === "grid"
+              ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              : "space-y-4"
+          }
+        >
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <CardHeader className="p-0">
@@ -426,7 +437,13 @@ export default function CollectionsPage() {
           ))}
         </div>
       ) : filteredCollections.length > 0 ? (
-        <div className={view === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'space-y-4'}>
+        <div
+          className={
+            view === "grid"
+              ? "grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              : "space-y-4"
+          }
+        >
           {filteredCollections.map((collection) => (
             <CollectionCard
               key={collection.address}

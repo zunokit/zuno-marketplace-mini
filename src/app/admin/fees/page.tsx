@@ -1,38 +1,38 @@
-'use client';
+"use client";
 
 /**
  * Fee Management Admin Page
  * Configure platform fees using FeeManagerService
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
-import { useAppSelector } from '@/lib/store/hooks';
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { useAppSelector } from "@/lib/store/hooks";
 import {
   feeManagerService,
   FeeConfig,
-  FeeTierConfig
-} from '@/lib/services/contracts/FeeManagerService';
-import { DollarSign, TrendingUp, Edit, Users, Star } from 'lucide-react';
+  FeeTierConfig,
+} from "@/lib/services/contracts/FeeManagerService";
+import { DollarSign, TrendingUp, Edit, Users, Star } from "lucide-react";
 
 export default function FeeManagementPage() {
   const { toast } = useToast();
@@ -44,7 +44,7 @@ export default function FeeManagementPage() {
     listingFee: BigInt(0),
     auctionFee: BigInt(50), // 0.5%
     bundleFee: BigInt(25), // 0.25%
-    isActive: true
+    isActive: true,
   });
 
   const [feeTiers, setFeeTiers] = useState<FeeTierConfig[]>([]);
@@ -55,10 +55,10 @@ export default function FeeManagementPage() {
    * Load fee configuration
    */
   useEffect(() => {
-    if (!useMockData && account) {
+    if (account) {
       loadFeeConfig();
     }
-  }, [account, useMockData]);
+  }, [account]);
 
   const loadFeeConfig = async () => {
     try {
@@ -68,7 +68,7 @@ export default function FeeManagementPage() {
       const tiers = await feeManagerService.getAllFeeTierConfigs();
       setFeeTiers(tiers);
     } catch (error) {
-      console.error('Failed to load fee config:', error);
+      console.error("Failed to load fee config:", error);
     }
   };
 
@@ -79,29 +79,21 @@ export default function FeeManagementPage() {
     setLoading(true);
 
     try {
-      if (useMockData) {
-        toast({
-          title: 'Fee Updated',
-          description: 'Base fee configuration has been updated'
-        });
-        setEditDialogOpen(false);
-      } else {
-        await feeManagerService.updateBaseFeeConfig(baseFeeConfig);
+      await feeManagerService.updateBaseFeeConfig(baseFeeConfig);
 
-        toast({
-          title: 'Fee Updated',
-          description: 'Base fee configuration has been updated successfully'
-        });
+      toast({
+        title: "Fee Updated",
+        description: "Base fee configuration has been updated successfully",
+      });
 
-        setEditDialogOpen(false);
-        await loadFeeConfig();
-      }
+      setEditDialogOpen(false);
+      await loadFeeConfig();
     } catch (error) {
       toast({
-        title: 'Update Failed',
+        title: "Update Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to update fee',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to update fee",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -123,14 +115,6 @@ export default function FeeManagementPage() {
           Configure platform fees and view tier discounts
         </p>
       </div>
-
-      {useMockData && (
-        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-          <p className="text-sm text-amber-600 dark:text-amber-400">
-            ⚠️ Mock Data Mode - Real contract integration disabled
-          </p>
-        </div>
-      )}
 
       {/* Base Fee Configuration */}
       <Card className="mb-6">
@@ -184,8 +168,8 @@ export default function FeeManagementPage() {
             </div>
             <div>
               <Label>Status</Label>
-              <Badge variant={baseFeeConfig.isActive ? 'default' : 'secondary'}>
-                {baseFeeConfig.isActive ? 'Active' : 'Inactive'}
+              <Badge variant={baseFeeConfig.isActive ? "default" : "secondary"}>
+                {baseFeeConfig.isActive ? "Active" : "Inactive"}
               </Badge>
             </div>
           </div>
@@ -241,9 +225,9 @@ export default function FeeManagementPage() {
                           Status
                         </span>
                         <Badge
-                          variant={tier.isActive ? 'default' : 'secondary'}
+                          variant={tier.isActive ? "default" : "secondary"}
                         >
-                          {tier.isActive ? 'Active' : 'Inactive'}
+                          {tier.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </div>
                     </div>
@@ -268,7 +252,7 @@ export default function FeeManagementPage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="makerFee">
-                Maker Fee (Seller) - Current:{' '}
+                Maker Fee (Seller) - Current:{" "}
                 {Number(baseFeeConfig.makerFee) / 100}%
               </Label>
               <Input
@@ -276,14 +260,14 @@ export default function FeeManagementPage() {
                 type="number"
                 value={Number(baseFeeConfig.makerFee)}
                 onChange={(e) =>
-                  updateFeeConfig('makerFee', BigInt(e.target.value))
+                  updateFeeConfig("makerFee", BigInt(e.target.value))
                 }
               />
             </div>
 
             <div>
               <Label htmlFor="takerFee">
-                Taker Fee (Buyer) - Current:{' '}
+                Taker Fee (Buyer) - Current:{" "}
                 {Number(baseFeeConfig.takerFee) / 100}%
               </Label>
               <Input
@@ -291,7 +275,7 @@ export default function FeeManagementPage() {
                 type="number"
                 value={Number(baseFeeConfig.takerFee)}
                 onChange={(e) =>
-                  updateFeeConfig('takerFee', BigInt(e.target.value))
+                  updateFeeConfig("takerFee", BigInt(e.target.value))
                 }
               />
             </div>
@@ -305,7 +289,7 @@ export default function FeeManagementPage() {
                 type="number"
                 value={Number(baseFeeConfig.auctionFee)}
                 onChange={(e) =>
-                  updateFeeConfig('auctionFee', BigInt(e.target.value))
+                  updateFeeConfig("auctionFee", BigInt(e.target.value))
                 }
               />
             </div>
@@ -319,7 +303,7 @@ export default function FeeManagementPage() {
                 type="number"
                 value={Number(baseFeeConfig.bundleFee)}
                 onChange={(e) =>
-                  updateFeeConfig('bundleFee', BigInt(e.target.value))
+                  updateFeeConfig("bundleFee", BigInt(e.target.value))
                 }
               />
             </div>
@@ -334,7 +318,7 @@ export default function FeeManagementPage() {
               Cancel
             </Button>
             <Button onClick={handleUpdateBaseFee} disabled={loading}>
-              {loading ? 'Updating...' : 'Update Fees'}
+              {loading ? "Updating..." : "Update Fees"}
             </Button>
           </DialogFooter>
         </DialogContent>

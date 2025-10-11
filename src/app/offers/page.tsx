@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Offers Page
@@ -6,46 +6,46 @@
  * Make, accept, and manage offers on NFTs
  */
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { useAppSelector } from '@/lib/store/hooks';
-import { useToast } from '@/hooks/use-toast';
-import { offerService } from '@/lib/services/contracts/OfferService';
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { useAppSelector } from "@/lib/store/hooks";
+import { useToast } from "@/hooks/use-toast";
+import { offerService } from "@/lib/services/contracts/OfferService";
 import {
   AlertCircle,
   Loader2,
   Clock,
   Check,
   X,
-  TrendingUp
-} from 'lucide-react';
+  TrendingUp,
+} from "lucide-react";
 
-// Define types locally since we removed mock service
+// Offer types enum
 enum OfferType {
   NFT = 0,
   COLLECTION = 1,
-  TRAIT = 2
+  TRAIT = 2,
 }
 
 enum OfferStatus {
-  ACTIVE = 'ACTIVE',
-  ACCEPTED = 'ACCEPTED',
-  CANCELLED = 'CANCELLED',
-  EXPIRED = 'EXPIRED'
+  ACTIVE = "ACTIVE",
+  ACCEPTED = "ACCEPTED",
+  CANCELLED = "CANCELLED",
+  EXPIRED = "EXPIRED",
 }
 
 interface Offer {
@@ -79,24 +79,24 @@ export default function OffersPage() {
 
   // Offer creation state
   const [offerType, setOfferType] = useState<
-    'nft' | 'collection' | 'trait' | null
+    "nft" | "collection" | "trait" | null
   >(null);
   const [nftOffer, setNftOffer] = useState({
-    collection: '',
-    tokenId: '',
-    price: '',
-    expirationDays: '7'
+    collection: "",
+    tokenId: "",
+    price: "",
+    expirationDays: "7",
   });
   const [collectionOffer, setCollectionOffer] = useState({
-    collection: '',
-    price: '',
-    expirationDays: '7'
+    collection: "",
+    price: "",
+    expirationDays: "7",
   });
   const [traitOffer, setTraitOffer] = useState({
-    collection: '',
-    traits: '',
-    price: '',
-    expirationDays: '7'
+    collection: "",
+    traits: "",
+    price: "",
+    expirationDays: "7",
   });
 
   /**
@@ -112,7 +112,7 @@ export default function OffersPage() {
   }, [account]);
 
   /**
-   * Load offers from mock service or blockchain
+   * Load offers from blockchain
    */
   const loadOffers = async () => {
     if (!account) return;
@@ -122,7 +122,7 @@ export default function OffersPage() {
       // Real blockchain data
       const [active, user] = await Promise.all([
         offerService.getActiveOffers(),
-        offerService.getUserOffers(account)
+        offerService.getUserOffers(account),
       ]);
 
       // Convert OfferInfo to Offer format for compatibility
@@ -139,18 +139,18 @@ export default function OffersPage() {
         expirationTime: offerInfo.expirationTime,
         expiresAt: offerInfo.expirationTime,
         createdAt: Date.now(),
-        traits: offerInfo.traits || []
+        traits: offerInfo.traits || [],
       });
 
       setActiveOffers(active.map(convertOfferInfo));
       setUserOffers(user.map(convertOfferInfo));
     } catch (error) {
-      console.error('Error loading offers:', error);
+      console.error("Error loading offers:", error);
       toast({
-        title: 'Error Loading Offers',
+        title: "Error Loading Offers",
         description:
-          error instanceof Error ? error.message : 'Failed to load offers',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to load offers",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -164,7 +164,7 @@ export default function OffersPage() {
     const now = Date.now();
     const remaining = expiresAt - now;
 
-    if (remaining <= 0) return 'Expired';
+    if (remaining <= 0) return "Expired";
 
     const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
     const hours = Math.floor(
@@ -228,16 +228,16 @@ export default function OffersPage() {
       // Real contract interaction
       await offerService.acceptOffer(offerId);
       toast({
-        title: 'Offer Accepted!',
-        description: 'You have successfully accepted the offer'
+        title: "Offer Accepted!",
+        description: "You have successfully accepted the offer",
       });
       loadOffers();
     } catch (error) {
       toast({
-        title: 'Accept Failed',
+        title: "Accept Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to accept offer',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to accept offer",
+        variant: "destructive",
       });
     }
   };
@@ -250,16 +250,16 @@ export default function OffersPage() {
       // Real contract interaction
       await offerService.cancelOffer(offerId);
       toast({
-        title: 'Offer Cancelled',
-        description: 'Your offer has been cancelled'
+        title: "Offer Cancelled",
+        description: "Your offer has been cancelled",
       });
       loadOffers();
     } catch (error) {
       toast({
-        title: 'Cancel Failed',
+        title: "Cancel Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to cancel offer',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to cancel offer",
+        variant: "destructive",
       });
     }
   };
@@ -275,25 +275,25 @@ export default function OffersPage() {
         price: nftOffer.price,
         expirationTime:
           Math.floor(Date.now() / 1000) +
-          parseInt(nftOffer.expirationDays) * 24 * 60 * 60
+          parseInt(nftOffer.expirationDays) * 24 * 60 * 60,
       });
       toast({
-        title: 'NFT Offer Created',
-        description: 'Your NFT offer has been created successfully'
+        title: "NFT Offer Created",
+        description: "Your NFT offer has been created successfully",
       });
       setNftOffer({
-        collection: '',
-        tokenId: '',
-        price: '',
-        expirationDays: '7'
+        collection: "",
+        tokenId: "",
+        price: "",
+        expirationDays: "7",
       });
       loadOffers();
     } catch (error) {
       toast({
-        title: 'Create Offer Failed',
+        title: "Create Offer Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to create NFT offer',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to create NFT offer",
+        variant: "destructive",
       });
     }
   };
@@ -309,22 +309,22 @@ export default function OffersPage() {
         quantity: 1, // Default quantity
         expirationTime:
           Math.floor(Date.now() / 1000) +
-          parseInt(collectionOffer.expirationDays) * 24 * 60 * 60
+          parseInt(collectionOffer.expirationDays) * 24 * 60 * 60,
       });
       toast({
-        title: 'Collection Offer Created',
-        description: 'Your collection offer has been created successfully'
+        title: "Collection Offer Created",
+        description: "Your collection offer has been created successfully",
       });
-      setCollectionOffer({ collection: '', price: '', expirationDays: '7' });
+      setCollectionOffer({ collection: "", price: "", expirationDays: "7" });
       loadOffers();
     } catch (error) {
       toast({
-        title: 'Create Offer Failed',
+        title: "Create Offer Failed",
         description:
           error instanceof Error
             ? error.message
-            : 'Failed to create collection offer',
-        variant: 'destructive'
+            : "Failed to create collection offer",
+        variant: "destructive",
       });
     }
   };
@@ -335,7 +335,7 @@ export default function OffersPage() {
   const handleCreateTraitOffer = async () => {
     try {
       const traits = traitOffer.traits
-        .split(',')
+        .split(",")
         .map((t) => t.trim())
         .filter((t) => t);
       await offerService.createTraitOffer({
@@ -345,27 +345,27 @@ export default function OffersPage() {
         quantity: 1, // Default quantity
         expirationTime:
           Math.floor(Date.now() / 1000) +
-          parseInt(traitOffer.expirationDays) * 24 * 60 * 60
+          parseInt(traitOffer.expirationDays) * 24 * 60 * 60,
       });
       toast({
-        title: 'Trait Offer Created',
-        description: 'Your trait offer has been created successfully'
+        title: "Trait Offer Created",
+        description: "Your trait offer has been created successfully",
       });
       setTraitOffer({
-        collection: '',
-        traits: '',
-        price: '',
-        expirationDays: '7'
+        collection: "",
+        traits: "",
+        price: "",
+        expirationDays: "7",
       });
       loadOffers();
     } catch (error) {
       toast({
-        title: 'Create Offer Failed',
+        title: "Create Offer Failed",
         description:
           error instanceof Error
             ? error.message
-            : 'Failed to create trait offer',
-        variant: 'destructive'
+            : "Failed to create trait offer",
+        variant: "destructive",
       });
     }
   };
@@ -439,7 +439,7 @@ export default function OffersPage() {
                     <div className="relative w-full h-48 bg-muted">
                       <Image
                         src={offer.nftImage}
-                        alt={offer.nftName || 'NFT'}
+                        alt={offer.nftName || "NFT"}
                         fill
                         className="object-cover"
                         unoptimized
@@ -588,7 +588,7 @@ export default function OffersPage() {
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => setOfferType('nft')}
+                      onClick={() => setOfferType("nft")}
                     >
                       Create NFT Offer
                     </Button>
@@ -607,7 +607,7 @@ export default function OffersPage() {
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => setOfferType('collection')}
+                      onClick={() => setOfferType("collection")}
                     >
                       Create Collection Offer
                     </Button>
@@ -626,7 +626,7 @@ export default function OffersPage() {
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => setOfferType('trait')}
+                      onClick={() => setOfferType("trait")}
                     >
                       Create Trait Offer
                     </Button>
@@ -636,7 +636,7 @@ export default function OffersPage() {
             </div>
 
             {/* Offer Creation Forms */}
-            {offerType === 'nft' && (
+            {offerType === "nft" && (
               <Card>
                 <CardHeader>
                   <CardTitle>NFT Offer</CardTitle>
@@ -655,7 +655,7 @@ export default function OffersPage() {
                         onChange={(e) =>
                           setNftOffer({
                             ...nftOffer,
-                            collection: e.target.value
+                            collection: e.target.value,
                           })
                         }
                       />
@@ -693,7 +693,7 @@ export default function OffersPage() {
                         onChange={(e) =>
                           setNftOffer({
                             ...nftOffer,
-                            expirationDays: e.target.value
+                            expirationDays: e.target.value,
                           })
                         }
                       />
@@ -714,7 +714,7 @@ export default function OffersPage() {
               </Card>
             )}
 
-            {offerType === 'collection' && (
+            {offerType === "collection" && (
               <Card>
                 <CardHeader>
                   <CardTitle>Collection Offer</CardTitle>
@@ -734,7 +734,7 @@ export default function OffersPage() {
                       onChange={(e) =>
                         setCollectionOffer({
                           ...collectionOffer,
-                          collection: e.target.value
+                          collection: e.target.value,
                         })
                       }
                     />
@@ -749,7 +749,7 @@ export default function OffersPage() {
                         onChange={(e) =>
                           setCollectionOffer({
                             ...collectionOffer,
-                            price: e.target.value
+                            price: e.target.value,
                           })
                         }
                       />
@@ -765,7 +765,7 @@ export default function OffersPage() {
                         onChange={(e) =>
                           setCollectionOffer({
                             ...collectionOffer,
-                            expirationDays: e.target.value
+                            expirationDays: e.target.value,
                           })
                         }
                       />
@@ -784,7 +784,7 @@ export default function OffersPage() {
               </Card>
             )}
 
-            {offerType === 'trait' && (
+            {offerType === "trait" && (
               <Card>
                 <CardHeader>
                   <CardTitle>Trait Offer</CardTitle>
@@ -802,7 +802,7 @@ export default function OffersPage() {
                       onChange={(e) =>
                         setTraitOffer({
                           ...traitOffer,
-                          collection: e.target.value
+                          collection: e.target.value,
                         })
                       }
                     />
@@ -830,7 +830,7 @@ export default function OffersPage() {
                         onChange={(e) =>
                           setTraitOffer({
                             ...traitOffer,
-                            price: e.target.value
+                            price: e.target.value,
                           })
                         }
                       />
@@ -846,7 +846,7 @@ export default function OffersPage() {
                         onChange={(e) =>
                           setTraitOffer({
                             ...traitOffer,
-                            expirationDays: e.target.value
+                            expirationDays: e.target.value,
                           })
                         }
                       />

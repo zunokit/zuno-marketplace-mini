@@ -1,39 +1,39 @@
-'use client';
+"use client";
 
 /**
  * Royalty Management Admin Page
  * Configure advanced royalty settings for NFT collections
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
-import { useAppSelector } from '@/lib/store/hooks';
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import { useAppSelector } from "@/lib/store/hooks";
 import {
   royaltyManagerService,
   RoyaltyRecipient,
-  RoyaltyCaps
-} from '@/lib/services/contracts/RoyaltyManagerService';
-import { DollarSign, Users, Settings, CheckCircle } from 'lucide-react';
+  RoyaltyCaps,
+} from "@/lib/services/contracts/RoyaltyManagerService";
+import { DollarSign, Users, Settings, CheckCircle } from "lucide-react";
 
 interface RoyaltyConfig {
   collection: string;
@@ -50,18 +50,18 @@ export default function RoyaltyManagementPage() {
     maxTotalRoyalty: BigInt(1000), // 10%
     maxSingleRecipient: BigInt(500), // 5%
     maxRecipients: BigInt(5),
-    enforceGlobalCaps: true
+    enforceGlobalCaps: true,
   });
 
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
-  const [collection, setCollection] = useState('');
+  const [collection, setCollection] = useState("");
   const [recipients, setRecipients] = useState<RoyaltyRecipient[]>([
     {
-      recipient: '',
+      recipient: "",
       basisPoints: BigInt(250),
-      role: 'creator',
-      isActive: true
-    }
+      role: "creator",
+      isActive: true,
+    },
   ]);
   const [useERC2981, setUseERC2981] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -70,17 +70,17 @@ export default function RoyaltyManagementPage() {
    * Load global caps
    */
   useEffect(() => {
-    if (!useMockData && account) {
+    if (account) {
       loadGlobalCaps();
     }
-  }, [account, useMockData]);
+  }, [account]);
 
   const loadGlobalCaps = async () => {
     try {
       const caps = await royaltyManagerService.getGlobalCaps();
       setGlobalCaps(caps);
     } catch (error) {
-      console.error('Failed to load global caps:', error);
+      console.error("Failed to load global caps:", error);
     }
   };
 
@@ -91,11 +91,11 @@ export default function RoyaltyManagementPage() {
     setRecipients([
       ...recipients,
       {
-        recipient: '',
+        recipient: "",
         basisPoints: BigInt(100),
-        role: '',
-        isActive: true
-      }
+        role: "",
+        isActive: true,
+      },
     ]);
   };
 
@@ -125,18 +125,18 @@ export default function RoyaltyManagementPage() {
   const handleSetRoyalty = async () => {
     if (!collection) {
       toast({
-        title: 'Validation Error',
-        description: 'Please enter a collection address',
-        variant: 'destructive'
+        title: "Validation Error",
+        description: "Please enter a collection address",
+        variant: "destructive",
       });
       return;
     }
 
     if (recipients.length === 0 || !recipients[0].recipient) {
       toast({
-        title: 'Validation Error',
-        description: 'Please add at least one recipient',
-        variant: 'destructive'
+        title: "Validation Error",
+        description: "Please add at least one recipient",
+        variant: "destructive",
       });
       return;
     }
@@ -144,43 +144,35 @@ export default function RoyaltyManagementPage() {
     setLoading(true);
 
     try {
-      if (useMockData) {
-        toast({
-          title: 'Royalty Configured',
-          description: `Successfully configured royalty for ${collection}`
-        });
-        setConfigDialogOpen(false);
-      } else {
-        await royaltyManagerService.setAdvancedRoyalty(
-          collection,
-          recipients,
-          useERC2981
-        );
+      await royaltyManagerService.setAdvancedRoyalty(
+        collection,
+        recipients,
+        useERC2981
+      );
 
-        toast({
-          title: 'Royalty Configured',
-          description: 'Successfully configured advanced royalty'
-        });
+      toast({
+        title: "Royalty Configured",
+        description: "Successfully configured advanced royalty",
+      });
 
-        setConfigDialogOpen(false);
-        setCollection('');
-        setRecipients([
-          {
-            recipient: '',
-            basisPoints: BigInt(250),
-            role: 'creator',
-            isActive: true
-          }
-        ]);
-      }
+      setConfigDialogOpen(false);
+      setCollection("");
+      setRecipients([
+        {
+          recipient: "",
+          basisPoints: BigInt(250),
+          role: "creator",
+          isActive: true,
+        },
+      ]);
     } catch (error) {
       toast({
-        title: 'Configuration Failed',
+        title: "Configuration Failed",
         description:
           error instanceof Error
             ? error.message
-            : 'Failed to configure royalty',
-        variant: 'destructive'
+            : "Failed to configure royalty",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -203,14 +195,6 @@ export default function RoyaltyManagementPage() {
           Configure advanced royalty settings for NFT collections
         </p>
       </div>
-
-      {useMockData && (
-        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-          <p className="text-sm text-amber-600 dark:text-amber-400">
-            ⚠️ Mock Data Mode - Real contract integration disabled
-          </p>
-        </div>
-      )}
 
       {/* Actions */}
       <div className="mb-6">
@@ -261,9 +245,9 @@ export default function RoyaltyManagementPage() {
             <div>
               <Label>Enforce Caps</Label>
               <Badge
-                variant={globalCaps.enforceGlobalCaps ? 'default' : 'secondary'}
+                variant={globalCaps.enforceGlobalCaps ? "default" : "secondary"}
               >
-                {globalCaps.enforceGlobalCaps ? 'Enabled' : 'Disabled'}
+                {globalCaps.enforceGlobalCaps ? "Enabled" : "Disabled"}
               </Badge>
             </div>
           </div>
@@ -343,7 +327,7 @@ export default function RoyaltyManagementPage() {
                               onChange={(e) =>
                                 updateRecipient(
                                   index,
-                                  'recipient',
+                                  "recipient",
                                   e.target.value
                                 )
                               }
@@ -355,7 +339,7 @@ export default function RoyaltyManagementPage() {
                               placeholder="creator, platform, charity..."
                               value={recipient.role}
                               onChange={(e) =>
-                                updateRecipient(index, 'role', e.target.value)
+                                updateRecipient(index, "role", e.target.value)
                               }
                             />
                           </div>
@@ -374,7 +358,7 @@ export default function RoyaltyManagementPage() {
                               onChange={(e) =>
                                 updateRecipient(
                                   index,
-                                  'basisPoints',
+                                  "basisPoints",
                                   BigInt(e.target.value)
                                 )
                               }
@@ -402,7 +386,7 @@ export default function RoyaltyManagementPage() {
                 </p>
                 {totalRoyaltyBps > Number(globalCaps.maxTotalRoyalty) && (
                   <p className="text-sm text-red-500 mt-1">
-                    ⚠️ Exceeds global cap of{' '}
+                    ⚠️ Exceeds global cap of{" "}
                     {Number(globalCaps.maxTotalRoyalty) / 100}%
                   </p>
                 )}
@@ -419,7 +403,7 @@ export default function RoyaltyManagementPage() {
               Cancel
             </Button>
             <Button onClick={handleSetRoyalty} disabled={loading}>
-              {loading ? 'Configuring...' : 'Configure Royalty'}
+              {loading ? "Configuring..." : "Configure Royalty"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,39 +3,39 @@
  * Clean, production-ready form for creating NFT collections
  */
 
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { ethers } from 'ethers';
-import { useCollection } from '@/hooks/useCollection';
-import { useWallet } from '@/providers/WalletProvider';
-import { TokenType, CreateCollectionParams } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { ethers } from "ethers";
+import { useCollection } from "@/hooks/use-collection";
+import { useWallet } from "@/providers/WalletProvider";
+import { TokenType, CreateCollectionParams } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
   Upload,
@@ -44,24 +44,24 @@ import {
   Wallet,
   Image as ImageIcon,
   Settings,
-  Info
-} from 'lucide-react';
-import { toast } from 'sonner';
+  Info,
+} from "lucide-react";
+import { toast } from "sonner";
 
 // Form validation schema
 const formSchema = z.object({
-  tokenType: z.enum(['ERC721', 'ERC1155']),
-  name: z.string().min(2, 'Name must be at least 2 characters').max(50),
+  tokenType: z.enum(["ERC721", "ERC1155"]),
+  name: z.string().min(2, "Name must be at least 2 characters").max(50),
   symbol: z
     .string()
-    .min(2, 'Symbol must be at least 2 characters')
+    .min(2, "Symbol must be at least 2 characters")
     .max(10)
     .toUpperCase(),
   description: z
     .string()
-    .min(10, 'Description must be at least 10 characters')
+    .min(10, "Description must be at least 10 characters")
     .max(1000),
-  category: z.string().min(1, 'Please select a category'),
+  category: z.string().min(1, "Please select a category"),
   mintPrice: z.string().refine((val) => {
     try {
       const price = parseFloat(val);
@@ -69,96 +69,96 @@ const formSchema = z.object({
     } catch {
       return false;
     }
-  }, 'Invalid price'),
+  }, "Invalid price"),
   royaltyFee: z.string().refine((val) => {
     const fee = parseFloat(val);
     return fee >= 0 && fee <= 10;
-  }, 'Royalty must be between 0 and 10%'),
+  }, "Royalty must be between 0 and 10%"),
   maxSupply: z.string().refine((val) => {
     const supply = parseInt(val);
     return supply > 0 && supply <= 1000000;
-  }, 'Max supply must be between 1 and 1,000,000'),
+  }, "Max supply must be between 1 and 1,000,000"),
   mintLimitPerWallet: z.string().refine((val) => {
     const limit = parseInt(val);
     return limit > 0 && limit <= 100;
-  }, 'Mint limit must be between 1 and 100'),
+  }, "Mint limit must be between 1 and 100"),
   allowlist: z.string().optional(),
-  baseTokenURI: z.string().url('Invalid URL').optional().or(z.literal('')),
-  website: z.string().url('Invalid URL').optional().or(z.literal('')),
+  baseTokenURI: z.string().url("Invalid URL").optional().or(z.literal("")),
+  website: z.string().url("Invalid URL").optional().or(z.literal("")),
   twitter: z.string().optional(),
-  discord: z.string().optional()
+  discord: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 const CATEGORIES = [
-  'Art',
-  'Gaming',
-  'Music',
-  'Photography',
-  'Sports',
-  'Collectibles',
-  'Utility',
-  'Memes',
-  'Virtual Worlds'
+  "Art",
+  "Gaming",
+  "Music",
+  "Photography",
+  "Sports",
+  "Collectibles",
+  "Utility",
+  "Memes",
+  "Virtual Worlds",
 ];
 
 export default function CreateCollectionForm() {
   const router = useRouter();
   const { isConnected, account } = useWallet();
   const { createCollection, isLoading } = useCollection();
-  const [logoImage, setLogoImage] = useState<string>('');
-  const [bannerImage, setBannerImage] = useState<string>('');
+  const [logoImage, setLogoImage] = useState<string>("");
+  const [bannerImage, setBannerImage] = useState<string>("");
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
-    formState: { errors }
+    formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: 'Test Collection' + Date.now(),
-      symbol: 'TC',
+      name: "Test Collection" + Date.now(),
+      symbol: "TC",
       description:
-        'Test Description Test Description Test Description Test Description Test Description Test Description',
-      category: 'Art',
-      tokenType: 'ERC721',
-      royaltyFee: '5',
-      maxSupply: '10000',
-      mintLimitPerWallet: '50',
-      mintPrice: '10',
+        "Test Description Test Description Test Description Test Description Test Description Test Description",
+      category: "Art",
+      tokenType: "ERC721",
+      royaltyFee: "5",
+      maxSupply: "10000",
+      mintLimitPerWallet: "50",
+      mintPrice: "10",
       allowlist: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
-      baseTokenURI: 'https://api.example.com/metadata/'
-    }
+      baseTokenURI: "https://api.example.com/metadata/",
+    },
   });
 
-  const tokenType = watch('tokenType');
+  const tokenType = watch("tokenType");
 
   const handleImageUpload = (
     event: React.ChangeEvent<HTMLInputElement>,
-    type: 'logo' | 'banner'
+    type: "logo" | "banner"
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB');
+      toast.error("File size must be less than 5MB");
       return;
     }
 
     // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file');
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      if (type === 'logo') {
+      if (type === "logo") {
         setLogoImage(result);
       } else {
         setBannerImage(result);
@@ -174,18 +174,18 @@ export default function CreateCollectionForm() {
       if (data.allowlist) {
         // Split by newlines and filter out empty lines
         allowlistAddresses = data.allowlist
-          .split('\n')
-          .map(addr => addr.trim())
-          .filter(addr => addr.length > 0 && ethers.isAddress(addr));
-        
+          .split("\n")
+          .map((addr) => addr.trim())
+          .filter((addr) => addr.length > 0 && ethers.isAddress(addr));
+
         // Validate addresses
         const invalidAddresses = data.allowlist
-          .split('\n')
-          .map(addr => addr.trim())
-          .filter(addr => addr.length > 0 && !ethers.isAddress(addr));
-        
+          .split("\n")
+          .map((addr) => addr.trim())
+          .filter((addr) => addr.length > 0 && !ethers.isAddress(addr));
+
         if (invalidAddresses.length > 0) {
-          toast.error(`Invalid addresses: ${invalidAddresses.join(', ')}`);
+          toast.error(`Invalid addresses: ${invalidAddresses.join(", ")}`);
           return;
         }
       }
@@ -207,7 +207,7 @@ export default function CreateCollectionForm() {
         banner: bannerImage,
         website: data.website,
         twitter: data.twitter,
-        discord: data.discord
+        discord: data.discord,
       };
 
       // Create collection
@@ -216,7 +216,7 @@ export default function CreateCollectionForm() {
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);
     } catch (error: any) {
-      console.error('Failed to create collection:', error);
+      console.error("Failed to create collection:", error);
       // Error is already handled in the hook
     }
   };
@@ -250,7 +250,7 @@ export default function CreateCollectionForm() {
         <CardContent>
           <Tabs
             value={tokenType}
-            onValueChange={(value) => setValue('tokenType', value as any)}
+            onValueChange={(value) => setValue("tokenType", value as any)}
           >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ERC721">
@@ -307,7 +307,7 @@ export default function CreateCollectionForm() {
               <Input
                 id="name"
                 placeholder="My Awesome Collection"
-                {...register('name')}
+                {...register("name")}
               />
               {errors.name && (
                 <p className="text-sm text-destructive">
@@ -321,9 +321,9 @@ export default function CreateCollectionForm() {
               <Input
                 id="symbol"
                 placeholder="MAC"
-                {...register('symbol')}
+                {...register("symbol")}
                 onChange={(e) =>
-                  setValue('symbol', e.target.value.toUpperCase())
+                  setValue("symbol", e.target.value.toUpperCase())
                 }
               />
               {errors.symbol && (
@@ -340,7 +340,7 @@ export default function CreateCollectionForm() {
               id="description"
               placeholder="Describe your collection..."
               rows={4}
-              {...register('description')}
+              {...register("description")}
             />
             {errors.description && (
               <p className="text-sm text-destructive">
@@ -351,7 +351,7 @@ export default function CreateCollectionForm() {
 
           <div className="space-y-2">
             <Label htmlFor="category">Category *</Label>
-            <Select onValueChange={(value) => setValue('category', value)}>
+            <Select onValueChange={(value) => setValue("category", value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
@@ -395,7 +395,7 @@ export default function CreateCollectionForm() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setLogoImage('')}
+                      onClick={() => setLogoImage("")}
                     >
                       Remove
                     </Button>
@@ -411,7 +411,7 @@ export default function CreateCollectionForm() {
                       accept="image/*"
                       className="hidden"
                       id="logo-upload"
-                      onChange={(e) => handleImageUpload(e, 'logo')}
+                      onChange={(e) => handleImageUpload(e, "logo")}
                     />
                     <Label htmlFor="logo-upload">
                       <Button type="button" variant="outline" size="sm" asChild>
@@ -438,7 +438,7 @@ export default function CreateCollectionForm() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setBannerImage('')}
+                      onClick={() => setBannerImage("")}
                     >
                       Remove
                     </Button>
@@ -454,7 +454,7 @@ export default function CreateCollectionForm() {
                       accept="image/*"
                       className="hidden"
                       id="banner-upload"
-                      onChange={(e) => handleImageUpload(e, 'banner')}
+                      onChange={(e) => handleImageUpload(e, "banner")}
                     />
                     <Label htmlFor="banner-upload">
                       <Button type="button" variant="outline" size="sm" asChild>
@@ -486,7 +486,7 @@ export default function CreateCollectionForm() {
                 type="number"
                 step="0.001"
                 placeholder="0.01"
-                {...register('mintPrice')}
+                {...register("mintPrice")}
               />
               {errors.mintPrice && (
                 <p className="text-sm text-destructive">
@@ -502,7 +502,7 @@ export default function CreateCollectionForm() {
                 type="number"
                 step="0.1"
                 placeholder="5"
-                {...register('royaltyFee')}
+                {...register("royaltyFee")}
               />
               {errors.royaltyFee && (
                 <p className="text-sm text-destructive">
@@ -517,7 +517,7 @@ export default function CreateCollectionForm() {
                 id="maxSupply"
                 type="number"
                 placeholder="10000"
-                {...register('maxSupply')}
+                {...register("maxSupply")}
               />
               {errors.maxSupply && (
                 <p className="text-sm text-destructive">
@@ -534,7 +534,7 @@ export default function CreateCollectionForm() {
                 id="mintLimitPerWallet"
                 type="number"
                 placeholder="5"
-                {...register('mintLimitPerWallet')}
+                {...register("mintLimitPerWallet")}
               />
               {errors.mintLimitPerWallet && (
                 <p className="text-sm text-destructive">
@@ -548,7 +548,7 @@ export default function CreateCollectionForm() {
 
           <div className="space-y-4">
             <h4 className="text-sm font-medium">Allowlist Configuration</h4>
-            
+
             <div className="space-y-2">
               <Label htmlFor="allowlist">
                 Allowlist Addresses
@@ -560,11 +560,11 @@ export default function CreateCollectionForm() {
                 id="allowlist"
                 placeholder="0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266&#10;0x70997970C51812dc3A010C7d01b50e0d17dc79C8&#10;0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
                 rows={5}
-                {...register('allowlist')}
+                {...register("allowlist")}
                 className="font-mono text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                Enter Ethereum addresses that will have early access to mint. 
+                Enter Ethereum addresses that will have early access to mint.
                 Leave empty for no allowlist.
               </p>
               {errors.allowlist && (
@@ -586,7 +586,7 @@ export default function CreateCollectionForm() {
                 id="baseTokenURI"
                 type="url"
                 placeholder="https://api.example.com/metadata/"
-                {...register('baseTokenURI')}
+                {...register("baseTokenURI")}
               />
               {errors.baseTokenURI && (
                 <p className="text-sm text-destructive">
@@ -602,7 +602,7 @@ export default function CreateCollectionForm() {
                   id="website"
                   type="url"
                   placeholder="https://example.com"
-                  {...register('website')}
+                  {...register("website")}
                 />
               </div>
 
@@ -611,7 +611,7 @@ export default function CreateCollectionForm() {
                 <Input
                   id="twitter"
                   placeholder="@username"
-                  {...register('twitter')}
+                  {...register("twitter")}
                 />
               </div>
 
@@ -620,7 +620,7 @@ export default function CreateCollectionForm() {
                 <Input
                   id="discord"
                   placeholder="discord.gg/invite"
-                  {...register('discord')}
+                  {...register("discord")}
                 />
               </div>
             </div>

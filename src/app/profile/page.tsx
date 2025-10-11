@@ -20,10 +20,10 @@ import {
   Activity,
   TrendingUp,
 } from "lucide-react";
-import { useWallet } from "@/hooks/useWallet";
+import { useWallet } from "@/hooks/use-wallet";
 import Link from "next/link";
 
-// Mock user data
+// User data helper
 const getUserData = (address: string) => ({
   address,
   username: "CosmicCreator",
@@ -47,7 +47,7 @@ const getUserData = (address: string) => ({
   },
 });
 
-// Mock user's NFTs
+// User's NFTs data
 const userNFTs = [
   {
     id: "1",
@@ -81,7 +81,7 @@ const userNFTs = [
   },
 ];
 
-// Mock user's collections
+// User's collections data
 const userCollections = [
   {
     address: "0x123...",

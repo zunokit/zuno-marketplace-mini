@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 export interface ListingCardProps {
   listing: {
@@ -248,9 +249,7 @@ export function ListingCard({
             <p className="text-sm text-muted-foreground">Price</p>
             <p className="text-lg font-bold">
               {formatPrice(listing.price)}{" "}
-              {listing.currency === "0x0000000000000000000000000000000000000000"
-                ? "ETH"
-                : listing.currency}
+              {listing.currency === ZERO_ADDRESS ? "ETH" : listing.currency}
             </p>
           </div>
         </div>

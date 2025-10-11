@@ -29,7 +29,6 @@ make deploy-all-local
 
 ```bash
 # Update .env.local
-NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 ```
@@ -362,12 +361,6 @@ Only **one address per network** is needed:
 ```bash
 # .env.local
 
-# Mock mode (no contracts needed)
-NEXT_PUBLIC_USE_MOCK_DATA=true
-
-# Production mode
-NEXT_PUBLIC_USE_MOCK_DATA=false
-
 # Local network (Anvil)
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
 
@@ -476,24 +469,12 @@ cat .env.local
 
 ## Testing
 
-### Mock Mode
-
-For UI development without contracts:
-
-```bash
-# .env.local
-NEXT_PUBLIC_USE_MOCK_DATA=true
-```
-
-Uses mock services from `src/lib/services/mock/`
-
-### Real Contracts (Local)
+### Local Contracts
 
 For full integration testing:
 
 ```bash
 # .env.local
-NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 ```
@@ -577,7 +558,6 @@ The contract integration provides:
 - ✅ **Type-Safe Services**: Full TypeScript support
 - ✅ **Auto-Generated ABIs**: Sync with contracts automatically
 - ✅ **Clean Architecture**: Service layer abstraction
-- ✅ **Easy Testing**: Mock mode for development
 - ✅ **Production Ready**: Optimized for real deployments
 
 **Quick start**: Deploy contracts → Copy Hub address → Extract ABIs → Run app!

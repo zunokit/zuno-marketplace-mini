@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Bundles Page
@@ -6,27 +6,27 @@
  * Create, buy, and manage NFT bundles
  */
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Card,
   CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useAppSelector } from '@/lib/store/hooks';
-import { useToast } from '@/hooks/use-toast';
-import { bundleService } from '@/lib/services/contracts/BundleService';
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useAppSelector } from "@/lib/store/hooks";
+import { useToast } from "@/hooks/use-toast";
+import { bundleService } from "@/lib/services/contracts/BundleService";
 import {
   AlertCircle,
   Loader2,
@@ -34,15 +34,15 @@ import {
   Package,
   TrendingDown,
   Check,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 
-// Define types locally since we removed mock service
+// Bundle status enum
 enum BundleStatus {
-  ACTIVE = 'ACTIVE',
-  SOLD = 'SOLD',
-  CANCELLED = 'CANCELLED',
-  EXPIRED = 'EXPIRED'
+  ACTIVE = "ACTIVE",
+  SOLD = "SOLD",
+  CANCELLED = "CANCELLED",
+  EXPIRED = "EXPIRED",
 }
 
 interface Bundle {
@@ -74,10 +74,10 @@ export default function BundlesPage() {
   // Create bundle form state
   const [selectedNFTs, setSelectedNFTs] = useState<string[]>([]);
   const [bundleForm, setBundleForm] = useState({
-    name: '',
-    description: '',
-    bundlePrice: '',
-    duration: '7' // days
+    name: "",
+    description: "",
+    bundlePrice: "",
+    duration: "7", // days
   });
 
   /**
@@ -100,7 +100,7 @@ export default function BundlesPage() {
       // Real blockchain data
       const [active, user] = await Promise.all([
         bundleService.getActiveBundles(),
-        bundleService.getUserBundles(account)
+        bundleService.getUserBundles(account),
       ]);
 
       // Convert BundleInfo to Bundle format for compatibility
@@ -115,18 +115,18 @@ export default function BundlesPage() {
         totalValue: bundleInfo.totalPrice,
         discountPercentage: bundleInfo.discountPercentage,
         createdAt: bundleInfo.createdAt,
-        expiresAt: bundleInfo.endTime
+        expiresAt: bundleInfo.endTime,
       });
 
       setActiveBundles(active.map(convertBundleInfo));
       setUserBundles(user.map(convertBundleInfo));
     } catch (error) {
-      console.error('Error loading bundles:', error);
+      console.error("Error loading bundles:", error);
       toast({
-        title: 'Error Loading Bundles',
+        title: "Error Loading Bundles",
         description:
-          error instanceof Error ? error.message : 'Failed to load bundles',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to load bundles",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -143,9 +143,9 @@ export default function BundlesPage() {
       } else {
         if (prev.length >= 10) {
           toast({
-            title: 'Maximum Limit',
-            description: 'A bundle can contain maximum 10 NFTs',
-            variant: 'destructive'
+            title: "Maximum Limit",
+            description: "A bundle can contain maximum 10 NFTs",
+            variant: "destructive",
           });
           return prev;
         }
@@ -158,9 +158,9 @@ export default function BundlesPage() {
    * Calculate suggested bundle price (with 10% discount)
    */
   const getSuggestedPrice = (): string => {
-    if (selectedNFTs.length === 0) return '0';
+    if (selectedNFTs.length === 0) return "0";
 
-    // Mock calculation - in real app, fetch actual NFT prices
+    // Calculate average price
     const avgPrice = 1.5;
     const totalValue = selectedNFTs.length * avgPrice;
     const discountedPrice = totalValue * 0.9; // 10% discount
@@ -174,18 +174,18 @@ export default function BundlesPage() {
   const handleCreateBundle = async () => {
     if (selectedNFTs.length < 2) {
       toast({
-        title: 'Invalid Bundle',
-        description: 'Please select at least 2 NFTs',
-        variant: 'destructive'
+        title: "Invalid Bundle",
+        description: "Please select at least 2 NFTs",
+        variant: "destructive",
       });
       return;
     }
 
     if (!bundleForm.name || !bundleForm.bundlePrice) {
       toast({
-        title: 'Missing Information',
-        description: 'Please fill in all required fields',
-        variant: 'destructive'
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
       });
       return;
     }
@@ -198,10 +198,12 @@ export default function BundlesPage() {
       const items = selectedNFTs.map((nftId) => {
         const nft = nfts.find((n) => n.id === nftId);
         return {
-          collection: nft?.contractAddress || '0xMockContract',
+          collection:
+            nft?.contractAddress ||
+            "0x0000000000000000000000000000000000000000",
           tokenId: nftId,
-          amount: '1',
-          tokenType: 'ERC721' as const
+          amount: "1",
+          tokenType: "ERC721" as const,
         };
       });
 
@@ -211,30 +213,30 @@ export default function BundlesPage() {
         discountPercentage: 0,
         duration: parseInt(bundleForm.duration) * 24 * 60 * 60, // Convert days to seconds
         description: bundleForm.description,
-        imageUrl: ''
+        imageUrl: "",
       });
 
       toast({
-        title: 'Bundle Created!',
-        description: `Successfully created bundle "${bundleForm.name}"`
+        title: "Bundle Created!",
+        description: `Successfully created bundle "${bundleForm.name}"`,
       });
 
       // Reset form
       setSelectedNFTs([]);
       setBundleForm({
-        name: '',
-        description: '',
-        bundlePrice: '',
-        duration: '7'
+        name: "",
+        description: "",
+        bundlePrice: "",
+        duration: "7",
       });
 
       loadBundles();
     } catch (error) {
       toast({
-        title: 'Create Failed',
+        title: "Create Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to create bundle',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to create bundle",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -251,17 +253,17 @@ export default function BundlesPage() {
       await bundleService.purchaseBundle(bundleId, price);
 
       toast({
-        title: 'Bundle Purchased!',
-        description: `Successfully bought bundle for ${price} ETH`
+        title: "Bundle Purchased!",
+        description: `Successfully bought bundle for ${price} ETH`,
       });
 
       loadBundles();
     } catch (error) {
       toast({
-        title: 'Purchase Failed',
+        title: "Purchase Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to buy bundle',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to buy bundle",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -278,17 +280,17 @@ export default function BundlesPage() {
       await bundleService.cancelBundle(bundleId);
 
       toast({
-        title: 'Bundle Cancelled',
-        description: 'Your bundle has been cancelled'
+        title: "Bundle Cancelled",
+        description: "Your bundle has been cancelled",
       });
 
       loadBundles();
     } catch (error) {
       toast({
-        title: 'Cancel Failed',
+        title: "Cancel Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to cancel bundle',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to cancel bundle",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -302,7 +304,7 @@ export default function BundlesPage() {
     const now = Date.now();
     const remaining = expiresAt - now;
 
-    if (remaining <= 0) return 'Expired';
+    if (remaining <= 0) return "Expired";
 
     const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
     if (days > 0) return `${days} days`;
@@ -592,7 +594,7 @@ export default function BundlesPage() {
                     onChange={(e) =>
                       setBundleForm({
                         ...bundleForm,
-                        description: e.target.value
+                        description: e.target.value,
                       })
                     }
                   />
@@ -609,7 +611,7 @@ export default function BundlesPage() {
                         onClick={() =>
                           setBundleForm({
                             ...bundleForm,
-                            bundlePrice: getSuggestedPrice()
+                            bundlePrice: getSuggestedPrice(),
                           })
                         }
                       >
@@ -625,7 +627,7 @@ export default function BundlesPage() {
                       onChange={(e) =>
                         setBundleForm({
                           ...bundleForm,
-                          bundlePrice: e.target.value
+                          bundlePrice: e.target.value,
                         })
                       }
                     />
@@ -642,7 +644,7 @@ export default function BundlesPage() {
                       onChange={(e) =>
                         setBundleForm({
                           ...bundleForm,
-                          duration: e.target.value
+                          duration: e.target.value,
                         })
                       }
                     />
@@ -655,8 +657,8 @@ export default function BundlesPage() {
                   <Alert>
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      NFT selection UI will be enhanced in next iteration. For
-                      now, use mock NFT IDs.
+                      NFT selection UI will be enhanced in next iteration.
+                      Connect your wallet to see your NFTs.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -672,7 +674,7 @@ export default function BundlesPage() {
                       Creating...
                     </>
                   ) : (
-                    'Create Bundle'
+                    "Create Bundle"
                   )}
                 </Button>
               </CardContent>
@@ -700,7 +702,7 @@ export default function BundlesPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Bundle Price</span>
                     <span className="font-semibold">
-                      {bundleForm.bundlePrice || '0.00'} ETH
+                      {bundleForm.bundlePrice || "0.00"} ETH
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">

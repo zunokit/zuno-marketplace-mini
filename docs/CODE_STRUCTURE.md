@@ -107,10 +107,6 @@ zuno-marketplace-mini/
 │   │   │   │   ├── OfferService.ts
 │   │   │   │   ├── CollectionService.ts
 │   │   │   │   └── index.ts   # Service exports & init
-│   │   │   └── mock/          # Mock data services
-│   │   │       ├── mockNFTs.ts
-│   │   │       ├── mockListings.ts
-│   │   │       └── ...
 │   │   ├── hooks/             # Custom React hooks
 │   │   │   ├── useWeb3.ts
 │   │   │   ├── useContract.ts
@@ -174,11 +170,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 export function NFTCard({ nft }: { nft: NFT }) {
-  return (
-    <Card>
-      {/* NFT card content */}
-    </Card>
-  );
+  return <Card>{/* NFT card content */}</Card>;
 }
 ```
 
@@ -194,14 +186,18 @@ export { default as ERC721NFTExchange_ABI } from "./ERC721NFTExchange.json";
 
 // lib/contracts/addresses.ts
 export const CONTRACT_ADDRESSES = {
-  11155111: { MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA || "" },
-  31337: { MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL || "" },
+  11155111: {
+    MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA || "",
+  },
+  31337: {
+    MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL || "",
+  },
 };
 ```
 
 #### `/src/lib/services` - Business Logic
 
-Contract services and mock data providers.
+Contract services for blockchain integration.
 
 ```typescript
 // lib/services/contracts/index.ts
@@ -313,13 +309,13 @@ await exchangeService.createListing({ ... });
 ```typescript
 class ExchangeService {
   private getExchangeContract(tokenType: "ERC721" | "ERC1155") {
-    const address = tokenType === "ERC721"
-      ? marketplaceHubService.getERC721Exchange()
-      : marketplaceHubService.getERC1155Exchange();
+    const address =
+      tokenType === "ERC721"
+        ? marketplaceHubService.getERC721Exchange()
+        : marketplaceHubService.getERC1155Exchange();
 
-    const abi = tokenType === "ERC721"
-      ? ERC721NFTExchange_ABI
-      : ERC1155NFTExchange_ABI;
+    const abi =
+      tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
 
     return new ethers.Contract(address, abi, this.signer);
   }
@@ -437,7 +433,7 @@ export default async function CollectionsPage() {
 
 // Client Component (uses hooks, events)
 // components/features/marketplace/BuyModal.tsx
-"use client";
+("use client");
 
 import { useState } from "react";
 import { exchangeService } from "@/lib/services/contracts";
@@ -447,7 +443,11 @@ export function BuyModal({ listing }: { listing: Listing }) {
 
   const handleBuy = async () => {
     setLoading(true);
-    await exchangeService.buyListing(listing.id, listing.tokenType, listing.price);
+    await exchangeService.buyListing(
+      listing.id,
+      listing.tokenType,
+      listing.price
+    );
     setLoading(false);
   };
 
@@ -468,14 +468,14 @@ export function BuyModal({ listing }: { listing: Listing }) {
 
 Each service handles a specific domain:
 
-| Service | Responsibility |
-|---------|---------------|
+| Service                 | Responsibility                 |
+| ----------------------- | ------------------------------ |
 | `MarketplaceHubService` | Address discovery, central hub |
-| `ExchangeService` | NFT listings, buying, selling |
-| `AuctionService` | English & Dutch auctions |
-| `CollectionService` | NFT collections, factories |
-| `BundleService` | NFT bundles |
-| `OfferService` | Offers on NFTs/collections |
+| `ExchangeService`       | NFT listings, buying, selling  |
+| `AuctionService`        | English & Dutch auctions       |
+| `CollectionService`     | NFT collections, factories     |
+| `BundleService`         | NFT bundles                    |
+| `OfferService`          | Offers on NFTs/collections     |
 
 ### Service Interface
 
@@ -628,9 +628,7 @@ export function WalletInfo() {
       {isConnected ? (
         <p>Connected: {account}</p>
       ) : (
-        <button onClick={() => dispatch(setAccount("0x..."))}>
-          Connect
-        </button>
+        <button onClick={() => dispatch(setAccount("0x..."))}>Connect</button>
       )}
     </div>
   );
@@ -823,7 +821,11 @@ export function NFTCard({ nft, onBuy, variant = "default" }: NFTCardProps) {
 }
 
 // ❌ Bad: Inline props
-export function NFTCard({ nft, onBuy, variant = "default" }: {
+export function NFTCard({
+  nft,
+  onBuy,
+  variant = "default",
+}: {
   nft: NFT;
   onBuy?: (nft: NFT) => void;
   variant?: "default" | "compact";
@@ -871,8 +873,9 @@ async function buyNFT(listingId: string) {
 
 // ❌ Bad: Promise chains
 function buyNFT(listingId: string) {
-  exchangeService.buyListing(listingId, "ERC721", "1.0")
-    .then(tx => tx.wait())
+  exchangeService
+    .buyListing(listingId, "ERC721", "1.0")
+    .then((tx) => tx.wait())
     .then(() => console.log("Purchase complete"));
 }
 ```

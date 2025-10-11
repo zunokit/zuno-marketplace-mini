@@ -21,7 +21,6 @@ A modern, production-ready NFT marketplace built with Next.js 15, TypeScript, an
 
 - ⚡ **MarketplaceHub Pattern** - Single address for all contracts
 - 🔐 **Type-Safe** - Full TypeScript with auto-generated types
-- 🎭 **Mock Mode** - Develop without deploying contracts
 - 📱 **Responsive Design** - Mobile-first UI with dark mode
 - 🔄 **Real-Time Updates** - Live blockchain event listening
 - 📊 **Analytics Dashboard** - Platform metrics and insights
@@ -56,22 +55,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## 🔧 Configuration
 
-### Development Mode (Mock Data)
-
-Perfect for UI development without contracts:
-
-```bash
-# .env.local
-NEXT_PUBLIC_USE_MOCK_DATA=true
-```
-
-```bash
-npm run dev
-```
-
-### Production Mode (Real Contracts)
-
-#### Local Network
+### Local Network Development
 
 ```bash
 # Terminal 1 - Start Anvil
@@ -83,17 +67,17 @@ make deploy-all-local
 
 # Copy MarketplaceHub address from output
 # Update .env.local
-NEXT_PUBLIC_USE_MOCK_DATA=false
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
 
 # Extract ABIs
 node scripts/extract-abis.js
 
 # Start app
-npm run dev
+npm run dev:local
 ```
 
-#### Testnet (Sepolia)
+### Testnet (Sepolia) Development
 
 ```bash
 # Deploy contracts
@@ -104,15 +88,14 @@ forge script script/deploy/DeployAll.s.sol \
   --verify
 
 # Update .env.local
-NEXT_PUBLIC_USE_MOCK_DATA=false
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
 NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x...
 
 # Extract ABIs
 node scripts/extract-abis.js
 
-# Deploy
-npm run build
-vercel deploy
+# Start app
+npm run dev:testnet
 ```
 
 ## 📁 Project Structure
@@ -130,7 +113,8 @@ src/
 │   │   └── addresses.ts  # Contract addresses
 │   ├── services/
 │   │   ├── contracts/    # Contract services
-│   │   └── mock/         # Mock services
+│   │   ├── blockchain/   # Blockchain utilities
+│   │   └── web3/         # Web3 provider
 │   ├── hooks/            # Custom React hooks
 │   ├── utils/            # Utility functions
 │   ├── constants/        # App constants

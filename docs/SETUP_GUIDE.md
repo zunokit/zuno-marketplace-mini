@@ -5,8 +5,7 @@ Complete guide to setting up the Zuno Marketplace frontend application.
 ## Table of Contents
 
 - [Quick Setup](#quick-setup)
-- [Development Mode (Mock Data)](#development-mode-mock-data)
-- [Production Mode (Real Contracts)](#production-mode-real-contracts)
+- [Local Development (Real Contracts)](#local-development-real-contracts)
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 
@@ -44,51 +43,11 @@ pnpm install
 cp .env.example .env.local
 ```
 
-4. **Choose your mode**
+4. **Start local development**
 
-You can run the app in two modes:
-- **Mock Mode**: UI development without contracts (recommended for frontend work)
-- **Production Mode**: Real contract integration (for full functionality)
+Follow the steps below to set up local blockchain development.
 
-## Development Mode (Mock Data)
-
-Perfect for UI/UX development, component testing, and frontend work without deploying contracts.
-
-### Configuration
-
-Edit `.env.local`:
-
-```bash
-NEXT_PUBLIC_USE_MOCK_DATA=true
-NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
-```
-
-### Start Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-### Features Available
-
-- Browse mock NFT listings
-- View collection pages
-- Test UI components
-- Auction interface
-- Offer management UI
-- Bundle creation flow
-- Admin dashboard
-
-### Limitations
-
-- No real blockchain transactions
-- Data resets on page reload
-- Cannot connect to real wallets
-- Event listening simulation only
-
-## Production Mode (Real Contracts)
+## Local Development (Real Contracts)
 
 For full blockchain integration with deployed smart contracts.
 
@@ -130,7 +89,6 @@ MarketplaceHub deployed at: 0x5FbDB2315678afecb367f032d93F642f64180aa3
 Edit `.env.local`:
 
 ```bash
-NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 ```
@@ -157,6 +115,7 @@ npm run dev
 
 1. Open MetaMask
 2. Add Network:
+
    - **Network Name**: Anvil Local
    - **RPC URL**: http://localhost:8545
    - **Chain ID**: 31337
@@ -201,7 +160,6 @@ forge script script/deploy/DeployAll.s.sol \
 Edit `.env.local`:
 
 ```bash
-NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x... # Your deployed address
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
 ```
@@ -229,36 +187,29 @@ npm run dev
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_USE_MOCK_DATA` | Enable mock data mode | `true` or `false` |
+| Variable                       | Description                | Example                                 |
+| ------------------------------ | -------------------------- | --------------------------------------- |
 | `NEXT_PUBLIC_DEFAULT_CHAIN_ID` | Default blockchain network | `31337` (local) or `11155111` (Sepolia) |
 
-### Contract Addresses (Production Mode Only)
+### Contract Addresses
 
-| Variable | Description | When to Use |
-|----------|-------------|-------------|
-| `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` | Local network Hub address | Local development with Anvil |
-| `NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA` | Sepolia testnet Hub address | Testnet deployment |
+| Variable                              | Description                 | When to Use                  |
+| ------------------------------------- | --------------------------- | ---------------------------- |
+| `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL`   | Local network Hub address   | Local development with Anvil |
+| `NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA` | Sepolia testnet Hub address | Testnet deployment           |
 
 ### Complete .env.local Examples
 
-**Mock Mode:**
-```bash
-NEXT_PUBLIC_USE_MOCK_DATA=true
-NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
-```
-
 **Local Network:**
+
 ```bash
-NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 ```
 
 **Sepolia Testnet:**
+
 ```bash
-NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x1234567890123456789012345678901234567890
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
 ```
@@ -272,6 +223,7 @@ NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
 **Cause**: Services not initialized with provider and signer.
 
 **Solution**:
+
 ```typescript
 import { initializeServices } from "@/lib/services/contracts";
 
@@ -284,6 +236,7 @@ await initializeServices(provider, signer);
 **Cause**: Missing or incorrect MarketplaceHub address in `.env.local`.
 
 **Solution**:
+
 1. Check `.env.local` file exists
 2. Verify `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` or `NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA` is set
 3. Ensure address matches deployment output
@@ -294,6 +247,7 @@ await initializeServices(provider, signer);
 **Cause**: MetaMask connected to different network than configured.
 
 **Solution**:
+
 - Local: Switch MetaMask to localhost:8545 (Chain ID: 31337)
 - Sepolia: Switch MetaMask to Sepolia (Chain ID: 11155111)
 - Update `NEXT_PUBLIC_DEFAULT_CHAIN_ID` to match
@@ -303,6 +257,7 @@ await initializeServices(provider, signer);
 **Cause**: NFT not approved for marketplace contract.
 
 **Solution**:
+
 ```typescript
 import { collectionService, exchangeService } from "@/lib/services/contracts";
 
@@ -323,6 +278,7 @@ await exchangeService.createListing({ ... });
 **Cause**: Contract ABIs don't match deployed contracts.
 
 **Solution**:
+
 ```bash
 # Re-extract ABIs
 node scripts/extract-abis.js
@@ -336,6 +292,7 @@ npm run dev
 **Cause**: MetaMask transaction nonce out of sync (common with Anvil).
 
 **Solution**:
+
 1. Open MetaMask
 2. Settings → Advanced → Clear activity tab data
 3. Reconnect wallet
@@ -345,6 +302,7 @@ npm run dev
 **Cause**: Anvil not running or wrong port.
 
 **Solution**:
+
 ```bash
 # Check Anvil is running on port 8545
 lsof -i :8545
@@ -358,6 +316,7 @@ anvil --port 8545
 #### TypeScript Errors After ABI Update
 
 **Solution**:
+
 ```bash
 # Clean build cache
 rm -rf .next
@@ -367,6 +326,7 @@ npm run build
 #### Module Not Found Errors
 
 **Solution**:
+
 ```bash
 # Reinstall dependencies
 rm -rf node_modules package-lock.json
@@ -378,11 +338,12 @@ npm install
 #### Slow Page Load
 
 **Possible causes**:
+
 - Too many contract calls on page load
 - Large images not optimized
-- Mock data generation overhead
 
 **Solutions**:
+
 - Use React Query for caching
 - Implement pagination
 - Optimize images with Next.js Image component
@@ -405,10 +366,12 @@ The app automatically detects network and uses corresponding Hub address:
 ```typescript
 // src/lib/contracts/addresses.ts
 export const CONTRACT_ADDRESSES = {
-  11155111: { // Sepolia
+  11155111: {
+    // Sepolia
     MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA || "",
   },
-  31337: { // Local
+  31337: {
+    // Local
     MARKETPLACE_HUB: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL || "",
   },
 };
@@ -418,7 +381,7 @@ export const CONTRACT_ADDRESSES = {
 
 1. Deploy contracts locally with Anvil
 2. Keep Anvil running in background
-3. Use `NEXT_PUBLIC_USE_MOCK_DATA=false`
+3. Configure MarketplaceHub address in `.env.local`
 4. Benefit from fast transactions and unlimited ETH
 
 ## Next Steps

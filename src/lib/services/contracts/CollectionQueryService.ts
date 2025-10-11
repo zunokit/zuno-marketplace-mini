@@ -11,7 +11,7 @@ import {
   ERC721Collection_ABI,
   ERC1155Collection_ABI,
 } from "@/lib/contracts/abis";
-import { DEAD_ADDRESS } from "@/lib/constants";
+import { DEAD_ADDRESS, ZERO_ADDRESS } from "@/lib/constants";
 
 export interface CollectionData {
   address: string;
@@ -65,26 +65,17 @@ export class CollectionQueryService {
       });
 
       // Check if factories are deployed
-      if (
-        !erc721Factory ||
-        erc721Factory === "0x0000000000000000000000000000000000000000"
-      ) {
+      if (!erc721Factory || erc721Factory === ZERO_ADDRESS) {
         console.log("⚠️ ERC721 Factory not deployed");
       }
-      if (
-        !erc1155Factory ||
-        erc1155Factory === "0x0000000000000000000000000000000000000000"
-      ) {
+      if (!erc1155Factory || erc1155Factory === ZERO_ADDRESS) {
         console.log("⚠️ ERC1155 Factory not deployed");
       }
 
       const collections: CollectionData[] = [];
 
       // Query ERC721 collections
-      if (
-        erc721Factory &&
-        erc721Factory !== "0x0000000000000000000000000000000000000000"
-      ) {
+      if (erc721Factory && erc721Factory !== ZERO_ADDRESS) {
         const erc721Collections = await this.getCollectionsFromFactory(
           erc721Factory,
           "ERC721"
@@ -93,10 +84,7 @@ export class CollectionQueryService {
       }
 
       // Query ERC1155 collections
-      if (
-        erc1155Factory &&
-        erc1155Factory !== "0x0000000000000000000000000000000000000000"
-      ) {
+      if (erc1155Factory && erc1155Factory !== ZERO_ADDRESS) {
         const erc1155Collections = await this.getCollectionsFromFactory(
           erc1155Factory,
           "ERC1155"
@@ -121,10 +109,7 @@ export class CollectionQueryService {
 
       // Filter out invalid collections (but allow empty names - we'll fix them)
       const validCollections = collections.filter(
-        (c) =>
-          c &&
-          c.address &&
-          c.address !== "0x0000000000000000000000000000000000000000"
+        (c) => c && c.address && c.address !== ZERO_ADDRESS
       );
 
       console.log(`✅ Valid collections: ${validCollections.length}`);
@@ -181,7 +166,7 @@ export class CollectionQueryService {
 
             if (
               collectionAddress &&
-              collectionAddress !== "0x0000000000000000000000000000000000000000"
+              collectionAddress !== ZERO_ADDRESS
             ) {
               // Get block timestamp for creation time
               let createdAt = Date.now();
@@ -264,7 +249,7 @@ export class CollectionQueryService {
       let name = "Unknown Collection";
       let symbol = "UNKNOWN";
       let description = "";
-      let owner = "0x0000000000000000000000000000000000000000";
+      let owner = ZERO_ADDRESS;
       let totalSupply = BigInt(0);
 
       // Get name - required

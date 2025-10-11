@@ -7,7 +7,7 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "dev:mock": "NEXT_PUBLIC_USE_MOCK_DATA=true npm run dev",
+    "lint:fix": "eslint --fix",
     "dev:testnet": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111 npm run dev",
     "dev:local": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337 npm run dev",
     "type-check": "tsc --noEmit",
@@ -67,6 +67,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "vaul": "^1.1.2",
+    "wagmi": "^2.18.0",
     "zod": "^4.1.11"
   },
   "devDependencies": {
