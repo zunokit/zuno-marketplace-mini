@@ -17,6 +17,7 @@ import { listingValidatorService } from "./ListingValidatorService";
 import { listingHistoryTrackerService } from "./ListingHistoryTrackerService";
 import { collectionVerifierService } from "./CollectionVerifierService";
 import { timelockService } from "./TimelockService";
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 export {
   marketplaceHubService,
@@ -53,12 +54,7 @@ export type {
 } from "./OfferService";
 
 export { collectionService, CollectionService } from "./CollectionService";
-export type {
-  CreateCollectionParams,
-  MintParams,
-  TransferParams,
-  CollectionInfo,
-} from "./CollectionService";
+
 
 export { feeManagerService, FeeManagerService } from "./FeeManagerService";
 export type {
@@ -178,7 +174,7 @@ export async function initializeServices(
 
     // Check if we have valid addresses
     const addresses = marketplaceHubService.getAddresses();
-    const hasValidAddresses = addresses.erc721Exchange !== "0x0000000000000000000000000000000000000000";
+    const hasValidAddresses = addresses.erc721Exchange !== ZERO_ADDRESS;
 
     if (hasValidAddresses) {
       // Initialize other services only if we have valid addresses

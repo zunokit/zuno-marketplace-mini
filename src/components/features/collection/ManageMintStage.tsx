@@ -3,12 +3,18 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Play, AlertCircle, CheckCircle } from "lucide-react";
 import { collectionService } from "@/lib/services/contracts/CollectionService";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { ethers } from "ethers";
 
 interface ManageMintStageProps {
@@ -24,7 +30,7 @@ export function ManageMintStage({
   tokenType,
   owner,
   currentStage,
-  onStageUpdate
+  onStageUpdate,
 }: ManageMintStageProps) {
   const { address } = useAccount();
   const { toast } = useToast();
@@ -32,7 +38,8 @@ export function ManageMintStage({
   const [txHash, setTxHash] = useState<string | null>(null);
 
   // Check if current user is the owner
-  const isOwner = address && owner && address.toLowerCase() === owner.toLowerCase();
+  const isOwner =
+    address && owner && address.toLowerCase() === owner.toLowerCase();
 
   const getStageInfo = () => {
     switch (currentStage) {
@@ -42,7 +49,8 @@ export function ManageMintStage({
           color: "secondary",
           nextStage: "Allowlist",
           nextAction: "Start Allowlist Mint",
-          description: "Minting has not started yet. Start the allowlist phase to allow approved addresses to mint."
+          description:
+            "Minting has not started yet. Start the allowlist phase to allow approved addresses to mint.",
         };
       case "allowlist":
         return {
@@ -50,7 +58,8 @@ export function ManageMintStage({
           color: "default",
           nextStage: "Public",
           nextAction: "Start Public Mint",
-          description: "Only allowlisted addresses can mint. Start the public phase to allow anyone to mint."
+          description:
+            "Only allowlisted addresses can mint. Start the public phase to allow anyone to mint.",
         };
       case "public":
         return {
@@ -58,7 +67,8 @@ export function ManageMintStage({
           color: "default",
           nextStage: null,
           nextAction: null,
-          description: "Public minting is active. Anyone can mint from this collection."
+          description:
+            "Public minting is active. Anyone can mint from this collection.",
         };
       default:
         return {
@@ -66,7 +76,7 @@ export function ManageMintStage({
           color: "secondary",
           nextStage: null,
           nextAction: null,
-          description: "Unable to determine current mint stage."
+          description: "Unable to determine current mint stage.",
         };
     }
   };
@@ -80,16 +90,22 @@ export function ManageMintStage({
     setTxHash(null);
 
     try {
-      const tx = await collectionService.updateMintStage(collectionAddress, tokenType);
+      const tx = await collectionService.updateMintStage(
+        collectionAddress,
+        tokenType
+      );
       setTxHash(tx.hash);
-      
+
       toast({
         title: "Transaction Submitted",
-        description: "Updating mint stage..."
+        description: "Updating mint stage...",
       });
 
       const receipt = await tx.wait();
-      
+      if (!receipt) {
+        throw new Error("Transaction failed");
+      }
+
       if (receipt.status === 1) {
         toast({
           title: "Mint Stage Updated",
@@ -108,7 +124,7 @@ export function ManageMintStage({
       }
     } catch (error: any) {
       console.error("Error updating mint stage:", error);
-      
+
       let errorMessage = "Failed to update mint stage";
       if (error.reason || error.message) {
         errorMessage = error.reason || error.message;
@@ -117,7 +133,7 @@ export function ManageMintStage({
       toast({
         title: "Error",
         description: errorMessage,
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsUpdating(false);
@@ -133,9 +149,7 @@ export function ManageMintStage({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           Mint Stage Management
-          <Badge variant={stageInfo.color as any}>
-            {stageInfo.label}
-          </Badge>
+          <Badge variant={stageInfo.color as any}>{stageInfo.label}</Badge>
         </CardTitle>
         <CardDescription>
           Control when and how users can mint from your collection
@@ -144,17 +158,16 @@ export function ManageMintStage({
       <CardContent className="space-y-4">
         <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {stageInfo.description}
-          </AlertDescription>
+          <AlertDescription>{stageInfo.description}</AlertDescription>
         </Alert>
 
         {stageInfo.nextAction && (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              Progress mint stage to: <span className="font-medium">{stageInfo.nextStage}</span>
+              Progress mint stage to:{" "}
+              <span className="font-medium">{stageInfo.nextStage}</span>
             </p>
-            
+
             <Button
               onClick={handleUpdateStage}
               disabled={isUpdating}
@@ -179,7 +192,8 @@ export function ManageMintStage({
           <Alert>
             <CheckCircle className="h-4 w-4 text-green-500" />
             <AlertDescription>
-              Public minting is active! Your collection is fully open for minting.
+              Public minting is active! Your collection is fully open for
+              minting.
             </AlertDescription>
           </Alert>
         )}

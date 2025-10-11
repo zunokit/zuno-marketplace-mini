@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, ExternalLink, Copy, Power } from "lucide-react";
-import { useWallet } from "@/hooks/useWallet";
+import { useWallet } from "@/hooks/use-wallet";
 import { toast } from "sonner";
 
 export function WalletConnect() {

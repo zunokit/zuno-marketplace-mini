@@ -1,46 +1,46 @@
-'use client';
+"use client";
 
 /**
  * Collection Verification Admin Page
  * Verify/reject collections using CollectionVerifierService
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { useAppSelector } from '@/lib/store/hooks';
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useAppSelector } from "@/lib/store/hooks";
 import {
   collectionVerifierService,
   CollectionVerification,
-  VerificationStatus
-} from '@/lib/services/contracts/CollectionVerifierService';
-import { Shield, CheckCircle, XCircle, Clock } from 'lucide-react';
+  VerificationStatus,
+} from "@/lib/services/contracts/CollectionVerifierService";
+import { Shield, CheckCircle, XCircle, Clock } from "lucide-react";
 
 export default function CollectionVerificationPage() {
   const { toast } = useToast();
@@ -48,21 +48,21 @@ export default function CollectionVerificationPage() {
 
   const [verifiedCollections, setVerifiedCollections] = useState<string[]>([]);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [collection, setCollection] = useState('');
+  const [collection, setCollection] = useState("");
   const [verificationTier, setVerificationTier] = useState<
-    'basic' | 'premium' | 'featured'
-  >('basic');
-  const [reviewNotes, setReviewNotes] = useState('');
+    "basic" | "premium" | "featured"
+  >("basic");
+  const [reviewNotes, setReviewNotes] = useState("");
   const [loading, setLoading] = useState(false);
 
   /**
    * Load verified collections
    */
   useEffect(() => {
-    if (!useMockData && account) {
+    if (account) {
       loadVerifiedCollections();
     }
-  }, [account, useMockData]);
+  }, [account]);
 
   const loadVerifiedCollections = async () => {
     try {
@@ -70,7 +70,7 @@ export default function CollectionVerificationPage() {
         await collectionVerifierService.getAllVerifiedCollections();
       setVerifiedCollections(collections);
     } catch (error) {
-      console.error('Failed to load verified collections:', error);
+      console.error("Failed to load verified collections:", error);
     }
   };
 
@@ -80,9 +80,9 @@ export default function CollectionVerificationPage() {
   const handleVerifyCollection = async () => {
     if (!collection) {
       toast({
-        title: 'Validation Error',
-        description: 'Please enter collection address',
-        variant: 'destructive'
+        title: "Validation Error",
+        description: "Please enter collection address",
+        variant: "destructive",
       });
       return;
     }
@@ -90,38 +90,30 @@ export default function CollectionVerificationPage() {
     setLoading(true);
 
     try {
-      if (useMockData) {
-        toast({
-          title: 'Collection Verified',
-          description: `Successfully verified collection with ${verificationTier} tier`
-        });
-        setVerifyDialogOpen(false);
-      } else {
-        await collectionVerifierService.processVerificationRequest(
-          collection,
-          true,
-          verificationTier,
-          reviewNotes
-        );
+      await collectionVerifierService.processVerificationRequest(
+        collection,
+        true,
+        verificationTier,
+        reviewNotes
+      );
 
-        toast({
-          title: 'Collection Verified',
-          description: 'Successfully verified collection'
-        });
+      toast({
+        title: "Collection Verified",
+        description: "Successfully verified collection",
+      });
 
-        setVerifyDialogOpen(false);
-        setCollection('');
-        setReviewNotes('');
-        await loadVerifiedCollections();
-      }
+      setVerifyDialogOpen(false);
+      setCollection("");
+      setReviewNotes("");
+      await loadVerifiedCollections();
     } catch (error) {
       toast({
-        title: 'Verification Failed',
+        title: "Verification Failed",
         description:
           error instanceof Error
             ? error.message
-            : 'Failed to verify collection',
-        variant: 'destructive'
+            : "Failed to verify collection",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -135,32 +127,25 @@ export default function CollectionVerificationPage() {
     setLoading(true);
 
     try {
-      if (useMockData) {
-        toast({
-          title: 'Verification Revoked',
-          description: 'Successfully revoked collection verification'
-        });
-      } else {
-        await collectionVerifierService.revokeVerification(
-          collectionAddress,
-          'Verification revoked by admin'
-        );
+      await collectionVerifierService.revokeVerification(
+        collectionAddress,
+        "Verification revoked by admin"
+      );
 
-        toast({
-          title: 'Verification Revoked',
-          description: 'Successfully revoked verification'
-        });
+      toast({
+        title: "Verification Revoked",
+        description: "Successfully revoked verification",
+      });
 
-        await loadVerifiedCollections();
-      }
+      await loadVerifiedCollections();
     } catch (error) {
       toast({
-        title: 'Revoke Failed',
+        title: "Revoke Failed",
         description:
           error instanceof Error
             ? error.message
-            : 'Failed to revoke verification',
-        variant: 'destructive'
+            : "Failed to revoke verification",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -175,14 +160,6 @@ export default function CollectionVerificationPage() {
           Verify and manage NFT collection authenticity
         </p>
       </div>
-
-      {useMockData && (
-        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-          <p className="text-sm text-amber-600 dark:text-amber-400">
-            ⚠️ Mock Data Mode - Real contract integration disabled
-          </p>
-        </div>
-      )}
 
       {/* Actions */}
       <div className="mb-6">
@@ -294,7 +271,7 @@ export default function CollectionVerificationPage() {
               Cancel
             </Button>
             <Button onClick={handleVerifyCollection} disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify Collection'}
+              {loading ? "Verifying..." : "Verify Collection"}
             </Button>
           </DialogFooter>
         </DialogContent>

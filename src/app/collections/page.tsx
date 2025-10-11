@@ -15,11 +15,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Plus, TrendingUp, Filter, Grid3X3, List } from "lucide-react";
 import Link from "next/link";
-import { collectionQueryService, type CollectionData } from "@/lib/services/contracts/CollectionQueryService";
+import {
+  collectionQueryService,
+  type CollectionData,
+} from "@/lib/services/contracts/CollectionQueryService";
 import { marketplaceHubService } from "@/lib/services/contracts/MarketplaceHubService";
 import { web3Utils } from "@/lib/utils/web3";
-
-// No mock data - load only from blockchain contracts
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 const sortOptions = [
   { value: "volume_desc", label: "Highest Volume" },
@@ -51,7 +53,7 @@ export default function CollectionsPage() {
   // Load collections on mount (client-side only)
   useEffect(() => {
     // Only run on client-side to avoid SSR issues
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       loadCollections();
     }
   }, []);
@@ -63,7 +65,7 @@ export default function CollectionsPage() {
       setCollections([]); // Clear existing collections
 
       // Check if we're in browser environment
-      if (typeof window === 'undefined') {
+      if (typeof window === "undefined") {
         console.log("⚠️ Not in browser environment");
         setError("Browser environment required for blockchain connection");
         return;
@@ -73,10 +75,12 @@ export default function CollectionsPage() {
       console.log("🔗 Initializing Web3 provider...");
       await web3Utils.initializeProvider();
       const provider = web3Utils.getProvider();
-      
+
       if (!provider) {
         console.log("❌ No Web3 provider available");
-        setError("Web3 provider not available. Please connect your wallet to view collections.");
+        setError(
+          "Web3 provider not available. Please connect your wallet to view collections."
+        );
         return;
       }
 
@@ -85,18 +89,23 @@ export default function CollectionsPage() {
       // Initialize collection query service
       console.log("🔍 Initializing collection query service...");
       await collectionQueryService.initialize(provider);
-      
+
       // Get all collections from blockchain
       console.log("📡 Loading collections from blockchain...");
-      const blockchainCollections = await collectionQueryService.getAllCollections();
-      
-      console.log(`✅ Found ${blockchainCollections.length} collections from blockchain`);
+      const blockchainCollections =
+        await collectionQueryService.getAllCollections();
+
+      console.log(
+        `✅ Found ${blockchainCollections.length} collections from blockchain`
+      );
       console.log("🔍 Collections data:", blockchainCollections);
-      
+
       // Debug: Check if collections are valid
-      const validCollections = blockchainCollections.filter(c => c && c.address && c.name);
+      const validCollections = blockchainCollections.filter(
+        (c) => c && c.address && c.name
+      );
       console.log(`✅ Valid collections: ${validCollections.length}`);
-      
+
       setCollections(blockchainCollections);
       console.log("🔄 Collections state updated");
       console.log("🔍 State collections:", blockchainCollections.slice(0, 2)); // Show first 2 for debugging
@@ -104,20 +113,25 @@ export default function CollectionsPage() {
       if (blockchainCollections.length === 0) {
         // Check if contracts are deployed
         const addresses = marketplaceHubService.getAddresses();
-        const contractsDeployed = addresses.erc721Factory !== "0x0000000000000000000000000000000000000000";
-        
+        const contractsDeployed = addresses.erc721Factory !== ZERO_ADDRESS;
+
         if (!contractsDeployed) {
           setError(
             "Marketplace contracts not deployed. Please deploy the contracts using 'zuno-marketplace-contracts' repository or switch to a network with deployed contracts."
           );
         } else {
-          setError("No collections found on blockchain. Try creating a collection first.");
+          setError(
+            "No collections found on blockchain. Try creating a collection first."
+          );
         }
       }
-
     } catch (error) {
       console.error("❌ Error loading collections:", error);
-      setError(`Failed to load collections from blockchain: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(
+        `Failed to load collections from blockchain: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
       setCollections([]);
     } finally {
       setLoading(false);
@@ -286,7 +300,9 @@ export default function CollectionsPage() {
               ? "Loading collections from blockchain..."
               : `${filteredAndSortedCollections.length} collections found`}
             {!loading && collections.length > 0 && (
-              <span className="ml-2 text-green-600">✅ Live from blockchain</span>
+              <span className="ml-2 text-green-600">
+                ✅ Live from blockchain
+              </span>
             )}
           </p>
 
@@ -355,10 +371,12 @@ export default function CollectionsPage() {
         <div className="flex flex-col items-center justify-center py-12">
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">
-              {collections.length === 0 ? "No collections available" : "No collections found"}
+              {collections.length === 0
+                ? "No collections available"
+                : "No collections found"}
             </h3>
             <p className="text-muted-foreground mb-4">
-              {collections.length === 0 
+              {collections.length === 0
                 ? "No collections have been created on this blockchain yet. Be the first to create one!"
                 : "Try adjusting your search or filter criteria"}
             </p>

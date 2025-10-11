@@ -12,7 +12,11 @@ import {
   ERC721CollectionFactory_ABI,
   ERC1155CollectionFactory_ABI,
 } from "@/lib/contracts/abis";
-import { ZERO_ADDRESS, INTERFACE_IDS, CONTRACT_CONSTANTS } from "@/lib/constants";
+import {
+  ZERO_ADDRESS,
+  INTERFACE_IDS,
+  CONTRACT_CONSTANTS,
+} from "@/lib/constants";
 import { safeContractCall, supportsInterface } from "@/lib/utils/contract";
 import type { NFTType } from "@/types/contract";
 import type {
@@ -23,7 +27,7 @@ import type {
   MintInfo,
   MintStage,
   CollectionVerification,
-  MintedToken
+  MintedToken,
 } from "@/types/collection";
 
 export class CollectionService {
@@ -109,7 +113,8 @@ export class CollectionService {
         mintLimitPerWallet: (params.mintLimitPerWallet || "10").toString(),
         mintStartTime: (
           params.mintStartTime ||
-          Math.floor(Date.now() / 1000) - CONTRACT_CONSTANTS.MINT_START_TIME_OFFSET
+          Math.floor(Date.now() / 1000) -
+            CONTRACT_CONSTANTS.MINT_START_TIME_OFFSET
         ).toString(),
         allowlistMintPrice: ethers
           .parseEther(params.allowlistMintPrice || params.mintPrice || "0.001")
@@ -118,7 +123,8 @@ export class CollectionService {
           .parseEther(params.publicMintPrice || params.mintPrice || "0.001")
           .toString(),
         allowlistStageDuration: (
-          params.allowlistStageDuration || CONTRACT_CONSTANTS.DEFAULT_ALLOWLIST_DURATION.toString()
+          params.allowlistStageDuration ||
+          CONTRACT_CONSTANTS.DEFAULT_ALLOWLIST_DURATION.toString()
         ).toString(),
         tokenURI: params.baseURI || "https://api.example.com/metadata/",
       };
@@ -174,10 +180,7 @@ export class CollectionService {
           }
         }
 
-        if (
-          !collectionAddress ||
-          collectionAddress === "0x0000000000000000000000000000000000000000"
-        ) {
+        if (!collectionAddress || collectionAddress === ZERO_ADDRESS) {
           throw new Error(
             "Collection deployment failed - no valid address returned"
           );
@@ -199,10 +202,7 @@ export class CollectionService {
                 const topic = log.topics[i];
                 if (topic && topic.length === 66) {
                   const contractAddress = "0x" + topic.slice(26);
-                  if (
-                    contractAddress !==
-                    "0x0000000000000000000000000000000000000000"
-                  ) {
+                  if (contractAddress !== ZERO_ADDRESS) {
                     return contractAddress;
                   }
                 }
@@ -788,14 +788,14 @@ export class CollectionService {
     // Create a minimal contract instance for interface checking
     const contract = new ethers.Contract(
       address,
-      ['function supportsInterface(bytes4) view returns (bool)'],
+      ["function supportsInterface(bytes4) view returns (bool)"],
       this.provider
     );
 
     // Check both interfaces in parallel
     const [isERC1155, isERC721] = await Promise.all([
       supportsInterface(contract, INTERFACE_IDS.ERC1155),
-      supportsInterface(contract, INTERFACE_IDS.ERC721)
+      supportsInterface(contract, INTERFACE_IDS.ERC721),
     ]);
 
     if (isERC1155) return "ERC1155";
@@ -819,28 +819,45 @@ export class CollectionService {
     const methodConfigs = {
       name: { fallback: "Unknown Collection" },
       symbol: { fallback: "UNKNOWN" },
-      totalSupply: { 
-        fallback: "0", 
-        transform: (v: bigint) => v.toString() 
+      totalSupply: {
+        fallback: "0",
+        transform: (v: bigint) => v.toString(),
       },
-      maxSupply: { 
-        fallback: "0", 
-        transform: (v: bigint) => v.toString() 
+      maxSupply: {
+        fallback: "0",
+        transform: (v: bigint) => v.toString(),
       },
-      mintPrice: { 
-        fallback: "0", 
-        transform: (v: bigint) => ethers.formatEther(v) 
+      mintPrice: {
+        fallback: "0",
+        transform: (v: bigint) => ethers.formatEther(v),
       },
     };
 
     // Fetch all basic properties in parallel
-    const [name, symbol, totalSupply, maxSupply, mintPrice] = await Promise.all([
-      safeContractCall(collection, 'name', methodConfigs.name.fallback),
-      safeContractCall(collection, 'symbol', methodConfigs.symbol.fallback),
-      safeContractCall(collection, 'totalSupply', methodConfigs.totalSupply.fallback, methodConfigs.totalSupply.transform),
-      safeContractCall(collection, 'maxSupply', methodConfigs.maxSupply.fallback, methodConfigs.maxSupply.transform),
-      safeContractCall(collection, 'mintPrice', methodConfigs.mintPrice.fallback, methodConfigs.mintPrice.transform),
-    ]);
+    const [name, symbol, totalSupply, maxSupply, mintPrice] = await Promise.all(
+      [
+        safeContractCall(collection, "name", methodConfigs.name.fallback),
+        safeContractCall(collection, "symbol", methodConfigs.symbol.fallback),
+        safeContractCall(
+          collection,
+          "totalSupply",
+          methodConfigs.totalSupply.fallback,
+          methodConfigs.totalSupply.transform
+        ),
+        safeContractCall(
+          collection,
+          "maxSupply",
+          methodConfigs.maxSupply.fallback,
+          methodConfigs.maxSupply.transform
+        ),
+        safeContractCall(
+          collection,
+          "mintPrice",
+          methodConfigs.mintPrice.fallback,
+          methodConfigs.mintPrice.transform
+        ),
+      ]
+    );
 
     // Handle baseURI with multiple fallback strategies
     const baseURI = await this.getBaseURI(collection);
@@ -862,23 +879,27 @@ export class CollectionService {
    */
   private async getBaseURI(collection: ethers.Contract): Promise<string> {
     // Strategy 1: Try baseTokenURI method
-    const baseTokenURI = await safeContractCall(collection, 'baseTokenURI', null);
+    const baseTokenURI = await safeContractCall(
+      collection,
+      "baseTokenURI",
+      null
+    );
     if (baseTokenURI) return baseTokenURI;
 
     // Strategy 2: Try tokenURI with token ID 1
     try {
-      if (typeof collection.tokenURI === 'function') {
+      if (typeof collection.tokenURI === "function") {
         const uri = await collection.tokenURI(1);
         // Extract base URI by removing token ID suffix
-        return uri.replace(/\/?\d+\/?$/, '/');
+        return uri.replace(/\/?\d+\/?$/, "/");
       }
     } catch {}
 
     // Strategy 3: Try uri method (ERC1155 standard)
     try {
-      if (typeof collection.uri === 'function') {
+      if (typeof collection.uri === "function") {
         const uri = await collection.uri(1);
-        return uri.replace(/\{id\}/, '');
+        return uri.replace(/\{id\}/, "");
       }
     } catch {}
 
@@ -914,9 +935,7 @@ export class CollectionService {
   /**
    * Verify collection using Hub
    */
-  async verifyCollection(
-    collection: string
-  ): Promise<CollectionVerification> {
+  async verifyCollection(collection: string): Promise<CollectionVerification> {
     return await marketplaceHubService.verifyCollection(collection);
   }
 

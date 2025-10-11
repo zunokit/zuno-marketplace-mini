@@ -20,7 +20,7 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const { account, isConnected } = useAppSelector((state) => state.wallet);
-  const [isAdmin, setIsAdmin] = useState(true); // Mock - replace with real permission check
+  const [isAdmin, setIsAdmin] = useState(true); // TODO: Check admin role from AccessControl contract
 
   useEffect(() => {
     if (!isConnected || !account) {

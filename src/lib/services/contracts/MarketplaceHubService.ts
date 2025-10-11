@@ -7,6 +7,7 @@
 import { ethers } from "ethers";
 import { getHubAddress } from "@/lib/config/networks";
 import { MarketplaceHub_ABI } from "@/lib/contracts/abis";
+import { ZERO_ADDRESS } from "@/lib/constants";
 
 export interface MarketplaceAddresses {
   hub: string;
@@ -50,7 +51,7 @@ export class MarketplaceHubService {
     const hubAddress = getHubAddress(chainId);
 
     // Check if hub address is configured
-    if (!hubAddress || hubAddress === "0x0000000000000000000000000000000000000000") {
+    if (!hubAddress || hubAddress === ZERO_ADDRESS) {
       throw new Error(
         `MarketplaceHub not configured for chain ${chainId}. ` +
         `Please deploy contracts and configure hub address in .env file.`

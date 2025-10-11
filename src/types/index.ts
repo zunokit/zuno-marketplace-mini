@@ -33,14 +33,14 @@ export interface NFTAttribute {
 
 // Collection Types
 export enum TokenType {
-  ERC721 = 'ERC721',
-  ERC1155 = 'ERC1155'
+  ERC721 = "ERC721",
+  ERC1155 = "ERC1155",
 }
 
 export enum MintStage {
-  INACTIVE = 'INACTIVE',
-  ALLOWLIST = 'ALLOWLIST',
-  PUBLIC = 'PUBLIC'
+  INACTIVE = "INACTIVE",
+  ALLOWLIST = "ALLOWLIST",
+  PUBLIC = "PUBLIC",
 }
 
 export interface Collection {
@@ -122,6 +122,8 @@ export interface MintInfo {
   mintLimitPerWallet: bigint;
   canMint: boolean;
   remainingSupply: bigint;
+  totalMinted: bigint;
+  maxSupply: bigint;
 }
 
 export interface MintParams {
@@ -351,34 +353,22 @@ export interface ContractError {
 }
 
 export class CollectionError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: any
-  ) {
+  constructor(message: string, public code: string, public details?: any) {
     super(message);
-    this.name = 'CollectionError';
+    this.name = "CollectionError";
   }
 }
 
 export class MintError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: any
-  ) {
+  constructor(message: string, public code: string, public details?: any) {
     super(message);
-    this.name = 'MintError';
+    this.name = "MintError";
   }
 }
 
 export class TransactionError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public details?: any
-  ) {
+  constructor(message: string, public code: string, public details?: any) {
     super(message);
-    this.name = 'TransactionError';
+    this.name = "TransactionError";
   }
 }

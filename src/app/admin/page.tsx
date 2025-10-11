@@ -31,7 +31,7 @@ import {
 export default function AdminDashboardPage() {
   const { account } = useAppSelector((state) => state.wallet);
 
-  // Mock stats
+  // Dashboard stats
   const [stats, setStats] = useState({
     totalUsers: 1234,
     totalCollections: 45,

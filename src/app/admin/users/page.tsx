@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { Users, UserPlus, Shield, Search, X } from "lucide-react";
+import { accessControlService } from "@/lib/services/contracts";
 
 enum UserRole {
   ADMIN = "ADMIN",
@@ -61,49 +62,7 @@ interface User {
 export default function UserManagementPage() {
   const { toast } = useToast();
 
-  const [users, setUsers] = useState<User[]>([
-    {
-      address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-      role: UserRole.ADMIN,
-      isActive: true,
-      lastActivity: Date.now() - 1000 * 60 * 15,
-      transactions: 156,
-      volume: "45.67",
-    },
-    {
-      address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-      role: UserRole.ADMIN,
-      isActive: true,
-      lastActivity: Date.now() - 1000 * 60 * 30,
-      transactions: 89,
-      volume: "23.45",
-    },
-    {
-      address: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-      role: UserRole.MINTER,
-      isActive: true,
-      lastActivity: Date.now() - 1000 * 60 * 45,
-      transactions: 234,
-      volume: "78.91",
-    },
-    {
-      address: "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-      role: UserRole.USER,
-      isActive: true,
-      lastActivity: Date.now() - 1000 * 60 * 60,
-      transactions: 12,
-      volume: "5.67",
-    },
-    {
-      address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-      role: UserRole.USER,
-      isActive: false,
-      lastActivity: Date.now() - 1000 * 60 * 60 * 24,
-      transactions: 3,
-      volume: "1.23",
-    },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [grantDialog, setGrantDialog] = useState(false);
@@ -111,6 +70,20 @@ export default function UserManagementPage() {
     address: "",
     role: UserRole.USER,
   });
+
+  /**
+   * Load users from AccessControl contract
+   */
+  const loadUsers = async () => {
+    try {
+      // TODO: Implement loading users from AccessControl contract
+      // This would require querying role grant events from the blockchain
+      // For now, users are managed through direct contract interaction
+      console.log("Loading users from contract...");
+    } catch (error) {
+      console.error("Failed to load users:", error);
+    }
+  };
 
   /**
    * Handle grant role
@@ -126,41 +99,23 @@ export default function UserManagementPage() {
     }
 
     try {
-      // Mock - in real app, call AccessControl contract
-      // await accessControl.grantRole(ROLE_HASH, address)
+      // Call AccessControl contract to grant role
+      await accessControlService.grantRole(
+        accessControlService.getRoleHash(grantForm.role),
+        grantForm.address,
+        `Granted ${grantForm.role} role via admin panel`
+      );
 
-      const existingUser = users.find((u) => u.address === grantForm.address);
-
-      if (existingUser) {
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.address === grantForm.address ? { ...u, role: grantForm.role } : u
-          )
-        );
-        toast({
-          title: "Role Updated",
-          description: `Updated role for ${grantForm.address}`,
-        });
-      } else {
-        setUsers((prev) => [
-          ...prev,
-          {
-            address: grantForm.address,
-            role: grantForm.role,
-            isActive: true,
-            lastActivity: Date.now(),
-            transactions: 0,
-            volume: "0.00",
-          },
-        ]);
-        toast({
-          title: "Role Granted",
-          description: `Granted ${grantForm.role} role to ${grantForm.address}`,
-        });
-      }
+      toast({
+        title: "Role Granted",
+        description: `Successfully granted ${grantForm.role} role to ${grantForm.address}`,
+      });
 
       setGrantDialog(false);
       setGrantForm({ address: "", role: UserRole.USER });
+
+      // Reload users list
+      await loadUsers();
     } catch (error) {
       toast({
         title: "Grant Failed",
@@ -176,19 +131,20 @@ export default function UserManagementPage() {
    */
   const handleRevokeRole = async (address: string, role: UserRole) => {
     try {
-      // Mock - in real app, call AccessControl contract
-      // await accessControl.revokeRole(ROLE_HASH, address)
-
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.address === address ? { ...u, role: UserRole.USER } : u
-        )
+      // Call AccessControl contract to revoke role
+      await accessControlService.revokeRole(
+        accessControlService.getRoleHash(role),
+        address,
+        `Revoked ${role} role via admin panel`
       );
 
       toast({
         title: "Role Revoked",
-        description: `Revoked ${role} from ${address}`,
+        description: `Successfully revoked ${role} role from ${address}`,
       });
+
+      // Reload users list
+      await loadUsers();
     } catch (error) {
       toast({
         title: "Revoke Failed",

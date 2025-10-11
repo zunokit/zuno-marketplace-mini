@@ -3,27 +3,27 @@
  * Shows collection information and allows minting
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { useCollection } from '@/hooks/useCollection';
-import { useWallet } from '@/providers/WalletProvider';
-import { MintNFTButton } from '@/components/features/nft/MintNFTButton';
-import { CollectionInfo, TokenType } from '@/types';
-import { ethers } from 'ethers';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { useCollection } from "@/hooks/use-collection";
+import { useWallet } from "@/providers/WalletProvider";
+import { MintNFTButton } from "@/components/features/nft/MintNFTButton";
+import { CollectionInfo, TokenType } from "@/types";
+import { ethers } from "ethers";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Users,
   Package,
@@ -36,16 +36,18 @@ import {
   ExternalLink,
   AlertCircle,
   Loader2,
-  RefreshCw
-} from 'lucide-react';
-import { toast } from 'sonner';
+  RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
 
 export function CollectionDetail() {
   const params = useParams();
   const collectionAddress = params.id as string;
   const { isConnected, provider } = useWallet();
   const { getCollectionInfo } = useCollection();
-  const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
+  const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -56,7 +58,7 @@ export function CollectionDetail() {
     } else if (collectionAddress && !provider) {
       // Set loading to false when no provider is available
       setIsLoading(false);
-      setError('Please connect your wallet to view collection details');
+      setError("Please connect your wallet to view collection details");
     }
   }, [collectionAddress, provider]);
 
@@ -74,15 +76,15 @@ export function CollectionDetail() {
       if (!info) {
         info = await getCollectionInfo(collectionAddress, TokenType.ERC1155);
       }
-      
+
       if (info) {
         setCollectionInfo(info);
       } else {
-        setError('Collection not found or invalid address');
+        setError("Collection not found or invalid address");
       }
     } catch (err: any) {
-      console.error('Failed to fetch collection info:', err);
-      setError(err.message || 'Failed to load collection information');
+      console.error("Failed to fetch collection info:", err);
+      setError(err.message || "Failed to load collection information");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -91,7 +93,7 @@ export function CollectionDetail() {
 
   const copyAddress = () => {
     navigator.clipboard.writeText(collectionAddress);
-    toast.success('Address copied to clipboard');
+    toast.success("Address copied to clipboard");
   };
 
   const formatAddress = (address: string) => {
@@ -101,7 +103,7 @@ export function CollectionDetail() {
   const openEtherscan = () => {
     // Use appropriate block explorer based on network
     const explorerUrl = `https://etherscan.io/address/${collectionAddress}`;
-    window.open(explorerUrl, '_blank');
+    window.open(explorerUrl, "_blank");
   };
 
   if (isLoading) {
@@ -152,9 +154,7 @@ export function CollectionDetail() {
     return (
       <Alert>
         <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          No collection found at this address
-        </AlertDescription>
+        <AlertDescription>No collection found at this address</AlertDescription>
       </Alert>
     );
   }
@@ -210,10 +210,11 @@ export function CollectionDetail() {
                     <Verified className="h-6 w-6 text-primary" />
                   </h1>
                   <p className="text-muted-foreground">
-                    {metadata?.symbol || "N/A"} • Created by {formatAddress(collectionAddress)}
+                    {metadata?.symbol || "N/A"} • Created by{" "}
+                    {formatAddress(collectionAddress)}
                   </p>
                 </div>
-                
+
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -247,11 +248,15 @@ export function CollectionDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats?.totalMinted?.toString() || "0"} / {stats?.maxSupply?.toString() || "0"}
+              {stats?.totalMinted?.toString() || "0"} /{" "}
+              {stats?.maxSupply?.toString() || "0"}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {stats?.maxSupply && Number(stats.maxSupply) > 0 
-                ? `${((Number(stats.totalMinted || 0) / Number(stats.maxSupply)) * 100).toFixed(1)}% minted`
+              {stats?.maxSupply && Number(stats.maxSupply) > 0
+                ? `${(
+                    (Number(stats.totalMinted || 0) / Number(stats.maxSupply)) *
+                    100
+                  ).toFixed(1)}% minted`
                 : "N/A"}
             </p>
           </CardContent>
@@ -263,11 +268,10 @@ export function CollectionDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {config?.mintPrice ? ethers.formatEther(config.mintPrice) : "0"} ETH
+              {config?.mintPrice ? ethers.formatEther(config.mintPrice) : "0"}{" "}
+              ETH
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Per NFT
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Per NFT</p>
           </CardContent>
         </Card>
 
@@ -279,9 +283,7 @@ export function CollectionDetail() {
             <div className="text-2xl font-bold">
               {config?.royaltyFee ? (config.royaltyFee / 100).toFixed(1) : "0"}%
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Creator fee
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Creator fee</p>
           </CardContent>
         </Card>
 
@@ -293,9 +295,7 @@ export function CollectionDetail() {
             <div className="text-2xl font-bold">
               {config?.mintLimitPerWallet?.toString() || "0"}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Per wallet
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Per wallet</p>
           </CardContent>
         </Card>
       </div>
@@ -315,7 +315,7 @@ export function CollectionDetail() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                {metadata?.description || 'No description provided'}
+                {metadata?.description || "No description provided"}
               </p>
             </CardContent>
           </Card>
@@ -330,7 +330,11 @@ export function CollectionDetail() {
                 <div className="flex gap-2">
                   {metadata?.website && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={metadata.website} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={metadata.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Globe className="mr-2 h-4 w-4" />
                         Website
                       </a>
@@ -338,7 +342,11 @@ export function CollectionDetail() {
                   )}
                   {metadata?.twitter && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={`https://twitter.com/${metadata.twitter}`} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={`https://twitter.com/${metadata.twitter}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Twitter className="mr-2 h-4 w-4" />
                         Twitter
                       </a>
@@ -346,7 +354,11 @@ export function CollectionDetail() {
                   )}
                   {metadata?.discord && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={metadata.discord} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={metadata.discord}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <MessageSquare className="mr-2 h-4 w-4" />
                         Discord
                       </a>
@@ -367,7 +379,9 @@ export function CollectionDetail() {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Contract Address</span>
                 <div className="flex items-center gap-2">
-                  <code className="text-sm">{formatAddress(collectionAddress)}</code>
+                  <code className="text-sm">
+                    {formatAddress(collectionAddress)}
+                  </code>
                   <Button variant="ghost" size="icon" onClick={copyAddress}>
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -390,7 +404,7 @@ export function CollectionDetail() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Base Token URI</span>
                 <span className="text-sm truncate max-w-xs">
-                  {config.baseTokenURI || 'Not set'}
+                  {config.baseTokenURI || "Not set"}
                 </span>
               </div>
             </CardContent>

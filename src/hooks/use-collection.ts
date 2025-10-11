@@ -88,7 +88,7 @@ export function useCollection(): UseCollectionReturn {
 
       // Initialize MarketplaceHub first (required for all other services)
       await marketplaceHubService.initialize(provider, signer);
-      
+
       // Then initialize dependent services
       await collectionService.initialize(provider, signer);
       await transactionService.initialize(provider, signer);
@@ -99,7 +99,9 @@ export function useCollection(): UseCollectionReturn {
     } catch (err) {
       logger.error("Failed to initialize services", err);
       // Don't throw - allow app to run in limited mode
-      toast.error("Contract services initialization failed. Some features may be unavailable.");
+      toast.error(
+        "Contract services initialization failed. Some features may be unavailable."
+      );
     }
   };
 
@@ -125,7 +127,7 @@ export function useCollection(): UseCollectionReturn {
         // Ensure mintStartTime is a string for the service
         const serviceParams = {
           ...params,
-          mintStartTime: params.mintStartTime?.toString()
+          mintStartTime: params.mintStartTime?.toString(),
         };
 
         const collectionAddress = await collectionService.createCollection(
@@ -172,9 +174,9 @@ export function useCollection(): UseCollectionReturn {
           address,
           tokenType
         );
-        
+
         if (!rawInfo) return null;
-        
+
         // Transform the raw info to match the expected CollectionInfo type
         const info: CollectionInfo = {
           address: rawInfo.address,
@@ -188,48 +190,68 @@ export function useCollection(): UseCollectionReturn {
             website: "",
             twitter: "",
             discord: "",
-            category: ""
+            category: "",
           },
           config: {
-            mintPrice: rawInfo.mintPrice ? ethers.parseEther(rawInfo.mintPrice) : BigInt(0),
+            mintPrice: rawInfo.mintPrice
+              ? ethers.parseEther(rawInfo.mintPrice)
+              : BigInt(0),
             royaltyFee: 0,
-            maxSupply: rawInfo.maxSupply ? BigInt(rawInfo.maxSupply) : BigInt(0),
+            maxSupply: rawInfo.maxSupply
+              ? BigInt(rawInfo.maxSupply)
+              : BigInt(0),
             mintLimitPerWallet: BigInt(0),
             baseTokenURI: rawInfo.baseURI || "",
-            revealed: true
+            revealed: true,
           },
           stats: {
-            totalMinted: rawInfo.totalSupply ? BigInt(rawInfo.totalSupply) : BigInt(0),
-            maxSupply: rawInfo.maxSupply ? BigInt(rawInfo.maxSupply) : BigInt(0),
+            totalMinted: rawInfo.totalSupply
+              ? BigInt(rawInfo.totalSupply)
+              : BigInt(0),
+            maxSupply: rawInfo.maxSupply
+              ? BigInt(rawInfo.maxSupply)
+              : BigInt(0),
             owners: 0,
             floorPrice: undefined,
             volume24h: undefined,
-            volumeTotal: undefined
-          }
+            volumeTotal: undefined,
+          },
         };
-        
+
         // Get additional mint info if account is connected
         if (account) {
           try {
-            const mintInfo = await collectionService.getMintInfo(address, account, tokenType);
+            const mintInfo = await collectionService.getMintInfo(
+              address,
+              account,
+              tokenType
+            );
             if (mintInfo) {
               info.mintInfo = {
-                currentStage: mintInfo.mintStage === "allowlist" ? MintStage.ALLOWLIST : 
-                             mintInfo.mintStage === "public" ? MintStage.PUBLIC : MintStage.INACTIVE,
+                currentStage:
+                  mintInfo.mintStage === "allowlist"
+                    ? MintStage.ALLOWLIST
+                    : mintInfo.mintStage === "public"
+                    ? MintStage.PUBLIC
+                    : MintStage.INACTIVE,
                 // currentMintPrice is already in wei from CollectionService
                 currentPrice: BigInt(mintInfo.currentMintPrice || "0"),
                 isAllowlisted: mintInfo.isAllowlisted,
                 mintedPerWallet: BigInt(mintInfo.mintedPerWallet || 0),
                 mintLimitPerWallet: BigInt(mintInfo.mintLimitPerWallet || 0),
                 canMint: mintInfo.canMint,
-                remainingSupply: BigInt(mintInfo.maxSupply || 0) - BigInt(mintInfo.totalMinted || 0)
+                remainingSupply:
+                  BigInt(mintInfo.maxSupply || 0) -
+                  BigInt(mintInfo.totalMinted || 0),
+                totalMinted: BigInt(mintInfo.totalMinted || 0),
+                maxSupply: BigInt(mintInfo.maxSupply || 0),
               };
             }
           } catch (err) {
             logger.warn("Failed to get mint info", err);
           }
         }
-        
+
         return info;
       } catch (err: any) {
         logger.error("Failed to get collection info", err);
@@ -264,25 +286,28 @@ export function useCollection(): UseCollectionReturn {
         );
 
         const tokenType = params.tokenType || "ERC721";
-        
+
         const txResponse = await collectionService.mint({
           ...params,
           to: params.to || account,
           tokenType,
           amount: params.quantity?.toString() || "1",
-          value: params.value
+          value: params.value,
         });
 
-        const txHash = typeof txResponse === 'string' ? txResponse : txResponse.hash;
+        const txHash =
+          typeof txResponse === "string" ? txResponse : txResponse.hash;
         setTransactionHash(txHash);
 
         // Update toast
         toast.success("NFT(s) minted successfully!", {
           id: toastId,
-          description: `Transaction: ${typeof txHash === 'string' ? txHash.slice(0, 10) : 'Pending'}...`,
+          description: `Transaction: ${
+            typeof txHash === "string" ? txHash.slice(0, 10) : "Pending"
+          }...`,
         });
 
-        return txHash || '';
+        return txHash || "";
       } catch (err: any) {
         const message = err.message || "Failed to mint NFT";
         setError(message);
@@ -332,21 +357,29 @@ export function useCollection(): UseCollectionReturn {
         // Try both token types to detect which one it is
         let tokenType: "ERC721" | "ERC1155" = "ERC721";
         let rawMintInfo;
-        
+
         try {
-          rawMintInfo = await collectionService.getMintInfo(collection, account, "ERC721");
+          rawMintInfo = await collectionService.getMintInfo(
+            collection,
+            account,
+            "ERC721"
+          );
           tokenType = "ERC721";
         } catch {
           try {
-            rawMintInfo = await collectionService.getMintInfo(collection, account, "ERC1155");
+            rawMintInfo = await collectionService.getMintInfo(
+              collection,
+              account,
+              "ERC1155"
+            );
             tokenType = "ERC1155";
           } catch {
             return null;
           }
         }
-        
+
         if (!rawMintInfo) return null;
-        
+
         // Transform to MintInfo type
         // Map mint stages correctly
         let currentStage = MintStage.INACTIVE;
@@ -356,7 +389,7 @@ export function useCollection(): UseCollectionReturn {
           currentStage = MintStage.ALLOWLIST;
         }
         // If stage is "not_started" or "unknown", it remains INACTIVE
-        
+
         const info: MintInfo = {
           currentStage,
           // currentMintPrice is already in wei from CollectionService, just convert to BigInt
@@ -365,9 +398,13 @@ export function useCollection(): UseCollectionReturn {
           mintedPerWallet: BigInt(rawMintInfo.mintedPerWallet || 0),
           mintLimitPerWallet: BigInt(rawMintInfo.mintLimitPerWallet || 0),
           canMint: rawMintInfo.canMint,
-          remainingSupply: BigInt(rawMintInfo.maxSupply || 0) - BigInt(rawMintInfo.totalMinted || 0)
+          remainingSupply:
+            BigInt(rawMintInfo.maxSupply || 0) -
+            BigInt(rawMintInfo.totalMinted || 0),
+          totalMinted: BigInt(rawMintInfo.totalMinted || 0),
+          maxSupply: BigInt(rawMintInfo.maxSupply || 0),
         };
-        
+
         return info;
       } catch (err: any) {
         logger.error("Failed to get mint info", err);
@@ -417,14 +454,17 @@ export function useCollection(): UseCollectionReturn {
           tokenType
         );
 
-        const txHash = typeof txResponse === 'string' ? txResponse : (txResponse.hash || '');
+        const txHash =
+          typeof txResponse === "string" ? txResponse : txResponse.hash || "";
 
         toast.success(approved ? "Collection approved" : "Approval revoked", {
           id: toastId,
-          description: `Transaction: ${txHash ? txHash.slice(0, 10) : 'Pending'}...`,
+          description: `Transaction: ${
+            txHash ? txHash.slice(0, 10) : "Pending"
+          }...`,
         });
 
-        return txHash || '';
+        return txHash || "";
       } catch (err: any) {
         const message = err.message || "Failed to set approval";
         setError(message);
@@ -464,14 +504,17 @@ export function useCollection(): UseCollectionReturn {
           tokenType === TokenType.ERC721 ? "ERC721" : "ERC1155"
         );
 
-        const txHash = typeof txResponse === 'string' ? txResponse : (txResponse.hash || '');
+        const txHash =
+          typeof txResponse === "string" ? txResponse : txResponse.hash || "";
 
         toast.success("Mint stage updated successfully!", {
           id: toastId,
-          description: `Transaction: ${txHash ? txHash.slice(0, 10) : 'Pending'}...`,
+          description: `Transaction: ${
+            txHash ? txHash.slice(0, 10) : "Pending"
+          }...`,
         });
 
-        return txHash || '';
+        return txHash || "";
       } catch (err: any) {
         const message = err.message || "Failed to update mint stage";
         setError(message);
@@ -502,7 +545,7 @@ export function useCollection(): UseCollectionReturn {
         } catch {
           tokenType = "ERC1155";
         }
-        
+
         return await collectionService.isApprovedForAll(
           collection,
           owner,
