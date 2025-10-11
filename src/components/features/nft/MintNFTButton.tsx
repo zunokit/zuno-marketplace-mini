@@ -80,7 +80,6 @@ export function MintNFTButton({
         }
       }
     } catch (error) {
-      console.error('Failed to fetch mint info:', error);
       toast.error('Failed to load mint information');
     } finally {
       setIsLoadingInfo(false);
@@ -100,34 +99,33 @@ export function MintNFTButton({
 
     setIsMinting(true);
     try {
-      // Calculate total price for the quantity
-      const totalPrice = getTotalPrice();
+      const totalPrice = getTotalPriceString();
       
       await mint({
         collection: collectionAddress,
         quantity,
         to: account,
-        value: totalPrice // Pass the mint price as value
+        value: totalPrice,
+        tokenType: tokenType === TokenType.ERC721 ? "ERC721" : "ERC1155"
       });
       
       setShowDialog(false);
       setQuantity(1);
       
-      // Refresh mint info
       fetchMintInfo();
     } catch (error: any) {
       // Error is handled in the hook
-      console.error('Mint failed:', error);
     } finally {
       setIsMinting(false);
     }
   };
 
   const getTotalPrice = () => {
-    if (!mintInfo || !mintInfo.currentPrice) return '0';
-    const totalWei = mintInfo.currentPrice * BigInt(quantity);
-    return ethers.formatEther(totalWei);
+    if (!mintInfo?.currentPrice) return BigInt(0);
+    return mintInfo.currentPrice * BigInt(quantity);
   };
+  
+  const getTotalPriceString = () => getTotalPrice().toString();
 
   const getRemainingMints = () => {
     if (!mintInfo) return 0;
@@ -257,7 +255,7 @@ export function MintNFTButton({
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Total Price</span>
                   <div className="text-right">
-                    <div className="text-2xl font-bold">{getTotalPrice()} ETH</div>
+                    <div className="text-2xl font-bold">{ethers.formatEther(getTotalPrice())} ETH</div>
                     <div className="text-xs text-muted-foreground">
                       {ethers.formatEther(mintInfo.currentPrice || BigInt(0))} ETH × {quantity}
                     </div>

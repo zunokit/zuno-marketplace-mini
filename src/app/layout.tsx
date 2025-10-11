@@ -5,6 +5,7 @@ import { Toaster } from "sonner";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { WalletProvider } from "@/providers/WalletProvider";
 import "./globals.css";
+import '@/lib/utils/interceptor';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

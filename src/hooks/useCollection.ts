@@ -216,7 +216,8 @@ export function useCollection(): UseCollectionReturn {
               info.mintInfo = {
                 currentStage: mintInfo.mintStage === "allowlist" ? MintStage.ALLOWLIST : 
                              mintInfo.mintStage === "public" ? MintStage.PUBLIC : MintStage.INACTIVE,
-                currentPrice: ethers.parseEther(mintInfo.currentMintPrice || "0"),
+                // currentMintPrice is already in wei from CollectionService
+                currentPrice: BigInt(mintInfo.currentMintPrice || "0"),
                 isAllowlisted: mintInfo.isAllowlisted,
                 mintedPerWallet: BigInt(mintInfo.mintedPerWallet || 0),
                 mintLimitPerWallet: BigInt(mintInfo.mintLimitPerWallet || 0),
@@ -262,15 +263,14 @@ export function useCollection(): UseCollectionReturn {
           }...`
         );
 
-        // Detect token type first
-        const tokenType = params.tokenIds && params.tokenIds.length > 0 ? "ERC1155" : "ERC721";
+        const tokenType = params.tokenType || "ERC721";
         
-        // Mint NFTs
         const txResponse = await collectionService.mint({
           ...params,
           to: params.to || account,
-          tokenType: tokenType,
-          amount: params.quantity?.toString() || "1"
+          tokenType,
+          amount: params.quantity?.toString() || "1",
+          value: params.value
         });
 
         const txHash = typeof txResponse === 'string' ? txResponse : txResponse.hash;
@@ -359,7 +359,8 @@ export function useCollection(): UseCollectionReturn {
         
         const info: MintInfo = {
           currentStage,
-          currentPrice: ethers.parseEther(rawMintInfo.currentMintPrice || "0"),
+          // currentMintPrice is already in wei from CollectionService, just convert to BigInt
+          currentPrice: BigInt(rawMintInfo.currentMintPrice || "0"),
           isAllowlisted: rawMintInfo.isAllowlisted,
           mintedPerWallet: BigInt(rawMintInfo.mintedPerWallet || 0),
           mintLimitPerWallet: BigInt(rawMintInfo.mintLimitPerWallet || 0),
