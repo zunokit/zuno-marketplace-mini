@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
-import StoreProvider from "@/lib/store/StoreProvider";
-import { WalletProvider } from "@/providers/WalletProvider";
+import AppProvider from "./app-provider";
 import "./globals.css";
-import '@/lib/utils/interceptor';
+import "@/lib/utils/interceptor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,19 +31,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <StoreProvider>
-          <WalletProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              <Toaster />
-            </ThemeProvider>
-          </WalletProvider>
-        </StoreProvider>
+        <AppProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </AppProvider>
       </body>
     </html>
   );

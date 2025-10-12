@@ -33,7 +33,6 @@ import {
   User,
   Settings,
   Bell,
-  Search,
   Menu,
   X,
   Plus,
@@ -106,17 +105,20 @@ export function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       "flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                      pathname === item.href && "bg-accent text-accent-foreground"
+                      pathname === item.href &&
+                        "bg-accent text-accent-foreground"
                     )}
                   >
                     <item.icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </Link>
                 ))}
-                
+
                 {/* Create Section in Mobile */}
                 <div className="border-t pt-4 mt-4">
-                  <p className="px-3 text-sm font-semibold text-muted-foreground mb-2">Create</p>
+                  <p className="px-3 text-sm font-semibold text-muted-foreground mb-2">
+                    Create
+                  </p>
                   <Link
                     href="/collections/create"
                     onClick={() => setMobileMenuOpen(false)}
@@ -154,7 +156,9 @@ export function Header() {
                 {/* User Section in Mobile */}
                 {wallet.isConnected && (
                   <div className="border-t pt-4 mt-4">
-                    <p className="px-3 text-sm font-semibold text-muted-foreground mb-2">Account</p>
+                    <p className="px-3 text-sm font-semibold text-muted-foreground mb-2">
+                      Account
+                    </p>
                     <Link
                       href="/profile"
                       onClick={() => setMobileMenuOpen(false)}
@@ -202,8 +206,7 @@ export function Header() {
                 href={item.href}
                 className={cn(
                   "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 h-10 px-2 xl:px-4 py-2",
-                  pathname === item.href &&
-                    "bg-accent text-accent-foreground"
+                  pathname === item.href && "bg-accent text-accent-foreground"
                 )}
               >
                 <item.icon className="h-4 w-4 mr-1.5 flex-shrink-0" />
@@ -221,7 +224,10 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-56">
                 <DropdownMenuItem asChild>
-                  <Link href="/collections/create" className="flex items-center">
+                  <Link
+                    href="/collections/create"
+                    className="flex items-center"
+                  >
                     <Palette className="mr-2 h-4 w-4" />
                     Create Collection
                   </Link>
@@ -251,11 +257,6 @@ export function Header() {
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-2 sm:space-x-4">
-          {/* Search - Hidden on mobile */}
-          <Button variant="ghost" size="sm" className="hidden lg:flex">
-            <Search className="h-4 w-4" />
-          </Button>
-
           {/* Notifications */}
           {wallet.isConnected && (
             <DropdownMenu>
@@ -267,7 +268,9 @@ export function Header() {
                       variant="destructive"
                       className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 p-0 text-[10px] sm:text-xs flex items-center justify-center"
                     >
-                      {notifications.unreadCount > 9 ? '9+' : notifications.unreadCount}
+                      {notifications.unreadCount > 9
+                        ? "9+"
+                        : notifications.unreadCount}
                     </Badge>
                   )}
                 </Button>
@@ -365,5 +368,3 @@ export function Header() {
     </header>
   );
 }
-
-

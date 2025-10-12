@@ -25,6 +25,7 @@ A modern, production-ready NFT marketplace built with Next.js 15, TypeScript, an
 - 🔄 **Real-Time Updates** - Live blockchain event listening
 - 📊 **Analytics Dashboard** - Platform metrics and insights
 - 👑 **Admin Panel** - Marketplace management and controls
+- ⚙️ **Runtime Configuration** - In-app environment settings with localStorage persistence
 
 ## 🚀 Quick Start
 
@@ -55,6 +56,40 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ## 🔧 Configuration
 
+### Runtime Environment Configuration (Recommended)
+
+The marketplace includes a built-in environment configuration modal for easy setup:
+
+1. **Start the app** (no .env.local needed initially)
+
+   ```bash
+   npm run dev
+   ```
+
+2. **Open Settings Modal**
+
+   - Click the ⚙️ Settings button in the right bottom side
+
+3. **Configure Variables**
+
+   - **Import File**: Upload your `.env.local` file directly
+   - **Paste Content**: Copy-paste .env variables (Vercel-style)
+   - **Manual Input**: Enter each variable individually
+
+4. **Save & Reload**
+   - Configuration saves to localStorage
+   - Page automatically reloads with new settings
+   - Settings persist across sessions
+
+**Features:**
+
+- ✅ No need to manually edit `.env.local` files
+- ✅ Import/export .env files with one click
+- ✅ Validation with helpful error messages
+- ✅ Reset to defaults anytime
+- ✅ Dark mode support
+- ✅ Works with deployed apps (e.g., Vercel)
+
 ### Local Network Development
 
 ```bash
@@ -66,12 +101,14 @@ cd ../zuno-marketplace-contracts
 make deploy-all-local
 
 # Copy MarketplaceHub address from output
-# Update .env.local
+# Configure via Settings Modal or .env.local:
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
 
 # Extract ABIs
-node scripts/extract-abis.js
+npm run extract-abis
+# Or with custom paths:
+# node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
 
 # Start app
 npm run dev:local
@@ -87,16 +124,54 @@ forge script script/deploy/DeployAll.s.sol \
   --broadcast \
   --verify
 
-# Update .env.local
+# Configure via Settings Modal or .env.local:
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
 NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x...
 
 # Extract ABIs
-node scripts/extract-abis.js
+npm run extract-abis
 
 # Start app
 npm run dev:testnet
 ```
+
+### Working with Scripts
+
+The project includes utility scripts for various tasks:
+
+**Extract ABIs from Contracts:**
+
+```bash
+# Using npm scripts (recommended)
+npm run extract-abis              # Default paths
+npm run extract-abis:help         # Show help
+
+# Direct usage with custom paths
+node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
+node scripts/extract-abis.js --output-dir ./custom/abis
+```
+
+**Manage Mint Stages (TypeScript):**
+
+```bash
+# Progress to next stage
+npx tsx scripts/start-mint.ts 0xCollectionAddress
+
+# Skip to public mint
+npx tsx scripts/start-mint.ts 0xCollectionAddress 2
+```
+
+**Manage Allowlist (TypeScript):**
+
+```bash
+# Add addresses to allowlist
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress add 0xAddress1 0xAddress2
+
+# Check if address is allowlisted
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress check 0xAddress
+```
+
+See [`scripts/README.md`](./scripts/README.md) for complete documentation.
 
 ## 📁 Project Structure
 
@@ -106,6 +181,10 @@ src/
 ├── components/
 │   ├── common/            # Shared components
 │   ├── features/          # Feature-specific components
+│   │   ├── env-config/   # Runtime environment configuration
+│   │   ├── collection/   # Collection management
+│   │   ├── marketplace/  # Marketplace features
+│   │   └── nft/          # NFT features
 │   └── ui/                # shadcn/ui components
 ├── lib/
 │   ├── contracts/         # Smart contract integration
@@ -114,13 +193,16 @@ src/
 │   ├── services/
 │   │   ├── contracts/    # Contract services
 │   │   ├── blockchain/   # Blockchain utilities
-│   │   └── web3/         # Web3 provider
+│   │   ├── web3/         # Web3 provider
+│   │   └── env-storage.service.ts  # Environment persistence
 │   ├── hooks/            # Custom React hooks
 │   ├── utils/            # Utility functions
+│   │   └── env-config.ts # Environment configuration manager
 │   ├── constants/        # App constants
 │   ├── store/            # Redux store
 │   └── config/           # Configuration
 ├── types/                 # TypeScript types
+│   └── env-config.ts     # Environment configuration types
 └── styles/               # Global styles
 ```
 
@@ -161,6 +243,33 @@ src/
 
 ## 🎯 Key Concepts
 
+### Runtime Environment Configuration
+
+```typescript
+// Access configuration anywhere in the app
+import { envConfigManager } from "@/lib/utils/env-config";
+
+// Get current configuration
+const config = envConfigManager.getConfig();
+
+// Update configuration (saves to localStorage + reloads page)
+envConfigManager.setConfig({
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID: "31337",
+  NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL: "0x...",
+});
+
+// Clear configuration (resets to .env defaults + reloads page)
+envConfigManager.clearConfig();
+```
+
+**How it works:**
+
+- Configuration stored in `localStorage` with key `zuno-marketplace-env-config`
+- Priority: `localStorage` > `process.env` (build-time variables)
+- Settings persist across sessions and page reloads
+- Perfect for deployed apps where `.env.local` isn't accessible
+- Supports Vercel, Netlify, and other deployment platforms
+
 ### MarketplaceHub Pattern
 
 ```typescript
@@ -177,13 +286,17 @@ NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
 ### Auto-Generated ABIs
 
 ```bash
-# After deploying contracts
+# After deploying contracts (default paths)
 node scripts/extract-abis.js
 
+# With custom paths
+node scripts/extract-abis.js --contracts-dir /path/to/contracts/out --output-dir ./abis
+
 # Automatically:
-# ✅ Extracts 18+ contract ABIs
+# ✅ Extracts 23+ contract ABIs
 # ✅ Generates TypeScript exports
-# ✅ Updates type definitions
+# ✅ Creates type-safe ABI access
+# ✅ Validates directories before extraction
 ```
 
 ### Type-Safe Services
@@ -224,12 +337,55 @@ const tx = await exchangeService.createListing({
 
 ## 📝 Scripts
 
+### Development Scripts
+
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
+npm run dev              # Start development server (Turbopack)
+npm run dev:local        # Start with local network (Chain ID: 31337)
+npm run dev:testnet      # Start with Sepolia testnet (Chain ID: 11155111)
+npm run build            # Build for production
+npm run start            # Start production server
+npm run lint             # Run ESLint
+npm run lint:fix         # Run ESLint with auto-fix
+npm run type-check       # TypeScript type checking
 ```
+
+### Utility Scripts (via npm)
+
+```bash
+# Extract ABIs from contracts
+npm run extract-abis              # Extract with default paths
+npm run extract-abis:help         # Show help and options
+
+# Test all scripts
+npm run test:all                  # Run all test scripts
+```
+
+### Direct Script Usage
+
+For more control, run scripts directly:
+
+```bash
+# Extract ABIs with custom paths
+node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
+node scripts/extract-abis.js --output-dir ./custom/abis
+
+# Manage mint stages (TypeScript - requires tsx)
+npx tsx scripts/start-mint.ts <collection-address> [stage]
+
+# Manage collection allowlist (TypeScript - requires tsx)
+npx tsx scripts/manage-allowlist.ts <collection-address> <action> <addresses...>
+
+# Collection creation
+node scripts/collections/create-erc721.js
+node scripts/collections/create-erc1155.js
+
+# NFT minting
+node scripts/nfts/mint-erc721.js <collection-address> [quantity] [recipient]
+node scripts/nfts/mint-erc1155.js <collection-address> <token-id> <amount> [recipient]
+```
+
+See [`scripts/README.md`](./scripts/README.md) for detailed documentation.
 
 ## 🐛 Troubleshooting
 
@@ -244,12 +400,23 @@ await initializeServices(provider, signer);
 
 **"Contract address not found"**
 
+1. **Using Settings Modal** (Recommended):
+
+   - Click ⚙️ Settings button in header
+   - Import your `.env.local` file or paste variables
+   - Save & Reload
+
+2. **Using .env.local file**:
+
 ```bash
-# Check .env.local
+# Check .env.local exists and has correct variables
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...
 
 # Verify correct network
 # Local = 31337, Sepolia = 11155111
+
+# Restart dev server
+npm run dev
 ```
 
 **"Transaction reverted: Not approved"**
