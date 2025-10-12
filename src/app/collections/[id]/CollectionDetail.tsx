@@ -6,10 +6,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import { useParams } from "next/navigation";
 import { useCollection } from "@/hooks/use-collection";
 import { useWallet } from "@/providers/WalletProvider";
 import { MintNFTButton } from "@/components/features/nft/MintNFTButton";
+import { ActivityTracking } from "@/components/features/collection/ActivityTracking";
 import { CollectionInfo, TokenType } from "@/types";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
@@ -83,7 +85,10 @@ export function CollectionDetail() {
         setError("Collection not found or invalid address");
       }
     } catch (err: any) {
-      console.error("Failed to fetch collection info:", err);
+      logger.error("Failed to fetch collection info", err, {
+        component: "CollectionDetail",
+        action: "fetchCollectionInfo",
+      });
       setError(err.message || "Failed to load collection information");
     } finally {
       setIsLoading(false);
@@ -412,13 +417,10 @@ export function CollectionDetail() {
         </TabsContent>
 
         <TabsContent value="activity">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">
-                Activity tracking coming soon...
-              </p>
-            </CardContent>
-          </Card>
+          <ActivityTracking
+            collectionAddress={collectionAddress}
+            tokenType={tokenType}
+          />
         </TabsContent>
       </Tabs>
     </div>

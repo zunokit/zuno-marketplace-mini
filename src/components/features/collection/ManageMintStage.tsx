@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { logger } from "@/lib/utils/logger";
 import { useAccount } from "wagmi";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,7 +124,10 @@ export function ManageMintStage({
         throw new Error("Transaction failed");
       }
     } catch (error: any) {
-      console.error("Error updating mint stage:", error);
+      logger.error("Error updating mint stage", error, {
+        component: "ManageMintStage",
+        action: "updateMintStage",
+      });
 
       let errorMessage = "Failed to update mint stage";
       if (error.reason || error.message) {

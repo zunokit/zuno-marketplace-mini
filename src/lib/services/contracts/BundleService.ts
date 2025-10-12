@@ -6,6 +6,7 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import { BundleManager_ABI } from "@/lib/contracts/abis";
 
 export interface BundleItem {
@@ -65,7 +66,11 @@ export class BundleService {
     const addresses = marketplaceHubService.getAddresses();
     this.bundleManagerAddress = addresses.bundleManager;
 
-    console.log("✅ BundleService initialized with BundleManager:", this.bundleManagerAddress);
+    logger.success(
+      "BundleService initialized with BundleManager",
+      { bundleManagerAddress: this.bundleManagerAddress },
+      { component: "BundleService", action: "initialize" }
+    );
   }
 
   /**
@@ -80,7 +85,11 @@ export class BundleService {
       throw new Error("BundleManager address not loaded from hub");
     }
 
-    return new ethers.Contract(this.bundleManagerAddress, BundleManager_ABI, this.signer);
+    return new ethers.Contract(
+      this.bundleManagerAddress,
+      BundleManager_ABI,
+      this.signer
+    );
   }
 
   /**
@@ -126,7 +135,10 @@ export class BundleService {
 
       throw new Error("BundleCreated event not found");
     } catch (error) {
-      console.error("Error creating bundle:", error);
+      logger.error("Error creating bundle", error, {
+        component: "BundleService",
+        action: "createBundle",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -151,7 +163,10 @@ export class BundleService {
 
       return tx;
     } catch (error) {
-      console.error("Error updating bundle price:", error);
+      logger.error("Error updating bundle price", error, {
+        component: "BundleService",
+        action: "updateBundlePrice",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -168,7 +183,10 @@ export class BundleService {
       const tx = await contract.removeItemFromBundle(bundleId, itemIndex);
       return tx;
     } catch (error) {
-      console.error("Error removing item from bundle:", error);
+      logger.error("Error removing item from bundle", error, {
+        component: "BundleService",
+        action: "removeItemFromBundle",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -222,7 +240,10 @@ export class BundleService {
         })),
       };
     } catch (error) {
-      console.error("Error getting bundle:", error);
+      logger.error("Error getting bundle", error, {
+        component: "BundleService",
+        action: "getBundle",
+      });
       throw error;
     }
   }
@@ -238,7 +259,10 @@ export class BundleService {
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
       );
     } catch (error) {
-      console.error("Error getting user bundles:", error);
+      logger.error("Error getting user bundles", error, {
+        component: "BundleService",
+        action: "getUserBundles",
+      });
       throw error;
     }
   }
@@ -259,7 +283,10 @@ export class BundleService {
 
       return tx;
     } catch (error) {
-      console.error("Error purchasing bundle:", error);
+      logger.error("Error purchasing bundle", error, {
+        component: "BundleService",
+        action: "purchaseBundle",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -275,7 +302,10 @@ export class BundleService {
       const tx = await contract.cancelBundle(bundleId);
       return tx;
     } catch (error) {
-      console.error("Error canceling bundle:", error);
+      logger.error("Error canceling bundle", error, {
+        component: "BundleService",
+        action: "cancelBundle",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -291,7 +321,10 @@ export class BundleService {
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
       );
     } catch (error) {
-      console.error("Error getting active bundles:", error);
+      logger.error("Error getting active bundles", error, {
+        component: "BundleService",
+        action: "getActiveBundles",
+      });
       throw error;
     }
   }
@@ -307,7 +340,10 @@ export class BundleService {
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
       );
     } catch (error) {
-      console.error("Error getting bundles by collection:", error);
+      logger.error("Error getting bundles by collection", error, {
+        component: "BundleService",
+        action: "getBundlesByCollection",
+      });
       throw error;
     }
   }
@@ -323,7 +359,10 @@ export class BundleService {
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
       );
     } catch (error) {
-      console.error("Error getting user purchased bundles:", error);
+      logger.error("Error getting user purchased bundles", error, {
+        component: "BundleService",
+        action: "getUserPurchasedBundles",
+      });
       throw error;
     }
   }
@@ -336,7 +375,10 @@ export class BundleService {
       const contract = this.getBundleManagerContract();
       return await contract.isBundleAvailable(bundleId);
     } catch (error) {
-      console.error("Error checking bundle availability:", error);
+      logger.error("Error checking bundle availability", error, {
+        component: "BundleService",
+        action: "isBundleAvailable",
+      });
       return false;
     }
   }

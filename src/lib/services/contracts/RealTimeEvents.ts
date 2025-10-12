@@ -6,6 +6,7 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import {
   ERC721NFTExchange_ABI,
   ERC1155NFTExchange_ABI,
@@ -54,9 +55,15 @@ export class RealTimeEventsService {
     try {
       this.provider = provider;
       this.isInitialized = true;
-      console.log("✅ RealTimeEventsService initialized");
+      logger.success("RealTimeEventsService initialized", null, {
+        component: "RealTimeEventsService",
+        action: "initialize",
+      });
     } catch (error) {
-      console.error("❌ Failed to initialize RealTimeEventsService:", error);
+      logger.error("Failed to initialize RealTimeEventsService", error, {
+        component: "RealTimeEventsService",
+        action: "initialize",
+      });
       throw error;
     }
   }
@@ -78,7 +85,10 @@ export class RealTimeEventsService {
       // ListingCreated event
       if (handlers.onListingCreated) {
         exchange.on("NFTListed", (...args) => {
-          console.log("📝 NFTListed event:", args);
+          logger.info("NFTListed event", args, {
+            component: "RealTimeEventsService",
+            action: "handleNFTListed",
+          });
           handlers.onListingCreated!(args);
         });
 
@@ -94,7 +104,10 @@ export class RealTimeEventsService {
       // ListingPurchased event
       if (handlers.onListingPurchased) {
         exchange.on("NFTSold", (...args) => {
-          console.log("💰 NFTSold event:", args);
+          logger.info("NFTSold event", args, {
+            component: "RealTimeEventsService",
+            action: "handleNFTSold",
+          });
           handlers.onListingPurchased!(args);
         });
 
@@ -110,7 +123,10 @@ export class RealTimeEventsService {
       // ListingCancelled event
       if (handlers.onListingCancelled) {
         exchange.on("ListingCancelled", (...args) => {
-          console.log("❌ ListingCancelled event:", args);
+          logger.info("ListingCancelled event", args, {
+            component: "RealTimeEventsService",
+            action: "handleListingCancelled",
+          });
           handlers.onListingCancelled!(args);
         });
 
@@ -123,7 +139,10 @@ export class RealTimeEventsService {
         });
       }
     } catch (error) {
-      console.error("Error subscribing to listing events:", error);
+      logger.error("Error subscribing to listing events", error, {
+        component: "RealTimeEventsService",
+        action: "subscribeToListingEvents",
+      });
       throw error;
     }
   }
@@ -145,7 +164,10 @@ export class RealTimeEventsService {
       // OfferCreated event
       if (handlers.onOfferCreated) {
         offerManager.on("OfferMade", (...args) => {
-          console.log("🎯 OfferMade event:", args);
+          logger.info("OfferMade event", args, {
+            component: "RealTimeEventsService",
+            action: "handleOfferMade",
+          });
           handlers.onOfferCreated!(args);
         });
 
@@ -161,7 +183,10 @@ export class RealTimeEventsService {
       // OfferAccepted event
       if (handlers.onOfferAccepted) {
         offerManager.on("OfferAccepted", (...args) => {
-          console.log("✅ OfferAccepted event:", args);
+          logger.info("OfferAccepted event", args, {
+            component: "RealTimeEventsService",
+            action: "handleOfferAccepted",
+          });
           handlers.onOfferAccepted!(args);
         });
 
@@ -177,7 +202,10 @@ export class RealTimeEventsService {
       // OfferCancelled event
       if (handlers.onOfferCancelled) {
         offerManager.on("OfferCancelled", (...args) => {
-          console.log("❌ OfferCancelled event:", args);
+          logger.info("OfferCancelled event", args, {
+            component: "RealTimeEventsService",
+            action: "handleOfferCancelled",
+          });
           handlers.onOfferCancelled!(args);
         });
 
@@ -190,7 +218,10 @@ export class RealTimeEventsService {
         });
       }
     } catch (error) {
-      console.error("Error subscribing to offer events:", error);
+      logger.error("Error subscribing to offer events", error, {
+        component: "RealTimeEventsService",
+        action: "subscribeToOfferEvents",
+      });
       throw error;
     }
   }
@@ -212,7 +243,10 @@ export class RealTimeEventsService {
       // AuctionCreated event
       if (handlers.onAuctionCreated) {
         englishAuction.on("AuctionCreated", (...args) => {
-          console.log("🏆 AuctionCreated event:", args);
+          logger.info("AuctionCreated event", args, {
+            component: "RealTimeEventsService",
+            action: "handleAuctionCreated",
+          });
           handlers.onAuctionCreated!(args);
         });
 
@@ -228,7 +262,10 @@ export class RealTimeEventsService {
       // BidPlaced event
       if (handlers.onBidPlaced) {
         englishAuction.on("BidPlaced", (...args) => {
-          console.log("💰 BidPlaced event:", args);
+          logger.info("BidPlaced event", args, {
+            component: "RealTimeEventsService",
+            action: "handleBidPlaced",
+          });
           handlers.onBidPlaced!(args);
         });
 
@@ -244,7 +281,10 @@ export class RealTimeEventsService {
       // AuctionEnded event
       if (handlers.onAuctionEnded) {
         englishAuction.on("AuctionEnded", (...args) => {
-          console.log("🏁 AuctionEnded event:", args);
+          logger.info("AuctionEnded event", args, {
+            component: "RealTimeEventsService",
+            action: "handleAuctionEnded",
+          });
           handlers.onAuctionEnded!(args);
         });
 
@@ -257,7 +297,10 @@ export class RealTimeEventsService {
         });
       }
     } catch (error) {
-      console.error("Error subscribing to auction events:", error);
+      logger.error("Error subscribing to auction events", error, {
+        component: "RealTimeEventsService",
+        action: "subscribeToAuctionEvents",
+      });
       throw error;
     }
   }
@@ -279,7 +322,10 @@ export class RealTimeEventsService {
       // BundleCreated event
       if (handlers.onBundleCreated) {
         bundleManager.on("BundleCreated", (...args) => {
-          console.log("📦 BundleCreated event:", args);
+          logger.info("BundleCreated event", args, {
+            component: "RealTimeEventsService",
+            action: "handleBundleCreated",
+          });
           handlers.onBundleCreated!(args);
         });
 
@@ -295,7 +341,10 @@ export class RealTimeEventsService {
       // BundlePurchased event
       if (handlers.onBundlePurchased) {
         bundleManager.on("BundlePurchased", (...args) => {
-          console.log("💰 BundlePurchased event:", args);
+          logger.info("BundlePurchased event", args, {
+            component: "RealTimeEventsService",
+            action: "handleBundlePurchased",
+          });
           handlers.onBundlePurchased!(args);
         });
 
@@ -311,7 +360,10 @@ export class RealTimeEventsService {
       // BundleCancelled event
       if (handlers.onBundleCancelled) {
         bundleManager.on("BundleCancelled", (...args) => {
-          console.log("❌ BundleCancelled event:", args);
+          logger.info("BundleCancelled event", args, {
+            component: "RealTimeEventsService",
+            action: "handleBundleCancelled",
+          });
           handlers.onBundleCancelled!(args);
         });
 
@@ -324,7 +376,10 @@ export class RealTimeEventsService {
         });
       }
     } catch (error) {
-      console.error("Error subscribing to bundle events:", error);
+      logger.error("Error subscribing to bundle events", error, {
+        component: "RealTimeEventsService",
+        action: "subscribeToBundleEvents",
+      });
       throw error;
     }
   }
@@ -341,9 +396,15 @@ export class RealTimeEventsService {
         this.subscribeToBundleEvents(handlers),
       ]);
 
-      console.log("✅ Subscribed to all events");
+      logger.success("Subscribed to all events", null, {
+        component: "RealTimeEventsService",
+        action: "subscribeToAllEvents",
+      });
     } catch (error) {
-      console.error("Error subscribing to all events:", error);
+      logger.error("Error subscribing to all events", error, {
+        component: "RealTimeEventsService",
+        action: "subscribeToAllEvents",
+      });
       throw error;
     }
   }
@@ -356,7 +417,11 @@ export class RealTimeEventsService {
     if (subscription) {
       subscription.contract.removeAllListeners(eventName);
       this.subscriptions.delete(eventName);
-      console.log(`🔇 Unsubscribed from ${eventName}`);
+      logger.info(`Unsubscribed from ${eventName}`, null, {
+        component: "RealTimeEventsService",
+        action: "unsubscribeFromEvent",
+        eventName,
+      });
     }
   }
 
@@ -368,7 +433,10 @@ export class RealTimeEventsService {
       subscription.contract.removeAllListeners(eventName);
     }
     this.subscriptions.clear();
-    console.log("🔇 Unsubscribed from all events");
+    logger.info("Unsubscribed from all events", null, {
+      component: "RealTimeEventsService",
+      action: "unsubscribeFromAllEvents",
+    });
   }
 
   /**

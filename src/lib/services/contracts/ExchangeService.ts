@@ -6,6 +6,7 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import {
   ERC721NFTExchange_ABI,
   ERC1155NFTExchange_ABI,
@@ -43,24 +44,29 @@ export class ExchangeService {
     this.provider = provider;
     this.signer = signer || null;
 
-    console.log("✅ ExchangeService initialized");
+    logger.success("ExchangeService initialized", null, {
+      component: "ExchangeService",
+      action: "initialize",
+    });
   }
 
   /**
    * Get exchange contract for specific token type
    */
-  private getExchangeContract(tokenType: "ERC721" | "ERC1155"): ethers.Contract {
+  private getExchangeContract(
+    tokenType: "ERC721" | "ERC1155"
+  ): ethers.Contract {
     if (!this.signer) {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    const address = tokenType === "ERC721"
-      ? marketplaceHubService.getERC721Exchange()
-      : marketplaceHubService.getERC1155Exchange();
+    const address =
+      tokenType === "ERC721"
+        ? marketplaceHubService.getERC721Exchange()
+        : marketplaceHubService.getERC1155Exchange();
 
-    const abi = tokenType === "ERC721"
-      ? ERC721NFTExchange_ABI
-      : ERC1155NFTExchange_ABI;
+    const abi =
+      tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
 
     return new ethers.Contract(address, abi, this.signer);
   }
@@ -81,7 +87,8 @@ export class ExchangeService {
     try {
       const exchange = this.getExchangeContract(params.tokenType);
       const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
-      const amount = params.tokenType === "ERC1155" ? params.amount || "1" : "1";
+      const amount =
+        params.tokenType === "ERC1155" ? params.amount || "1" : "1";
 
       const tx = await exchange.listNFT(
         params.contractAddress,
@@ -93,7 +100,10 @@ export class ExchangeService {
 
       return tx;
     } catch (error) {
-      console.error("Error creating listing:", error);
+      logger.error("Error creating listing", error, {
+        component: "ExchangeService",
+        action: "createListing",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -105,13 +115,17 @@ export class ExchangeService {
     params: BatchListingParams
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      console.log("🏷️ Creating batch listing:", {
-        contractAddress: params.contractAddress,
-        tokenIds: params.tokenIds,
-        prices: params.prices,
-        duration: params.duration,
-        tokenType: params.tokenType,
-      });
+      logger.info(
+        "Creating batch listing",
+        {
+          contractAddress: params.contractAddress,
+          tokenIds: params.tokenIds,
+          prices: params.prices,
+          duration: params.duration,
+          tokenType: params.tokenType,
+        },
+        { component: "ExchangeService", action: "createBatchListing" }
+      );
 
       const exchange = this.getExchangeContract(params.tokenType);
       const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
@@ -126,7 +140,10 @@ export class ExchangeService {
 
       return tx;
     } catch (error) {
-      console.error("Error creating batch listing:", error);
+      logger.error("Error creating batch listing", error, {
+        component: "ExchangeService",
+        action: "createBatchListing",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -154,7 +171,10 @@ export class ExchangeService {
 
       return tx;
     } catch (error) {
-      console.error("Error buying NFT:", error);
+      logger.error("Error buying NFT", error, {
+        component: "ExchangeService",
+        action: "buyNFT",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -172,7 +192,10 @@ export class ExchangeService {
       const tx = await exchange.cancelListing(contractAddress, tokenId);
       return tx;
     } catch (error) {
-      console.error("Error canceling listing:", error);
+      logger.error("Error canceling listing", error, {
+        component: "ExchangeService",
+        action: "cancelListing",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -190,7 +213,10 @@ export class ExchangeService {
       const listing = await exchange.getListing(contractAddress, tokenId);
       return listing.price;
     } catch (error) {
-      console.error("Error getting listing price:", error);
+      logger.error("Error getting listing price", error, {
+        component: "ExchangeService",
+        action: "getListingPrice",
+      });
       throw error;
     }
   }
@@ -207,19 +233,22 @@ export class ExchangeService {
         throw new Error("Provider not available");
       }
 
-      const address = tokenType === "ERC721"
-        ? marketplaceHubService.getERC721Exchange()
-        : marketplaceHubService.getERC1155Exchange();
+      const address =
+        tokenType === "ERC721"
+          ? marketplaceHubService.getERC721Exchange()
+          : marketplaceHubService.getERC1155Exchange();
 
-      const abi = tokenType === "ERC721"
-        ? ERC721NFTExchange_ABI
-        : ERC1155NFTExchange_ABI;
+      const abi =
+        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
 
       const exchange = new ethers.Contract(address, abi, this.provider);
       const listings = await exchange.getCollectionListings(contractAddress);
       return listings;
     } catch (error) {
-      console.error("Error getting collection listings:", error);
+      logger.error("Error getting collection listings", error, {
+        component: "ExchangeService",
+        action: "getCollectionListings",
+      });
       throw error;
     }
   }
@@ -236,19 +265,22 @@ export class ExchangeService {
         throw new Error("Provider not available");
       }
 
-      const address = tokenType === "ERC721"
-        ? marketplaceHubService.getERC721Exchange()
-        : marketplaceHubService.getERC1155Exchange();
+      const address =
+        tokenType === "ERC721"
+          ? marketplaceHubService.getERC721Exchange()
+          : marketplaceHubService.getERC1155Exchange();
 
-      const abi = tokenType === "ERC721"
-        ? ERC721NFTExchange_ABI
-        : ERC1155NFTExchange_ABI;
+      const abi =
+        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
 
       const exchange = new ethers.Contract(address, abi, this.provider);
       const listings = await exchange.getUserListings(userAddress);
       return listings;
     } catch (error) {
-      console.error("Error getting user listings:", error);
+      logger.error("Error getting user listings", error, {
+        component: "ExchangeService",
+        action: "getUserListings",
+      });
       throw error;
     }
   }
@@ -269,7 +301,10 @@ export class ExchangeService {
       );
       return tx;
     } catch (error) {
-      console.error("Error updating listing price:", error);
+      logger.error("Error updating listing price", error, {
+        component: "ExchangeService",
+        action: "updateListingPrice",
+      });
       throw error;
     }
   }
@@ -277,11 +312,7 @@ export class ExchangeService {
   /**
    * Calculate fees for a listing using Hub
    */
-  async calculateFees(
-    nftContract: string,
-    tokenId: string,
-    salePrice: string
-  ) {
+  async calculateFees(nftContract: string, tokenId: string, salePrice: string) {
     const salePriceBigInt = ethers.parseEther(salePrice);
     return await marketplaceHubService.calculateFees(
       nftContract,

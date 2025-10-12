@@ -1,33 +1,35 @@
-'use client';
+"use client";
+
+import { logger } from "@/lib/utils/logger";
 
 /**
  * Analytics Dashboard Page
  * Marketplace analytics using ListingHistoryTrackerService
  */
 
-import { useState, useEffect } from 'react';
-import { MainLayout } from '@/components/common/layout/MainLayout';
+import { useState, useEffect } from "react";
+import { MainLayout } from "@/components/common/layout/MainLayout";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { useAppSelector } from '@/lib/store/hooks';
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useAppSelector } from "@/lib/store/hooks";
 import {
   listingHistoryTrackerService,
   GlobalStats,
-  ListingHistoryTrackerService
-} from '@/lib/services/contracts/ListingHistoryTrackerService';
+  ListingHistoryTrackerService,
+} from "@/lib/services/contracts/ListingHistoryTrackerService";
 import {
   TrendingUp,
   DollarSign,
   ShoppingCart,
   Users,
-  BarChart3
-} from 'lucide-react';
+  BarChart3,
+} from "lucide-react";
 
 export default function AnalyticsPage() {
   const { account } = useAppSelector((state) => state.wallet);
@@ -39,7 +41,7 @@ export default function AnalyticsPage() {
     totalSales: BigInt(0),
     averagePrice: BigInt(0),
     uniqueCollections: BigInt(0),
-    uniqueUsers: BigInt(0)
+    uniqueUsers: BigInt(0),
   });
 
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,10 @@ export default function AnalyticsPage() {
       const stats = await listingHistoryTrackerService.getGlobalStats();
       setGlobalStats(stats);
     } catch (error) {
-      console.error('Failed to load analytics:', error);
+      logger.error("Failed to load analytics", error, {
+        component: "AnalyticsPage",
+        action: "loadAnalytics",
+      });
     } finally {
       setLoading(false);
     }
@@ -68,7 +73,9 @@ export default function AnalyticsPage() {
   return (
     <MainLayout>
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold">📊 Marketplace Analytics</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">
+          📊 Marketplace Analytics
+        </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
           Real-time marketplace statistics and insights
         </p>
@@ -85,7 +92,7 @@ export default function AnalyticsPage() {
             <div className="text-2xl font-bold">
               {ListingHistoryTrackerService.formatVolume(
                 globalStats.totalVolume
-              )}{' '}
+              )}{" "}
               ETH
             </div>
             <p className="text-xs text-muted-foreground">
@@ -153,7 +160,7 @@ export default function AnalyticsPage() {
             <div className="text-3xl font-bold">
               {ListingHistoryTrackerService.formatPrice(
                 globalStats.averagePrice
-              )}{' '}
+              )}{" "}
               ETH
             </div>
           </CardContent>

@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import Image from "next/image";
 import {
   Card,
@@ -113,7 +114,10 @@ export default function ActivityHistoryPage() {
       setActivities([]);
       setFilteredActivities([]);
     } catch (error) {
-      console.error("Error fetching user activity:", error);
+      logger.error("Error fetching user activity", error, {
+        component: "ActivityPage",
+        action: "fetchUserActivity",
+      });
       toast({
         title: "Error Loading Activities",
         description:

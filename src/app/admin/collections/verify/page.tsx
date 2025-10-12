@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
+
 /**
  * Collection Verification Admin Page
  * Verify/reject collections using CollectionVerifierService
@@ -70,7 +72,10 @@ export default function CollectionVerificationPage() {
         await collectionVerifierService.getAllVerifiedCollections();
       setVerifiedCollections(collections);
     } catch (error) {
-      console.error("Failed to load verified collections:", error);
+      logger.error("Failed to load verified collections", error, {
+        component: "AdminCollectionsVerifyPage",
+        action: "loadVerifiedCollections",
+      });
     }
   };
 

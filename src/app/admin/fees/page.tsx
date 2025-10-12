@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
+
 /**
  * Fee Management Admin Page
  * Configure platform fees using FeeManagerService
@@ -68,7 +70,10 @@ export default function FeeManagementPage() {
       const tiers = await feeManagerService.getAllFeeTierConfigs();
       setFeeTiers(tiers);
     } catch (error) {
-      console.error("Failed to load fee config:", error);
+      logger.error("Failed to load fee config", error, {
+        component: "AdminFeesPage",
+        action: "loadFeeConfig",
+      });
     }
   };
 

@@ -10,6 +10,7 @@ Complete guide to integrating smart contracts with the Zuno Marketplace frontend
 - [Contract Services](#contract-services)
 - [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
+- [Logging Integration](#logging-integration)
 - [Advanced Topics](#advanced-topics)
 
 ## Overview
@@ -23,6 +24,7 @@ The Zuno Marketplace uses a streamlined contract integration pattern centered ar
 - **Type-Safe**: Full TypeScript support with auto-generated ABIs
 - **Service Layer**: Clean abstraction over contract interactions
 - **Singleton Pattern**: Services initialized once and reused
+- **Production Logging**: Structured logging with context and performance tracking
 
 ### Architecture Overview
 
@@ -120,6 +122,7 @@ Services provide a clean, type-safe interface for contract interactions. Each se
 ```typescript
 // 1. User connects wallet
 const provider = new BrowserProvider(window.ethereum);
+await provider.send("eth_requestAccounts", []);
 const signer = await provider.getSigner();
 
 // 2. Initialize all services
@@ -138,6 +141,8 @@ Central service that loads all contract addresses from Hub.
 **File**: `src/lib/services/contracts/MarketplaceHubService.ts`
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 export class MarketplaceHubService {
   private hub: ethers.Contract | null = null;
   private addresses: MarketplaceAddresses | null = null;
@@ -162,25 +167,42 @@ export class MarketplaceHubService {
     );
 
     await this.loadAddresses();
+    
+    logger.success("MarketplaceHub initialized from contract", {
+      hub: hubAddress,
+      chainId,
+      addresses: this.addresses,
+    }, {
+      component: "MarketplaceHubService",
+      action: "initialize"
+    });
   }
 
   private async loadAddresses(): Promise<void> {
     if (!this.hub) throw new Error("Hub not initialized");
 
-    const result = await this.hub.getAllAddresses();
+    try {
+      const result = await this.hub.getAllAddresses();
 
-    this.addresses = {
-      hub: await this.hub.getAddress(),
-      erc721Exchange: result[0],
-      erc1155Exchange: result[1],
-      erc721Factory: result[2],
-      erc1155Factory: result[3],
-      englishAuction: result[4],
-      dutchAuction: result[5],
-      feeManager: result[6],
-      royaltyManager: result[7],
-      accessControl: result[8],
-    };
+      this.addresses = {
+        hub: await this.hub.getAddress(),
+        erc721Exchange: result[0],
+        erc1155Exchange: result[1],
+        erc721Factory: result[2],
+        erc1155Factory: result[3],
+        englishAuction: result[4],
+        dutchAuction: result[5],
+        feeManager: result[6],
+        royaltyManager: result[7],
+        accessControl: result[8],
+      };
+    } catch (error) {
+      logger.error("Failed to load addresses from hub", error, {
+        component: "MarketplaceHubService",
+        action: "loadAddresses"
+      });
+      throw error;
+    }
   }
 
   // Getters for each address
@@ -210,6 +232,8 @@ Handles NFT listing, buying, and selling for both ERC721 and ERC1155 tokens.
 **File**: `src/lib/services/contracts/ExchangeService.ts`
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 export class ExchangeService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
@@ -220,6 +244,11 @@ export class ExchangeService {
   ): Promise<void> {
     this.provider = provider;
     this.signer = signer || null;
+    
+    logger.success("ExchangeService initialized", null, {
+      component: "ExchangeService",
+      action: "initialize"
+    });
   }
 
   private getExchangeContract(
@@ -241,20 +270,39 @@ export class ExchangeService {
   async createListing(
     params: ListingParams
   ): Promise<ethers.ContractTransactionResponse> {
-    const exchange = this.getExchangeContract(params.tokenType);
+    try {
+      const exchange = this.getExchangeContract(params.tokenType);
 
-    const amount = params.tokenType === "ERC1155" ? params.amount || 1 : 1;
-    const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
+      const amount = params.tokenType === "ERC1155" ? params.amount || 1 : 1;
+      const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
 
-    const tx = await exchange.listNFT(
-      params.contractAddress,
-      params.tokenId,
-      amount,
-      ethers.parseEther(params.price),
-      durationInSeconds
-    );
+      const tx = await exchange.listNFT(
+        params.contractAddress,
+        params.tokenId,
+        amount,
+        ethers.parseEther(params.price),
+        durationInSeconds
+      );
 
-    return tx;
+      logger.info("Listing created successfully", {
+        contractAddress: params.contractAddress,
+        tokenId: params.tokenId,
+        price: params.price,
+        duration: params.duration,
+        tokenType: params.tokenType
+      }, {
+        component: "ExchangeService",
+        action: "createListing"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error creating listing", error, {
+        component: "ExchangeService",
+        action: "createListing"
+      });
+      throw error;
+    }
   }
 
   async buyListing(
@@ -263,21 +311,57 @@ export class ExchangeService {
     price: string,
     amount: number = 1
   ): Promise<ethers.ContractTransactionResponse> {
-    const exchange = this.getExchangeContract(tokenType);
+    try {
+      const exchange = this.getExchangeContract(tokenType);
 
-    const tx = await exchange.buyNFT(listingId, amount, {
-      value: ethers.parseEther(price),
-    });
+      const tx = await exchange.buyNFT(listingId, amount, {
+        value: ethers.parseEther(price),
+      });
 
-    return tx;
+      logger.info("NFT purchase initiated", {
+        listingId,
+        tokenType,
+        price,
+        amount
+      }, {
+        component: "ExchangeService",
+        action: "buyListing"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error buying NFT", error, {
+        component: "ExchangeService",
+        action: "buyListing"
+      });
+      throw error;
+    }
   }
 
   async cancelListing(
     listingId: string,
     tokenType: "ERC721" | "ERC1155"
   ): Promise<ethers.ContractTransactionResponse> {
-    const exchange = this.getExchangeContract(tokenType);
-    return await exchange.cancelListing(listingId);
+    try {
+      const exchange = this.getExchangeContract(tokenType);
+      const tx = await exchange.cancelListing(listingId);
+      
+      logger.info("Listing cancelled", {
+        listingId,
+        tokenType
+      }, {
+        component: "ExchangeService",
+        action: "cancelListing"
+      });
+      
+      return tx;
+    } catch (error) {
+      logger.error("Error canceling listing", error, {
+        component: "ExchangeService",
+        action: "cancelListing"
+      });
+      throw error;
+    }
   }
 
   async getActiveListing(
@@ -299,9 +383,24 @@ Manages English and Dutch auctions.
 **File**: `src/lib/services/contracts/AuctionService.ts`
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 export class AuctionService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
+
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
+    
+    logger.success("AuctionService initialized", null, {
+      component: "AuctionService",
+      action: "initialize"
+    });
+  }
 
   private getAuctionContract(
     auctionType: "english" | "dutch"
@@ -322,39 +421,91 @@ export class AuctionService {
   async createEnglishAuction(
     params: EnglishAuctionParams
   ): Promise<ethers.ContractTransactionResponse> {
-    const auction = this.getAuctionContract("english");
+    try {
+      const auction = this.getAuctionContract("english");
 
-    const tx = await auction.createAuction(
-      params.nftContract,
-      params.tokenId,
-      params.tokenType === "ERC721" ? 0 : 1,
-      params.tokenType === "ERC1155" ? params.amount || 1 : 1,
-      ethers.parseEther(params.startingBid),
-      ethers.parseEther(params.reservePrice),
-      Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60
-    );
+      const tx = await auction.createAuction(
+        params.nftContract,
+        params.tokenId,
+        params.tokenType === "ERC721" ? 0 : 1,
+        params.tokenType === "ERC1155" ? params.amount || 1 : 1,
+        ethers.parseEther(params.startingBid),
+        ethers.parseEther(params.reservePrice),
+        Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60
+      );
 
-    return tx;
+      logger.info("English auction created", {
+        nftContract: params.nftContract,
+        tokenId: params.tokenId,
+        startingBid: params.startingBid,
+        reservePrice: params.reservePrice,
+        duration: params.duration
+      }, {
+        component: "AuctionService",
+        action: "createEnglishAuction"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error creating English auction", error, {
+        component: "AuctionService",
+        action: "createEnglishAuction"
+      });
+      throw error;
+    }
   }
 
   async placeBid(
     auctionId: string,
     bidAmount: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const auction = this.getAuctionContract("english");
+    try {
+      const auction = this.getAuctionContract("english");
 
-    const tx = await auction.placeBid(auctionId, {
-      value: ethers.parseEther(bidAmount),
-    });
+      const tx = await auction.placeBid(auctionId, {
+        value: ethers.parseEther(bidAmount),
+      });
 
-    return tx;
+      logger.info("Bid placed", {
+        auctionId,
+        bidAmount
+      }, {
+        component: "AuctionService",
+        action: "placeBid"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error placing bid", error, {
+        component: "AuctionService",
+        action: "placeBid"
+      });
+      throw error;
+    }
   }
 
   async endAuction(
     auctionId: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const auction = this.getAuctionContract("english");
-    return await auction.endAuction(auctionId);
+    try {
+      const auction = this.getAuctionContract("english");
+      const tx = await auction.endAuction(auctionId);
+      
+      logger.info("Auction ended", {
+        auctionId
+      }, {
+        component: "AuctionService",
+        action: "endAuction"
+      });
+      
+      return tx;
+    } catch (error) {
+      logger.error("Error ending auction", error, {
+        component: "AuctionService",
+        action: "endAuction"
+      });
+      throw error;
+    }
   }
 }
 
@@ -368,36 +519,67 @@ Handles NFT collections and factory operations.
 **File**: `src/lib/services/contracts/CollectionService.ts`
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 export class CollectionService {
+  private provider: ethers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
+
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
+  }
+
   async deployCollection(
     params: DeployCollectionParams
   ): Promise<ethers.ContractTransactionResponse> {
-    if (!this.signer) throw new Error("Signer required");
+    try {
+      if (!this.signer) throw new Error("Signer required");
 
-    const factoryAddress =
-      params.tokenType === "ERC721"
-        ? marketplaceHubService.getERC721Factory()
-        : marketplaceHubService.getERC1155Factory();
+      const factoryAddress =
+        params.tokenType === "ERC721"
+          ? marketplaceHubService.getERC721Factory()
+          : marketplaceHubService.getERC1155Factory();
 
-    const factoryABI =
-      params.tokenType === "ERC721"
-        ? ERC721CollectionFactory_ABI
-        : ERC1155CollectionFactory_ABI;
+      const factoryABI =
+        params.tokenType === "ERC721"
+          ? ERC721CollectionFactory_ABI
+          : ERC1155CollectionFactory_ABI;
 
-    const factory = new ethers.Contract(
-      factoryAddress,
-      factoryABI,
-      this.signer
-    );
+      const factory = new ethers.Contract(
+        factoryAddress,
+        factoryABI,
+        this.signer
+      );
 
-    const tx = await factory.createCollection(
-      params.name,
-      params.symbol,
-      params.baseURI || "",
-      params.royaltyBps || 0
-    );
+      const tx = await factory.createCollection(
+        params.name,
+        params.symbol,
+        params.baseURI || "",
+        params.royaltyBps || 0
+      );
 
-    return tx;
+      logger.info("Collection deployed", {
+        name: params.name,
+        symbol: params.symbol,
+        tokenType: params.tokenType,
+        factoryAddress
+      }, {
+        component: "CollectionService",
+        action: "deployCollection"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error deploying collection", error, {
+        component: "CollectionService",
+        action: "deployCollection"
+      });
+      throw error;
+    }
   }
 
   async setApprovalForAll(
@@ -406,13 +588,33 @@ export class CollectionService {
     approved: boolean,
     tokenType: "ERC721" | "ERC1155"
   ): Promise<ethers.ContractTransactionResponse> {
-    if (!this.signer) throw new Error("Signer required");
+    try {
+      if (!this.signer) throw new Error("Signer required");
 
-    const abi =
-      tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
+      const abi =
+        tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
 
-    const collection = new ethers.Contract(collectionAddress, abi, this.signer);
-    return await collection.setApprovalForAll(operator, approved);
+      const collection = new ethers.Contract(collectionAddress, abi, this.signer);
+      const tx = await collection.setApprovalForAll(operator, approved);
+      
+      logger.info("Approval set", {
+        collectionAddress,
+        operator,
+        approved,
+        tokenType
+      }, {
+        component: "CollectionService",
+        action: "setApprovalForAll"
+      });
+      
+      return tx;
+    } catch (error) {
+      logger.error("Error setting approval", error, {
+        component: "CollectionService",
+        action: "setApprovalForAll"
+      });
+      throw error;
+    }
   }
 
   async isApprovedForAll(
@@ -445,48 +647,103 @@ Manages NFT bundles (multiple NFTs sold together).
 **File**: `src/lib/services/contracts/BundleService.ts`
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 export class BundleService {
+  private provider: ethers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
+
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
+    
+    logger.success("BundleService initialized with BundleManager", {
+      bundleManagerAddress: marketplaceHubService.getBundleManager()
+    }, {
+      component: "BundleService",
+      action: "initialize"
+    });
+  }
+
   async createBundle(
     params: CreateBundleParams
   ): Promise<ethers.ContractTransactionResponse> {
-    if (!this.signer) throw new Error("Signer required");
+    try {
+      if (!this.signer) throw new Error("Signer required");
 
-    const bundleAddress = marketplaceHubService.getBundleManager();
-    const bundle = new ethers.Contract(
-      bundleAddress,
-      BundleManager_ABI,
-      this.signer
-    );
+      const bundleAddress = marketplaceHubService.getBundleManager();
+      const bundle = new ethers.Contract(
+        bundleAddress,
+        BundleManager_ABI,
+        this.signer
+      );
 
-    const tx = await bundle.createBundle(
-      params.nftContracts,
-      params.tokenIds,
-      params.amounts,
-      ethers.parseEther(params.price),
-      Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60
-    );
+      const tx = await bundle.createBundle(
+        params.nftContracts,
+        params.tokenIds,
+        params.amounts,
+        ethers.parseEther(params.price),
+        Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60
+      );
 
-    return tx;
+      logger.info("Bundle created", {
+        nftContracts: params.nftContracts,
+        tokenIds: params.tokenIds,
+        amounts: params.amounts,
+        price: params.price,
+        duration: params.duration
+      }, {
+        component: "BundleService",
+        action: "createBundle"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error creating bundle", error, {
+        component: "BundleService",
+        action: "createBundle"
+      });
+      throw error;
+    }
   }
 
   async buyBundle(
     bundleId: string,
     price: string
   ): Promise<ethers.ContractTransactionResponse> {
-    if (!this.signer) throw new Error("Signer required");
+    try {
+      if (!this.signer) throw new Error("Signer required");
 
-    const bundleAddress = marketplaceHubService.getBundleManager();
-    const bundle = new ethers.Contract(
-      bundleAddress,
-      BundleManager_ABI,
-      this.signer
-    );
+      const bundleAddress = marketplaceHubService.getBundleManager();
+      const bundle = new ethers.Contract(
+        bundleAddress,
+        BundleManager_ABI,
+        this.signer
+      );
 
-    const tx = await bundle.buyBundle(bundleId, {
-      value: ethers.parseEther(price),
-    });
+      const tx = await bundle.buyBundle(bundleId, {
+        value: ethers.parseEther(price),
+      });
 
-    return tx;
+      logger.info("Bundle purchased", {
+        bundleId,
+        price
+      }, {
+        component: "BundleService",
+        action: "buyBundle"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error purchasing bundle", error, {
+        component: "BundleService",
+        action: "buyBundle"
+      });
+      throw error;
+    }
   }
 }
 
@@ -500,62 +757,135 @@ Handles offers on NFTs and collections.
 **File**: `src/lib/services/contracts/OfferService.ts`
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 export class OfferService {
+  private provider: ethers.Provider | null = null;
+  private signer: ethers.Signer | null = null;
+
+  async initialize(
+    provider: ethers.Provider,
+    signer?: ethers.Signer
+  ): Promise<void> {
+    this.provider = provider;
+    this.signer = signer || null;
+    
+    logger.success("OfferService initialized with OfferManager", {
+      offerManagerAddress: marketplaceHubService.getOfferManager()
+    }, {
+      component: "OfferService",
+      action: "initialize"
+    });
+  }
+
   async makeOffer(
     params: MakeOfferParams
   ): Promise<ethers.ContractTransactionResponse> {
-    if (!this.signer) throw new Error("Signer required");
+    try {
+      if (!this.signer) throw new Error("Signer required");
 
-    const offerAddress = marketplaceHubService.getOfferManager();
-    const offer = new ethers.Contract(
-      offerAddress,
-      OfferManager_ABI,
-      this.signer
-    );
+      const offerAddress = marketplaceHubService.getOfferManager();
+      const offer = new ethers.Contract(
+        offerAddress,
+        OfferManager_ABI,
+        this.signer
+      );
 
-    const expirationTime =
-      Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60;
+      const expirationTime =
+        Math.floor(Date.now() / 1000) + parseInt(params.duration) * 24 * 60 * 60;
 
-    const tx = await offer.makeOffer(
-      params.nftContract,
-      params.tokenId,
-      params.tokenType === "ERC721" ? 0 : 1,
-      ethers.parseEther(params.offerPrice),
-      expirationTime,
-      { value: ethers.parseEther(params.offerPrice) }
-    );
+      const tx = await offer.makeOffer(
+        params.nftContract,
+        params.tokenId,
+        params.tokenType === "ERC721" ? 0 : 1,
+        ethers.parseEther(params.offerPrice),
+        expirationTime,
+        { value: ethers.parseEther(params.offerPrice) }
+      );
 
-    return tx;
+      logger.info("Offer made", {
+        nftContract: params.nftContract,
+        tokenId: params.tokenId,
+        tokenType: params.tokenType,
+        offerPrice: params.offerPrice,
+        duration: params.duration
+      }, {
+        component: "OfferService",
+        action: "makeOffer"
+      });
+
+      return tx;
+    } catch (error) {
+      logger.error("Error making offer", error, {
+        component: "OfferService",
+        action: "makeOffer"
+      });
+      throw error;
+    }
   }
 
   async acceptOffer(
     offerId: string
   ): Promise<ethers.ContractTransactionResponse> {
-    if (!this.signer) throw new Error("Signer required");
+    try {
+      if (!this.signer) throw new Error("Signer required");
 
-    const offerAddress = marketplaceHubService.getOfferManager();
-    const offer = new ethers.Contract(
-      offerAddress,
-      OfferManager_ABI,
-      this.signer
-    );
+      const offerAddress = marketplaceHubService.getOfferManager();
+      const offer = new ethers.Contract(
+        offerAddress,
+        OfferManager_ABI,
+        this.signer
+      );
 
-    return await offer.acceptOffer(offerId);
+      const tx = await offer.acceptOffer(offerId);
+      
+      logger.info("Offer accepted", {
+        offerId
+      }, {
+        component: "OfferService",
+        action: "acceptOffer"
+      });
+      
+      return tx;
+    } catch (error) {
+      logger.error("Error accepting offer", error, {
+        component: "OfferService",
+        action: "acceptOffer"
+      });
+      throw error;
+    }
   }
 
   async cancelOffer(
     offerId: string
   ): Promise<ethers.ContractTransactionResponse> {
-    if (!this.signer) throw new Error("Signer required");
+    try {
+      if (!this.signer) throw new Error("Signer required");
 
-    const offerAddress = marketplaceHubService.getOfferManager();
-    const offer = new ethers.Contract(
-      offerAddress,
-      OfferManager_ABI,
-      this.signer
-    );
+      const offerAddress = marketplaceHubService.getOfferManager();
+      const offer = new ethers.Contract(
+        offerAddress,
+        OfferManager_ABI,
+        this.signer
+      );
 
-    return await offer.cancelOffer(offerId);
+      const tx = await offer.cancelOffer(offerId);
+      
+      logger.info("Offer cancelled", {
+        offerId
+      }, {
+        component: "OfferService",
+        action: "cancelOffer"
+      });
+      
+      return tx;
+    } catch (error) {
+      logger.error("Error canceling offer", error, {
+        component: "OfferService",
+        action: "cancelOffer"
+      });
+      throw error;
+    }
   }
 }
 
@@ -573,38 +903,55 @@ import {
   collectionService,
 } from "@/lib/services/contracts";
 import { BrowserProvider } from "ethers";
+import { logger } from "@/lib/utils/logger";
 
 async function listNFT() {
-  // 1. Connect wallet
-  const provider = new BrowserProvider(window.ethereum);
-  await provider.send("eth_requestAccounts", []);
-  const signer = await provider.getSigner();
+  try {
+    // 1. Connect wallet
+    const provider = new BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    const signer = await provider.getSigner();
 
-  // 2. Initialize services
-  await initializeServices(provider, signer);
+    // 2. Initialize services
+    await initializeServices(provider, signer);
 
-  // 3. Approve NFT for exchange
-  const exchangeAddress = marketplaceHubService.getERC721Exchange();
+    // 3. Approve NFT for exchange
+    const exchangeAddress = marketplaceHubService.getERC721Exchange();
 
-  await collectionService.setApprovalForAll(
-    "0xYourNFTContract",
-    exchangeAddress,
-    true,
-    "ERC721"
-  );
+    await collectionService.setApprovalForAll(
+      "0xYourNFTContract",
+      exchangeAddress,
+      true,
+      "ERC721"
+    );
 
-  // 4. Create listing
-  const tx = await exchangeService.createListing({
-    contractAddress: "0xYourNFTContract",
-    tokenId: "1",
-    price: "1.0", // 1 ETH
-    duration: "7", // 7 days
-    tokenType: "ERC721",
-  });
+    // 4. Create listing
+    const tx = await exchangeService.createListing({
+      contractAddress: "0xYourNFTContract",
+      tokenId: "1",
+      price: "1.0", // 1 ETH
+      duration: "7", // 7 days
+      tokenType: "ERC721",
+    });
 
-  // 5. Wait for confirmation
-  await tx.wait();
-  console.log("NFT listed successfully!");
+    // 5. Wait for confirmation
+    await tx.wait();
+    
+    logger.success("NFT listed successfully!", {
+      transactionHash: tx.hash,
+      contractAddress: "0xYourNFTContract",
+      tokenId: "1"
+    }, {
+      component: "ListingFlow",
+      action: "listNFT"
+    });
+  } catch (error) {
+    logger.error("Failed to list NFT", error, {
+      component: "ListingFlow",
+      action: "listNFT"
+    });
+    throw error;
+  }
 }
 ```
 
@@ -612,32 +959,49 @@ async function listNFT() {
 
 ```typescript
 import { auctionService, collectionService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 async function createAuction() {
-  // Assume services are initialized
+  try {
+    // Assume services are initialized
 
-  // 1. Approve NFT for auction contract
-  const auctionAddress = marketplaceHubService.getEnglishAuction();
+    // 1. Approve NFT for auction contract
+    const auctionAddress = marketplaceHubService.getEnglishAuction();
 
-  await collectionService.setApprovalForAll(
-    "0xYourNFTContract",
-    auctionAddress,
-    true,
-    "ERC721"
-  );
+    await collectionService.setApprovalForAll(
+      "0xYourNFTContract",
+      auctionAddress,
+      true,
+      "ERC721"
+    );
 
-  // 2. Create auction
-  const tx = await auctionService.createEnglishAuction({
-    nftContract: "0xYourNFTContract",
-    tokenId: "1",
-    tokenType: "ERC721",
-    startingBid: "0.1",
-    reservePrice: "1.0",
-    duration: "3", // 3 days
-  });
+    // 2. Create auction
+    const tx = await auctionService.createEnglishAuction({
+      nftContract: "0xYourNFTContract",
+      tokenId: "1",
+      tokenType: "ERC721",
+      startingBid: "0.1",
+      reservePrice: "1.0",
+      duration: "3", // 3 days
+    });
 
-  await tx.wait();
-  console.log("Auction created!");
+    await tx.wait();
+    
+    logger.success("Auction created successfully!", {
+      transactionHash: tx.hash,
+      nftContract: "0xYourNFTContract",
+      tokenId: "1"
+    }, {
+      component: "AuctionFlow",
+      action: "createAuction"
+    });
+  } catch (error) {
+    logger.error("Failed to create auction", error, {
+      component: "AuctionFlow",
+      action: "createAuction"
+    });
+    throw error;
+  }
 }
 ```
 
@@ -646,6 +1010,7 @@ async function createAuction() {
 ```typescript
 import { exchangeService } from "@/lib/services/contracts";
 import { ERC721NFTExchange_ABI } from "@/lib/contracts/abis";
+import { logger } from "@/lib/utils/logger";
 
 async function listenToListings() {
   const exchangeAddress = marketplaceHubService.getERC721Exchange();
@@ -659,23 +1024,31 @@ async function listenToListings() {
   exchange.on(
     "NFTListed",
     (listingId, seller, nftContract, tokenId, price, event) => {
-      console.log("New listing:", {
+      logger.info("New listing detected", {
         listingId: listingId.toString(),
         seller,
         nftContract,
         tokenId: tokenId.toString(),
         price: ethers.formatEther(price),
+        transactionHash: event.transactionHash
+      }, {
+        component: "EventMonitor",
+        action: "handleNFTListed"
       });
     }
   );
 
   // Listen for sales
   exchange.on("NFTSold", (listingId, buyer, seller, price, event) => {
-    console.log("NFT sold:", {
+    logger.info("NFT sold", {
       listingId: listingId.toString(),
       buyer,
       seller,
       price: ethers.formatEther(price),
+      transactionHash: event.transactionHash
+    }, {
+      component: "EventMonitor",
+      action: "handleNFTSold"
     });
   });
 }
@@ -694,20 +1067,31 @@ await initializeServices(provider, signer);
 await exchangeService.createListing({ ... });
 ```
 
-### 2. Handle Errors Properly
+### 2. Handle Errors Properly with Logging
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 try {
   const tx = await exchangeService.createListing(params);
   await tx.wait();
   // Success handling
 } catch (error: any) {
   if (error.code === "ACTION_REJECTED") {
-    console.log("User rejected transaction");
+    logger.warn("User rejected transaction", null, {
+      component: "ExchangeService",
+      action: "createListing"
+    });
   } else if (error.message.includes("Not approved")) {
-    console.log("NFT not approved for marketplace");
+    logger.warn("NFT not approved for marketplace", null, {
+      component: "ExchangeService",
+      action: "createListing"
+    });
   } else {
-    console.error("Transaction failed:", error);
+    logger.error("Transaction failed", error, {
+      component: "ExchangeService",
+      action: "createListing"
+    });
   }
 }
 ```
@@ -723,6 +1107,14 @@ const isApproved = await collectionService.isApprovedForAll(
 );
 
 if (!isApproved) {
+  logger.info("Setting approval for marketplace", {
+    nftContract,
+    exchangeAddress
+  }, {
+    component: "ApprovalFlow",
+    action: "setApproval"
+  });
+  
   await collectionService.setApprovalForAll(
     nftContract,
     exchangeAddress,
@@ -753,14 +1145,122 @@ const params: ListingParams = {
 
 ```typescript
 import { ERROR_MESSAGES } from "@/lib/constants";
+import { logger } from "@/lib/utils/logger";
 
 if (!signer) {
+  logger.error("Wallet not connected", null, {
+    component: "WalletCheck",
+    action: "validateConnection"
+  });
   throw new Error(ERROR_MESSAGES.WALLET_NOT_CONNECTED);
 }
 
 if (chainId !== SUPPORTED_CHAIN_IDS.SEPOLIA) {
+  logger.error("Wrong network", { chainId, expected: SUPPORTED_CHAIN_IDS.SEPOLIA }, {
+    component: "NetworkCheck",
+    action: "validateNetwork"
+  });
   throw new Error(ERROR_MESSAGES.WRONG_NETWORK);
 }
+```
+
+## Logging Integration
+
+### Service Logging Standards
+
+All services use the custom logger utility for structured logging:
+
+```typescript
+import { logger } from "@/lib/utils/logger";
+
+// Service initialization logging
+logger.success("ExchangeService initialized", null, {
+  component: "ExchangeService",
+  action: "initialize"
+});
+
+// Method execution logging
+logger.info("Creating listing", {
+  contractAddress: params.contractAddress,
+  tokenId: params.tokenId,
+  price: params.price
+}, {
+  component: "ExchangeService",
+  action: "createListing"
+});
+
+// Error logging
+logger.error("Failed to create listing", error, {
+  component: "ExchangeService",
+  action: "createListing"
+});
+
+// Success logging
+logger.success("Listing created successfully", {
+  listingId: result.listingId,
+  transactionHash: result.transactionHash
+}, {
+  component: "ExchangeService",
+  action: "createListing"
+});
+```
+
+### Logging Context
+
+Each service method should include:
+- **component**: Service name (e.g., "ExchangeService")
+- **action**: Method name (e.g., "createListing")
+- **data**: Relevant method parameters and results
+- **error**: Error details for error logs
+
+### Performance Tracking
+
+```typescript
+import { logger } from "@/lib/utils/logger";
+
+// Start timer for performance tracking
+logger.startTimer("service-method");
+
+try {
+  // Service method execution
+  const result = await this.contract.method();
+  
+  // End timer with success message
+  logger.endTimer("service-method", "Service method completed", {
+    component: "ServiceName",
+    action: "methodName"
+  });
+  
+  return result;
+} catch (error) {
+  // End timer with error message
+  logger.endTimer("service-method", "Service method failed", {
+    component: "ServiceName",
+    action: "methodName"
+  });
+  
+  throw error;
+}
+```
+
+### Event Logging
+
+```typescript
+// Listen for blockchain events with logging
+exchange.on("NFTListed", (listingId, seller, nftContract, tokenId, price, event) => {
+  logger.info("NFT listed event", {
+    listingId: listingId.toString(),
+    seller,
+    nftContract,
+    tokenId: tokenId.toString(),
+    price: ethers.formatEther(price),
+    blockNumber: event.blockNumber,
+    transactionHash: event.transactionHash
+  }, {
+    component: "EventMonitor",
+    action: "handleNFTListed"
+  });
+});
 ```
 
 ## Real-Time Events
@@ -772,19 +1272,29 @@ The marketplace provides real-time blockchain event monitoring through the `Real
 ```typescript
 import { useRealTimeEvents } from "@/hooks/useRealTimeEvents";
 import { EventHandler } from "@/lib/services/contracts/RealTimeEvents";
+import { logger } from "@/lib/utils/logger";
 
 export default function MyComponent() {
   const handlers: EventHandler = {
     onListingCreated: (event) => {
-      console.log("New listing:", event);
+      logger.info("New listing created", event, {
+        component: "EventMonitor",
+        action: "onListingCreated"
+      });
       // Refresh UI
     },
     onListingPurchased: (event) => {
-      console.log("NFT sold:", event);
+      logger.info("NFT purchased", event, {
+        component: "EventMonitor",
+        action: "onListingPurchased"
+      });
       // Update listings
     },
     onOfferCreated: (event) => {
-      console.log("New offer:", event);
+      logger.info("New offer created", event, {
+        component: "EventMonitor",
+        action: "onOfferCreated"
+      });
     },
     // ... more handlers
   };
@@ -815,10 +1325,18 @@ Configure platform fees and tier discounts:
 
 ```typescript
 import { feeManagerService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Get current fee config
 const config = await feeManagerService.getBaseFeeConfig();
-console.log("Maker fee:", Number(config.makerFee) / 100, "%");
+logger.info("Current fee configuration", {
+  makerFee: Number(config.makerFee) / 100,
+  takerFee: Number(config.takerFee) / 100,
+  listingFee: Number(config.listingFee) / 100
+}, {
+  component: "FeeManager",
+  action: "getBaseFeeConfig"
+});
 
 // Update fees (admin only)
 await feeManagerService.updateBaseFeeConfig({
@@ -829,6 +1347,17 @@ await feeManagerService.updateBaseFeeConfig({
   bundleFee: BigInt(25), // 0.25%
   isActive: true,
 });
+
+logger.success("Fee configuration updated", {
+  makerFee: "2%",
+  takerFee: "0%",
+  listingFee: "0%",
+  auctionFee: "0.5%",
+  bundleFee: "0.25%"
+}, {
+  component: "FeeManager",
+  action: "updateBaseFeeConfig"
+});
 ```
 
 ### Access Control
@@ -837,6 +1366,7 @@ Manage roles and permissions:
 
 ```typescript
 import { accessControlService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Grant admin role
 const roleHash = accessControlService.getRoleHash("ADMIN_ROLE");
@@ -846,8 +1376,24 @@ await accessControlService.grantRole(
   "Granted admin access"
 );
 
+logger.info("Admin role granted", {
+  userAddress,
+  role: "ADMIN_ROLE",
+  reason: "Granted admin access"
+}, {
+  component: "AccessControl",
+  action: "grantRole"
+});
+
 // Check user roles
 const roles = await accessControlService.getActiveRoles(userAddress);
+logger.info("User roles retrieved", {
+  userAddress,
+  roles: roles.map(role => role.name)
+}, {
+  component: "AccessControl",
+  action: "getActiveRoles"
+});
 ```
 
 ### Emergency Controls
@@ -856,9 +1402,17 @@ Pause marketplace and manage blacklists:
 
 ```typescript
 import { emergencyManagerService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Emergency pause
 await emergencyManagerService.emergencyPause("Security incident detected");
+
+logger.warn("Emergency pause activated", {
+  reason: "Security incident detected"
+}, {
+  component: "EmergencyManager",
+  action: "emergencyPause"
+});
 
 // Blacklist malicious contract
 await emergencyManagerService.setContractBlacklist(
@@ -867,8 +1421,20 @@ await emergencyManagerService.setContractBlacklist(
   "Malicious contract detected"
 );
 
+logger.warn("Contract blacklisted", {
+  contractAddress,
+  reason: "Malicious contract detected"
+}, {
+  component: "EmergencyManager",
+  action: "setContractBlacklist"
+});
+
 // Check status
 const status = await emergencyManagerService.getEmergencyStatus();
+logger.info("Emergency status checked", status, {
+  component: "EmergencyManager",
+  action: "getEmergencyStatus"
+});
 ```
 
 ### Collection Verification
@@ -877,6 +1443,7 @@ Verify NFT collections:
 
 ```typescript
 import { collectionVerifierService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Process verification
 await collectionVerifierService.processVerificationRequest(
@@ -886,10 +1453,25 @@ await collectionVerifierService.processVerificationRequest(
   "Verified authentic collection"
 );
 
+logger.success("Collection verification processed", {
+  collectionAddress,
+  approved: true,
+  tier: "premium",
+  reason: "Verified authentic collection"
+}, {
+  component: "CollectionVerifier",
+  action: "processVerificationRequest"
+});
+
 // Get verification status
 const verification = await collectionVerifierService.getCollectionVerification(
   collectionAddress
 );
+
+logger.info("Collection verification status", verification, {
+  component: "CollectionVerifier",
+  action: "getCollectionVerification"
+});
 ```
 
 ### Royalty Management
@@ -898,6 +1480,7 @@ Configure advanced royalties:
 
 ```typescript
 import { royaltyManagerService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Set royalties with multiple recipients
 await royaltyManagerService.setAdvancedRoyalty(
@@ -918,6 +1501,18 @@ await royaltyManagerService.setAdvancedRoyalty(
   ],
   true // useERC2981
 );
+
+logger.success("Advanced royalties configured", {
+  collectionAddress,
+  recipients: [
+    { recipient: creatorAddress, basisPoints: "2.5%", role: "creator" },
+    { recipient: platformAddress, basisPoints: "0.5%", role: "platform" }
+  ],
+  useERC2981: true
+}, {
+  component: "RoyaltyManager",
+  action: "setAdvancedRoyalty"
+});
 ```
 
 ### Timelock Actions
@@ -926,6 +1521,7 @@ Schedule time-delayed admin actions:
 
 ```typescript
 import { timelockService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Schedule an action
 const { actionId } = await timelockService.scheduleAction(
@@ -935,8 +1531,24 @@ const { actionId } = await timelockService.scheduleAction(
   "Update platform fee to 2%"
 );
 
+logger.info("Timelock action scheduled", {
+  actionId,
+  targetContract,
+  reason: "Update platform fee to 2%"
+}, {
+  component: "TimelockService",
+  action: "scheduleAction"
+});
+
 // Execute when ready
 await timelockService.executeAction(actionId);
+
+logger.success("Timelock action executed", {
+  actionId
+}, {
+  component: "TimelockService",
+  action: "executeAction"
+});
 ```
 
 ### Listing Validation
@@ -945,6 +1557,7 @@ Configure listing validation rules:
 
 ```typescript
 import { listingValidatorService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Update global settings
 await listingValidatorService.setGlobalSettings({
@@ -958,6 +1571,20 @@ await listingValidatorService.setGlobalSettings({
   enableQualityCheck: true,
   isActive: true,
 });
+
+logger.success("Global validation settings updated", {
+  minPrice: "0.001 ETH",
+  maxPrice: "10000 ETH",
+  minDuration: "1 hour",
+  maxDuration: "90 days",
+  cooldownPeriod: "5 minutes",
+  maxListingsPerUser: 100,
+  requireVerifiedCollection: false,
+  enableQualityCheck: true
+}, {
+  component: "ListingValidator",
+  action: "setGlobalSettings"
+});
 ```
 
 ## Analytics & History
@@ -968,21 +1595,46 @@ Track marketplace metrics:
 
 ```typescript
 import { listingHistoryTrackerService } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/logger";
 
 // Get global stats
 const stats = await listingHistoryTrackerService.getGlobalStats();
-console.log("Total volume:", stats.totalVolume);
-console.log("Total sales:", stats.totalSales);
+logger.info("Global marketplace stats", {
+  totalVolume: stats.totalVolume,
+  totalSales: stats.totalSales,
+  averagePrice: stats.averagePrice
+}, {
+  component: "Analytics",
+  action: "getGlobalStats"
+});
 
 // Get collection stats
 const collectionStats = await listingHistoryTrackerService.getCollectionStats(
   collectionAddress
 );
-console.log("Floor price:", collectionStats.floorPrice);
+logger.info("Collection stats", {
+  collectionAddress,
+  floorPrice: collectionStats.floorPrice,
+  ceilingPrice: collectionStats.ceilingPrice,
+  averagePrice: collectionStats.averagePrice,
+  totalVolume: collectionStats.totalVolume
+}, {
+  component: "Analytics",
+  action: "getCollectionStats"
+});
 
 // Get user stats
 const userStats = await listingHistoryTrackerService.getUserStats(userAddress);
-console.log("User volume:", userStats.totalVolumeAsSeller);
+logger.info("User stats", {
+  userAddress,
+  totalVolumeAsSeller: userStats.totalVolumeAsSeller,
+  totalVolumeAsBuyer: userStats.totalVolumeAsBuyer,
+  totalSales: userStats.totalSales,
+  totalPurchases: userStats.totalPurchases
+}, {
+  component: "Analytics",
+  action: "getUserStats"
+});
 ```
 
 ## Environment Configuration
@@ -1010,6 +1662,7 @@ NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET=0x...
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { CustomContract_ABI } from "@/lib/contracts/abis";
+import { logger } from "@/lib/utils/logger";
 
 export class CustomService {
   private provider: ethers.Provider | null = null;
@@ -1021,6 +1674,11 @@ export class CustomService {
   ): Promise<void> {
     this.provider = provider;
     this.signer = signer || null;
+    
+    logger.success("CustomService initialized", null, {
+      component: "CustomService",
+      action: "initialize"
+    });
   }
 
   private getContract(): ethers.Contract {
@@ -1031,8 +1689,26 @@ export class CustomService {
   }
 
   async customMethod(params: any): Promise<any> {
-    const contract = this.getContract();
-    return await contract.customFunction(params);
+    try {
+      const contract = this.getContract();
+      const result = await contract.customFunction(params);
+      
+      logger.info("Custom method executed", {
+        params,
+        result
+      }, {
+        component: "CustomService",
+        action: "customMethod"
+      });
+      
+      return result;
+    } catch (error) {
+      logger.error("Custom method failed", error, {
+        component: "CustomService",
+        action: "customMethod"
+      });
+      throw error;
+    }
   }
 }
 
@@ -1063,12 +1739,26 @@ export async function initializeServices(
 ### Transaction Monitoring
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 async function monitorTransaction(tx: ethers.ContractTransactionResponse) {
-  console.log("Transaction sent:", tx.hash);
+  logger.info("Transaction sent", {
+    transactionHash: tx.hash
+  }, {
+    component: "TransactionMonitor",
+    action: "monitorTransaction"
+  });
 
   // Wait for 1 confirmation
   const receipt = await tx.wait(1);
-  console.log("Transaction confirmed in block:", receipt.blockNumber);
+  logger.success("Transaction confirmed", {
+    transactionHash: tx.hash,
+    blockNumber: receipt.blockNumber,
+    gasUsed: receipt.gasUsed.toString()
+  }, {
+    component: "TransactionMonitor",
+    action: "monitorTransaction"
+  });
 
   // Parse logs
   const exchange = new ethers.Contract(
@@ -1087,13 +1777,22 @@ async function monitorTransaction(tx: ethers.ContractTransactionResponse) {
     })
     .filter((log) => log !== null);
 
-  console.log("Events emitted:", logs);
+  logger.info("Transaction events parsed", {
+    transactionHash: tx.hash,
+    eventCount: logs.length,
+    events: logs.map(log => log.name)
+  }, {
+    component: "TransactionMonitor",
+    action: "parseEvents"
+  });
 }
 ```
 
 ### Gas Estimation
 
 ```typescript
+import { logger } from "@/lib/utils/logger";
+
 async function createListingWithGasEstimate(params: ListingParams) {
   const exchange = exchangeService["getExchangeContract"](params.tokenType);
 
@@ -1106,7 +1805,13 @@ async function createListingWithGasEstimate(params: ListingParams) {
     parseInt(params.duration) * 24 * 60 * 60
   );
 
-  console.log("Estimated gas:", gasEstimate.toString());
+  logger.info("Gas estimation completed", {
+    estimatedGas: gasEstimate.toString(),
+    gasPrice: "auto"
+  }, {
+    component: "GasEstimator",
+    action: "estimateGas"
+  });
 
   // Send with custom gas limit
   const tx = await exchange.listNFT(
@@ -1117,6 +1822,15 @@ async function createListingWithGasEstimate(params: ListingParams) {
     parseInt(params.duration) * 24 * 60 * 60,
     { gasLimit: (gasEstimate * 120n) / 100n } // 20% buffer
   );
+
+  logger.info("Transaction sent with gas buffer", {
+    transactionHash: tx.hash,
+    gasLimit: ((gasEstimate * 120n) / 100n).toString(),
+    buffer: "20%"
+  }, {
+    component: "GasEstimator",
+    action: "sendTransaction"
+  });
 
   return tx;
 }
@@ -1130,6 +1844,8 @@ The contract integration layer provides:
 - **Type-Safe Services**: Full TypeScript support
 - **Clean Architecture**: Separation of concerns
 - **Extensible**: Add new services easily
+- **Production Logging**: Structured logging with context and performance tracking
+- **ESLint Enforcement**: No console.log statements allowed
 
 For architecture details, see [Code Structure Guide](./CODE_STRUCTURE.md).
 

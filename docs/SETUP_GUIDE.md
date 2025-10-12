@@ -8,6 +8,7 @@ Complete guide to setting up the Zuno Marketplace frontend application.
 - [Runtime Environment Configuration](#runtime-environment-configuration)
 - [Local Development (Real Contracts)](#local-development-real-contracts)
 - [Environment Variables](#environment-variables)
+- [Logging System](#logging-system)
 - [Troubleshooting](#troubleshooting)
 
 ## Quick Setup
@@ -391,6 +392,103 @@ NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x1234567890123456789012345678901234567890
 NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET=0x0987654321098765432109876543210987654321
 ```
 
+## Logging System
+
+The project uses a production-ready logging system instead of `console.log` statements.
+
+### Features
+
+- **Structured Logging**: Context-aware logging with component and action tracking
+- **Performance Tracking**: Built-in timer functionality
+- **Production Ready**: Automatic error monitoring integration (Sentry ready)
+- **Development/Production Modes**: Different logging behavior per environment
+- **ESLint Enforcement**: `no-console: "error"` rule prevents direct console usage
+
+### Usage
+
+```typescript
+import { logger } from "@/lib/utils/logger";
+
+// Basic logging with context
+logger.info(
+  "User action completed",
+  { userId: "0x123..." },
+  {
+    component: "UserProfile",
+    action: "updateProfile",
+  }
+);
+
+// Performance tracking
+logger.startTimer("api-call");
+// ... API call
+logger.endTimer("api-call", "API call completed");
+
+// Error logging with context
+logger.error("Failed to create listing", error, {
+  component: "ListingForm",
+  action: "createListing",
+});
+
+// Context management
+logger.setGlobalContext({ userId: "0x123...", sessionId: "abc..." });
+```
+
+### Log Levels
+
+- `logger.debug()` - Development debugging (development only)
+- `logger.info()` - General information (always logged)
+- `logger.warn()` - Warnings (always logged)
+- `logger.error()` - Errors (always logged + monitoring)
+- `logger.success()` - Success operations (always logged)
+
+### ESLint Configuration
+
+The project enforces clean code with ESLint rules:
+
+```javascript
+// eslint.config.mjs
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      "no-console": "error", // Prevents console.log usage
+      "no-debugger": "error", // Prevents debugger statements
+      // ... other rules
+    },
+  },
+];
+```
+
+### Best Practices
+
+```typescript
+// ❌ Don't use console.log
+console.log("Debug info");
+console.error("Error occurred");
+
+// ✅ Use logger instead
+import { logger } from "@/lib/utils/logger";
+logger.info("Debug info", data, {
+  component: "ComponentName",
+  action: "actionName",
+});
+logger.error("Error occurred", error, {
+  component: "ComponentName",
+  action: "actionName",
+});
+
+// ✅ Include context in all log calls
+logger.info(
+  "User action",
+  { userId, action },
+  {
+    component: "UserProfile",
+    action: "updateProfile",
+  }
+);
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -474,6 +572,24 @@ node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
 
 # Restart dev server
 npm run dev
+```
+
+#### "ESLint no-console error"
+
+**Cause**: Using `console.log` instead of the logger utility.
+
+**Solution**:
+
+```typescript
+// ❌ Don't use console.log
+console.log("Debug info");
+
+// ✅ Use logger instead
+import { logger } from "@/lib/utils/logger";
+logger.info("Debug info", data, {
+  component: "ComponentName",
+  action: "actionName",
+});
 ```
 
 #### MetaMask "Nonce too high" Error
@@ -613,8 +729,8 @@ See [`scripts/README.md`](../scripts/README.md) for complete documentation.
 
 After successful setup:
 
-1. **Learn the Architecture**: Read [Code Structure Guide](./docs/CODE_STRUCTURE.md)
-2. **Understand Contract Integration**: See [Contract Integration Guide](./docs/CONTRACT_INTEGRATION.md)
+1. **Learn the Architecture**: Read [Code Structure Guide](./CODE_STRUCTURE.md)
+2. **Understand Contract Integration**: See [Contract Integration Guide](./CONTRACT_INTEGRATION.md)
 3. **Review Contract Summary**: Check [README_CONTRACT.md](./README_CONTRACT.md)
 4. **Start Development**: Build your features!
 

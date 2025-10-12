@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { MarketplaceTimelock_ABI } from "@/lib/contracts/abis";
 
@@ -63,7 +64,10 @@ export class TimelockService {
     // Get timelock address from hub
     // TODO: Add getTimelock() to Hub
 
-    console.log("✅ TimelockService initialized");
+    logger.success("TimelockService initialized", null, {
+      component: "TimelockService",
+      action: "initialize",
+    });
   }
 
   /**

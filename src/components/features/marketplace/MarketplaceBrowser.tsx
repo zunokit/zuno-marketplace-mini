@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { logger } from "@/lib/utils/logger";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -408,19 +409,35 @@ export function MarketplaceBrowser() {
               isOwner={listing.seller === account}
               onBuy={() => {
                 // Handle buy logic
-                console.log("Buy listing:", listing.id);
+                logger.info(
+                  "Buy listing",
+                  { listingId: listing.id },
+                  { component: "MarketplaceBrowser", action: "buyListing" }
+                );
               }}
               onEdit={() => {
                 // Handle edit logic
-                console.log("Edit listing:", listing.id);
+                logger.info(
+                  "Edit listing",
+                  { listingId: listing.id },
+                  { component: "MarketplaceBrowser", action: "editListing" }
+                );
               }}
               onCancel={() => {
                 // Handle cancel logic
-                console.log("Cancel listing:", listing.id);
+                logger.info(
+                  "Cancel listing",
+                  { listingId: listing.id },
+                  { component: "MarketplaceBrowser", action: "cancelListing" }
+                );
               }}
               onView={() => {
                 // Handle view logic
-                console.log("View listing:", listing.id);
+                logger.info(
+                  "View listing",
+                  { listingId: listing.id },
+                  { component: "MarketplaceBrowser", action: "viewListing" }
+                );
               }}
             />
           ))}

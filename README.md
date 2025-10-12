@@ -26,6 +26,8 @@ A modern, production-ready NFT marketplace built with Next.js 15, TypeScript, an
 - 📊 **Analytics Dashboard** - Platform metrics and insights
 - 👑 **Admin Panel** - Marketplace management and controls
 - ⚙️ **Runtime Configuration** - In-app environment settings with localStorage persistence
+- 📝 **Production Logger** - Structured logging with context and performance tracking
+- 🚫 **No Console.log** - ESLint-enforced clean code with custom logger utility
 
 ## 🚀 Quick Start
 
@@ -197,12 +199,15 @@ src/
 │   │   └── env-storage.service.ts  # Environment persistence
 │   ├── hooks/            # Custom React hooks
 │   ├── utils/            # Utility functions
-│   │   └── env-config.ts # Environment configuration manager
+│   │   ├── env-config.ts # Environment configuration manager
+│   │   └── logger.ts     # Production-ready logger utility
 │   ├── constants/        # App constants
 │   ├── store/            # Redux store
 │   └── config/           # Configuration
 ├── types/                 # TypeScript types
-│   └── env-config.ts     # Environment configuration types
+│   ├── index.ts          # Main type exports
+│   ├── env-config.ts     # Environment configuration types
+│   └── events.ts         # Event-related types
 └── styles/               # Global styles
 ```
 
@@ -228,7 +233,8 @@ src/
 
 - **Build Tool:** Turbopack
 - **Type Safety:** TypeScript strict mode
-- **Code Quality:** ESLint + Prettier
+- **Code Quality:** ESLint + Prettier (with no-console enforcement)
+- **Logging:** Custom logger utility with structured logging
 - **Icons:** Lucide React
 - **Charts:** Recharts
 
@@ -242,6 +248,44 @@ src/
 - [**Architecture**](./docs/SERVICE_ARCHITECTURE.md) - Architecture
 
 ## 🎯 Key Concepts
+
+### Production-Ready Logging
+
+The project uses a custom logger utility instead of `console.log` statements:
+
+```typescript
+import { logger } from "@/lib/utils/logger";
+
+// Structured logging with context
+logger.info(
+  "User action completed",
+  { userId: "0x123..." },
+  {
+    component: "UserProfile",
+    action: "updateProfile",
+  }
+);
+
+// Performance tracking
+logger.startTimer("api-call");
+// ... API call
+logger.endTimer("api-call", "API call completed");
+
+// Error logging with context
+logger.error("Failed to create listing", error, {
+  component: "ListingForm",
+  action: "createListing",
+});
+```
+
+**Features:**
+
+- ✅ Structured logging with context
+- ✅ Performance tracking with timers
+- ✅ Production/development mode handling
+- ✅ Error monitoring integration (Sentry ready)
+- ✅ Log history and filtering
+- ✅ ESLint enforcement (no-console rule)
 
 ### Runtime Environment Configuration
 
@@ -436,6 +480,20 @@ await collectionService.setApprovalForAll(
 ```bash
 node scripts/extract-abis.js
 npm run dev
+```
+
+**"ESLint no-console error"**
+
+```typescript
+// ❌ Don't use console.log
+console.log("Debug info");
+
+// ✅ Use logger instead
+import { logger } from "@/lib/utils/logger";
+logger.info("Debug info", data, {
+  component: "ComponentName",
+  action: "actionName",
+});
 ```
 
 ## 🔐 Security

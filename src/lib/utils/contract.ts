@@ -3,6 +3,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "./logger";
 import { INTERFACE_IDS } from "@/lib/constants";
 import type {
   SafeCallConfig,
@@ -36,7 +37,11 @@ export async function safeContractCall<T>(
   } catch (error) {
     // Log error in development for debugging
     if (process.env.NODE_ENV === "development") {
-      console.debug(`Contract method ${methodName} failed:`, error);
+      logger.debug(`Contract method ${methodName} failed`, error, {
+        component: "ContractUtils",
+        action: "safeContractCall",
+        methodName,
+      });
     }
     return fallback;
   }

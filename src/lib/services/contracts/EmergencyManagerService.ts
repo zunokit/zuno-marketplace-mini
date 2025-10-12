@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { EmergencyManager_ABI } from "@/lib/contracts/abis";
 
@@ -54,13 +55,18 @@ export class EmergencyManagerService {
     // Get emergency manager address from hub
     // TODO: Add getEmergencyManager() to Hub
 
-    console.log("✅ EmergencyManagerService initialized");
+    logger.success("EmergencyManagerService initialized", null, {
+      component: "EmergencyManagerService",
+      action: "initialize",
+    });
   }
 
   /**
    * Get emergency manager contract instance
    */
-  private getEmergencyManagerContract(readOnly: boolean = false): ethers.Contract {
+  private getEmergencyManagerContract(
+    readOnly: boolean = false
+  ): ethers.Contract {
     if (readOnly && this.provider) {
       if (!this.emergencyManagerAddress) {
         throw new Error("EmergencyManager address not configured");
@@ -95,7 +101,9 @@ export class EmergencyManagerService {
    * Emergency pause the entire marketplace
    * @param reason Reason for the emergency pause
    */
-  async emergencyPause(reason: string): Promise<ethers.ContractTransactionResponse> {
+  async emergencyPause(
+    reason: string
+  ): Promise<ethers.ContractTransactionResponse> {
     const contract = this.getEmergencyManagerContract();
 
     const tx = await contract.emergencyPause(reason);
@@ -145,7 +153,7 @@ export class EmergencyManagerService {
       isPaused,
       pausedAt: BigInt(0), // You may need to track this separately
       pauseReason: "", // You may need to track this separately
-      cooldownRemaining
+      cooldownRemaining,
     };
   }
 
@@ -166,7 +174,11 @@ export class EmergencyManagerService {
   ): Promise<ethers.ContractTransactionResponse> {
     const contract = this.getEmergencyManagerContract();
 
-    const tx = await contract.setContractBlacklist(contractAddr, isBlacklisted, reason);
+    const tx = await contract.setContractBlacklist(
+      contractAddr,
+      isBlacklisted,
+      reason
+    );
     await tx.wait();
 
     return tx;
@@ -204,7 +216,11 @@ export class EmergencyManagerService {
   ): Promise<ethers.ContractTransactionResponse> {
     const contract = this.getEmergencyManagerContract();
 
-    const tx = await contract.batchSetContractBlacklist(contractAddrs, isBlacklisted, reason);
+    const tx = await contract.batchSetContractBlacklist(
+      contractAddrs,
+      isBlacklisted,
+      reason
+    );
     await tx.wait();
 
     return tx;
@@ -264,7 +280,11 @@ export class EmergencyManagerService {
   ): Promise<ethers.ContractTransactionResponse> {
     const contract = this.getEmergencyManagerContract();
 
-    const tx = await contract.emergencyResetCollection(nftContract, tokenIds, owners);
+    const tx = await contract.emergencyResetCollection(
+      nftContract,
+      tokenIds,
+      owners
+    );
     await tx.wait();
 
     return tx;
@@ -347,17 +367,18 @@ export class EmergencyManagerService {
    * Validate addresses
    */
   static validateAddresses(addresses: string[]): boolean {
-    return addresses.every(addr => ethers.isAddress(addr));
+    return addresses.every((addr) => ethers.isAddress(addr));
   }
 
   /**
    * Validate NFT reset params
    */
   static validateNFTResetParams(params: NFTResetParams[]): boolean {
-    return params.every(p =>
-      ethers.isAddress(p.nftContract) &&
-      ethers.isAddress(p.owner) &&
-      p.tokenId >= BigInt(0)
+    return params.every(
+      (p) =>
+        ethers.isAddress(p.nftContract) &&
+        ethers.isAddress(p.owner) &&
+        p.tokenId >= BigInt(0)
     );
   }
 
@@ -394,7 +415,7 @@ export class EmergencyManagerService {
     const filter = {
       address: this.emergencyManagerAddress,
       fromBlock,
-      toBlock
+      toBlock,
     };
 
     return await this.provider.getLogs(filter);
@@ -408,7 +429,7 @@ export class EmergencyManagerService {
     try {
       return contract.interface.parseLog({
         topics: log.topics as string[],
-        data: log.data
+        data: log.data,
       });
     } catch {
       return null;

@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import Image from "next/image";
 import {
   Card,
@@ -121,7 +122,10 @@ export default function BundlesPage() {
       setActiveBundles(active.map(convertBundleInfo));
       setUserBundles(user.map(convertBundleInfo));
     } catch (error) {
-      console.error("Error loading bundles:", error);
+      logger.error("Error loading bundles", error, {
+        component: "BundlesPage",
+        action: "loadBundles",
+      });
       toast({
         title: "Error Loading Bundles",
         description:

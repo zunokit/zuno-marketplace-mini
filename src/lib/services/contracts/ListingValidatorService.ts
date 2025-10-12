@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { ListingValidator_ABI } from "@/lib/contracts/abis";
 
@@ -13,36 +14,36 @@ import { ListingValidator_ABI } from "@/lib/contracts/abis";
 // ============================================================================
 
 export interface ValidationSettings {
-  minPrice: bigint;              // Minimum listing price
-  maxPrice: bigint;              // Maximum listing price
-  minDuration: bigint;           // Minimum listing duration (seconds)
-  maxDuration: bigint;           // Maximum listing duration (seconds)
-  cooldownPeriod: bigint;        // Cooldown between listings (seconds)
-  maxListingsPerUser: bigint;    // Maximum active listings per user
+  minPrice: bigint; // Minimum listing price
+  maxPrice: bigint; // Maximum listing price
+  minDuration: bigint; // Minimum listing duration (seconds)
+  maxDuration: bigint; // Maximum listing duration (seconds)
+  cooldownPeriod: bigint; // Cooldown between listings (seconds)
+  maxListingsPerUser: bigint; // Maximum active listings per user
   requireVerifiedCollection: boolean; // Whether collection must be verified
-  enableQualityCheck: boolean;   // Whether to perform quality checks
-  isActive: boolean;             // Whether these settings are active
+  enableQualityCheck: boolean; // Whether to perform quality checks
+  isActive: boolean; // Whether these settings are active
 }
 
 export interface UserCooldown {
-  lastListingTime: bigint;       // Last time user created a listing
-  activeListings: bigint;        // Number of active listings
-  totalListings: bigint;         // Total listings created
-  isRestricted: boolean;         // Whether user is restricted
+  lastListingTime: bigint; // Last time user created a listing
+  activeListings: bigint; // Number of active listings
+  totalListings: bigint; // Total listings created
+  isRestricted: boolean; // Whether user is restricted
 }
 
 export interface SpamTracker {
-  listingsInLastHour: bigint;    // Listings created in last hour
-  lastHourStart: bigint;         // Start of current hour window
-  suspiciousActivity: bigint;    // Suspicious activity score
-  isFlagged: boolean;            // Whether user is flagged for spam
+  listingsInLastHour: bigint; // Listings created in last hour
+  lastHourStart: bigint; // Start of current hour window
+  suspiciousActivity: bigint; // Suspicious activity score
+  isFlagged: boolean; // Whether user is flagged for spam
 }
 
 export interface ValidationResult {
-  isValid: boolean;              // Whether listing passes validation
-  errors: string[];              // Array of validation errors
-  qualityScore: bigint;          // Quality score (0-100)
-  recommendedPrice: bigint;      // Recommended price (if applicable)
+  isValid: boolean; // Whether listing passes validation
+  errors: string[]; // Array of validation errors
+  qualityScore: bigint; // Quality score (0-100)
+  recommendedPrice: bigint; // Recommended price (if applicable)
 }
 
 export interface ListingParams {
@@ -81,7 +82,10 @@ export class ListingValidatorService {
     // Get validator address from hub
     // TODO: Add getListingValidator() to Hub
 
-    console.log("✅ ListingValidatorService initialized");
+    logger.success("ListingValidatorService initialized", null, {
+      component: "ListingValidatorService",
+      action: "initialize",
+    });
   }
 
   /**
@@ -123,10 +127,7 @@ export class ListingValidatorService {
    * @param listing Listing parameters
    * @param user User address
    */
-  async validateListing(
-    listing: any,
-    user: string
-  ): Promise<ValidationResult> {
+  async validateListing(listing: any, user: string): Promise<ValidationResult> {
     const contract = this.getValidatorContract(true);
 
     const result = await contract.validateListing(listing, user);
@@ -135,7 +136,7 @@ export class ListingValidatorService {
       isValid: result.isValid,
       errors: result.errors,
       qualityScore: result.qualityScore,
-      recommendedPrice: result.recommendedPrice
+      recommendedPrice: result.recommendedPrice,
     };
   }
 
@@ -152,13 +153,17 @@ export class ListingValidatorService {
   ): Promise<ValidationResult> {
     const contract = this.getValidatorContract(true);
 
-    const result = await contract.validateListingUpdate(oldListing, newListing, user);
+    const result = await contract.validateListingUpdate(
+      oldListing,
+      newListing,
+      user
+    );
 
     return {
       isValid: result.isValid,
       errors: result.errors,
       qualityScore: result.qualityScore,
-      recommendedPrice: result.recommendedPrice
+      recommendedPrice: result.recommendedPrice,
     };
   }
 
@@ -192,7 +197,7 @@ export class ListingValidatorService {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -216,7 +221,7 @@ export class ListingValidatorService {
       maxListingsPerUser: settings.maxListingsPerUser,
       requireVerifiedCollection: settings.requireVerifiedCollection,
       enableQualityCheck: settings.enableQualityCheck,
-      isActive: settings.isActive
+      isActive: settings.isActive,
     };
   }
 
@@ -236,7 +241,7 @@ export class ListingValidatorService {
       maxListingsPerUser: settings.maxListingsPerUser,
       requireVerifiedCollection: settings.requireVerifiedCollection,
       enableQualityCheck: settings.enableQualityCheck,
-      isActive: settings.isActive
+      isActive: settings.isActive,
     };
   }
 
@@ -284,7 +289,7 @@ export class ListingValidatorService {
       lastListingTime: cooldown.lastListingTime,
       activeListings: cooldown.activeListings,
       totalListings: cooldown.totalListings,
-      isRestricted: cooldown.isRestricted
+      isRestricted: cooldown.isRestricted,
     };
   }
 
@@ -299,7 +304,7 @@ export class ListingValidatorService {
       listingsInLastHour: tracker.listingsInLastHour,
       lastHourStart: tracker.lastHourStart,
       suspiciousActivity: tracker.suspiciousActivity,
-      isFlagged: tracker.isFlagged
+      isFlagged: tracker.isFlagged,
     };
   }
 
@@ -339,7 +344,7 @@ export class ListingValidatorService {
       return {
         canCreate: false,
         reason: "User is restricted from creating listings",
-        cooldownRemaining: BigInt(0)
+        cooldownRemaining: BigInt(0),
       };
     }
 
@@ -352,7 +357,7 @@ export class ListingValidatorService {
       return {
         canCreate: false,
         reason: "Cooldown period not expired",
-        cooldownRemaining: remaining
+        cooldownRemaining: remaining,
       };
     }
 
@@ -361,7 +366,7 @@ export class ListingValidatorService {
       return {
         canCreate: false,
         reason: "Maximum active listings reached",
-        cooldownRemaining: BigInt(0)
+        cooldownRemaining: BigInt(0),
       };
     }
 
@@ -371,14 +376,14 @@ export class ListingValidatorService {
       return {
         canCreate: false,
         reason: "User flagged for suspicious activity",
-        cooldownRemaining: BigInt(0)
+        cooldownRemaining: BigInt(0),
       };
     }
 
     return {
       canCreate: true,
       reason: "OK",
-      cooldownRemaining: BigInt(0)
+      cooldownRemaining: BigInt(0),
     };
   }
 
@@ -497,7 +502,7 @@ export class ListingValidatorService {
   } {
     return {
       min: settings.minPrice,
-      max: settings.maxPrice
+      max: settings.maxPrice,
     };
   }
 
@@ -511,7 +516,10 @@ export class ListingValidatorService {
   /**
    * Validate duration range
    */
-  static isDurationInRange(duration: bigint, settings: ValidationSettings): boolean {
+  static isDurationInRange(
+    duration: bigint,
+    settings: ValidationSettings
+  ): boolean {
     return duration >= settings.minDuration && duration <= settings.maxDuration;
   }
 }
