@@ -5,6 +5,7 @@
 
 import type { EnvConfig } from "@/types/env-config";
 import { envStorageService } from "@/lib/services/env-storage.service";
+import { logger } from "@/lib/utils/logger";
 
 class EnvConfigManager {
   private static instance: EnvConfigManager;
@@ -104,7 +105,14 @@ class EnvConfigManager {
    */
   isUsingStoredConfig(): boolean {
     const isUsingStored = envStorageService.hasStoredConfig();
-    console.log("🔧 [EnvConfig] isUsingStoredConfig:", isUsingStored);
+    logger.debug(
+      "🔧 [EnvConfig] isUsingStoredConfig",
+      { isUsingStored },
+      {
+        component: "EnvConfig",
+        action: "isUsingStoredConfig",
+      }
+    );
     return isUsingStored;
   }
 
@@ -130,10 +138,17 @@ class EnvConfigManager {
         address = undefined;
     }
 
-    console.log(`🔧 [EnvConfig] getMarketplaceHubAddress(${chainId}):`, {
-      address,
-      source: isUsingStored ? "localStorage" : "process.env",
-    });
+    logger.debug(
+      `🔧 [EnvConfig] getMarketplaceHubAddress(${chainId})`,
+      {
+        address,
+        source: isUsingStored ? "localStorage" : "process.env",
+      },
+      {
+        component: "EnvConfig",
+        action: "getMarketplaceHubAddress",
+      }
+    );
 
     return address;
   }
