@@ -517,6 +517,35 @@ export class ListingHistoryTrackerService {
   }
 
   /**
+   * Get top collections by trading volume
+   */
+  async getTopCollectionsByVolume(limit: number = 4): Promise<string[]> {
+    try {
+      if (!this.provider || !this.trackerAddress) {
+        throw new Error("Service not initialized");
+      }
+
+      const contract = new ethers.Contract(
+        this.trackerAddress,
+        ListingHistoryTracker_ABI,
+        this.provider
+      );
+
+      // Get all collections and their volumes
+      const collections = await contract.getTopCollectionsByVolume(limit);
+      return collections;
+    } catch (error) {
+      logger.error("Error getting top collections by volume", error, {
+        component: "ListingHistoryTrackerService",
+        action: "getTopCollectionsByVolume",
+      });
+
+      // Return empty array as fallback
+      return [];
+    }
+  }
+
+  /**
    * Calculate volume statistics
    */
   static calculateVolumeStats(volumes: DailyVolume[]): {

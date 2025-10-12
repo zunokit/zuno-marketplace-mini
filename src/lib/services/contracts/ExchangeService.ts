@@ -322,6 +322,74 @@ export class ExchangeService {
   }
 
   /**
+   * Get recent listings for home page
+   */
+  async getRecentListings(limit: number = 6): Promise<any[]> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      // Get recent listings from both ERC721 and ERC1155 exchanges
+      const [erc721Listings, erc1155Listings] = await Promise.all([
+        this.getCollectionListings(
+          marketplaceHubService.getERC721Exchange(),
+          "ERC721"
+        ).catch(() => []),
+        this.getCollectionListings(
+          marketplaceHubService.getERC1155Exchange(),
+          "ERC1155"
+        ).catch(() => []),
+      ]);
+
+      // Combine and sort by timestamp (if available) or return first N
+      const allListings = [...erc721Listings, ...erc1155Listings];
+      return allListings.slice(0, limit);
+    } catch (error) {
+      logger.error("Error getting recent listings", error, {
+        component: "ExchangeService",
+        action: "getRecentListings",
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Get count of active listings
+   */
+  async getActiveListingsCount(): Promise<number> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      // Get active listings count from both exchanges
+      const [erc721Count, erc1155Count] = await Promise.all([
+        this.getCollectionListings(
+          marketplaceHubService.getERC721Exchange(),
+          "ERC721"
+        )
+          .then((listings) => listings.length)
+          .catch(() => 0),
+        this.getCollectionListings(
+          marketplaceHubService.getERC1155Exchange(),
+          "ERC1155"
+        )
+          .then((listings) => listings.length)
+          .catch(() => 0),
+      ]);
+
+      return erc721Count + erc1155Count;
+    } catch (error) {
+      logger.error("Error getting active listings count", error, {
+        component: "ExchangeService",
+        action: "getActiveListingsCount",
+      });
+      return 0;
+    }
+  }
+
+  /**
    * Format transaction error for user-friendly messages
    */
   private formatTransactionError(error: any): Error {
