@@ -182,6 +182,20 @@ class EnvStorageService {
       }
     }
 
+    // Validate RPC URLs format
+    const rpcUrlKeys = [
+      "NEXT_PUBLIC_RPC_URL_LOCAL",
+      "NEXT_PUBLIC_RPC_URL_SEPOLIA",
+      "NEXT_PUBLIC_RPC_URL_MAINNET",
+    ];
+
+    for (const key of rpcUrlKeys) {
+      const url = config[key];
+      if (url && !/^https?:\/\/.+/.test(url)) {
+        errors.push(`${key} must be a valid HTTP/HTTPS URL`);
+      }
+    }
+
     return {
       isValid: errors.length === 0,
       errors,

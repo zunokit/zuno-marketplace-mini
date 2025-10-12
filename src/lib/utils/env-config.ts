@@ -3,8 +3,8 @@
  * Priority: localStorage > process.env
  */
 
-import type { EnvConfig } from '@/types/env-config';
-import { envStorageService } from '@/lib/services/env-storage.service';
+import type { EnvConfig } from "@/types/env-config";
+import { envStorageService } from "@/lib/services/env-storage.service";
 
 class EnvConfigManager {
   private static instance: EnvConfigManager;
@@ -47,15 +47,20 @@ class EnvConfigManager {
     // Fallback to process.env
     const envConfig: EnvConfig = {
       NEXT_PUBLIC_DEFAULT_CHAIN_ID:
-        process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || '31337',
+        process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337",
       NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL:
         process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL,
       NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA:
         process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA,
       NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET:
         process.env.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET,
-      NEXT_PUBLIC_DEFAULT_ALLOWLIST:
-        process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
+      NEXT_PUBLIC_RPC_URL_LOCAL:
+        process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "http://127.0.0.1:8545",
+      NEXT_PUBLIC_RPC_URL_SEPOLIA:
+        process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA || "https://rpc.sepolia.org",
+      NEXT_PUBLIC_RPC_URL_MAINNET:
+        process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "https://eth.public-rpc.com",
+      NEXT_PUBLIC_DEFAULT_ALLOWLIST: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
     };
 
     this.cachedConfig = envConfig;
@@ -69,9 +74,7 @@ class EnvConfigManager {
     // Validate configuration
     const validation = envStorageService.validate(config);
     if (!validation.isValid) {
-      throw new Error(
-        `Invalid configuration: ${validation.errors.join(', ')}`
-      );
+      throw new Error(`Invalid configuration: ${validation.errors.join(", ")}`);
     }
 
     // Save to localStorage
@@ -81,7 +84,7 @@ class EnvConfigManager {
     this.cachedConfig = config;
 
     // Trigger reload to apply new configuration
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.location.reload();
     }
   }
@@ -94,7 +97,7 @@ class EnvConfigManager {
     this.cachedConfig = null;
 
     // Trigger reload to apply default configuration
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.location.reload();
     }
   }
@@ -128,8 +131,8 @@ class EnvConfigManager {
    * Get default chain ID
    */
   getDefaultChainId(): number {
-    const chainIdStr = this.get('NEXT_PUBLIC_DEFAULT_CHAIN_ID');
-    return parseInt(chainIdStr || '31337', 10);
+    const chainIdStr = this.get("NEXT_PUBLIC_DEFAULT_CHAIN_ID");
+    return parseInt(chainIdStr || "31337", 10);
   }
 
   /**
@@ -145,17 +148,35 @@ class EnvConfigManager {
    * Parses comma-separated string into array of addresses
    */
   getAllowlistAddresses(): string[] {
-    const allowlistStr = this.get('NEXT_PUBLIC_DEFAULT_ALLOWLIST');
+    const allowlistStr = this.get("NEXT_PUBLIC_DEFAULT_ALLOWLIST");
 
-    if (!allowlistStr || allowlistStr.trim() === '') {
+    if (!allowlistStr || allowlistStr.trim() === "") {
       return [];
     }
 
     // Split by comma and clean up addresses
     return allowlistStr
-      .split(',')
-      .map(addr => addr.trim())
-      .filter(addr => addr.length > 0);
+      .split(",")
+      .map((addr) => addr.trim())
+      .filter((addr) => addr.length > 0);
+  }
+
+  /**
+   * Get RPC URL for a specific chain
+   */
+  getRpcUrl(chainId: number): string | undefined {
+    const config = this.getConfig();
+
+    switch (chainId) {
+      case 31337:
+        return config.NEXT_PUBLIC_RPC_URL_LOCAL;
+      case 11155111:
+        return config.NEXT_PUBLIC_RPC_URL_SEPOLIA;
+      case 1:
+        return config.NEXT_PUBLIC_RPC_URL_MAINNET;
+      default:
+        return undefined;
+    }
   }
 }
 

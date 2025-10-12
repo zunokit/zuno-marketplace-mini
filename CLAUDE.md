@@ -97,7 +97,11 @@ const config = envConfigManager.getConfig();
 envConfigManager.setConfig({
   NEXT_PUBLIC_DEFAULT_CHAIN_ID: "31337",
   NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL: "0x...",
+  NEXT_PUBLIC_RPC_URL_LOCAL: "http://127.0.0.1:8545",
 });
+
+// Get RPC URL for specific chain
+const rpcUrl = envConfigManager.getRpcUrl(31337);
 
 // Clear config (removes localStorage + reloads page)
 envConfigManager.clearConfig();
@@ -435,6 +439,14 @@ src/
 - Replace `console.log` with `logger.info()` and add context
 - Replace `console.error` with `logger.error()` and add context
 - Import logger: `import { logger } from "@/lib/utils/logger"`
+
+**"BlockOutOfRangeError: block height is X but requested was Y"**
+
+- This error occurs when the blockchain is out of sync or restarted
+- **Solution**: Check your RPC URL configuration in Settings Modal
+- For local networks: Restart Anvil and redeploy contracts
+- For testnets: Ensure RPC endpoint is fully synchronized
+- Update RPC URLs via Settings Modal if using custom endpoints
 
 ## Additional Documentation
 

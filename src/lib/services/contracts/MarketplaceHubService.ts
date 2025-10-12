@@ -133,6 +133,16 @@ export class MarketplaceHubService {
         component: "MarketplaceHubService",
         action: "initialize",
       });
+
+      // Handle specific RPC errors
+      if (error?.message?.includes("BlockOutOfRangeError")) {
+        throw new Error(
+          `Blockchain synchronization error: The network appears to be out of sync or restarted. ` +
+            `Please check your RPC URL configuration in Settings and ensure the blockchain is fully synchronized. ` +
+            `If using a local network, restart Anvil and redeploy contracts.`
+        );
+      }
+
       throw new Error(
         `Failed to initialize MarketplaceHub: ${
           error?.message || "Unknown error"
