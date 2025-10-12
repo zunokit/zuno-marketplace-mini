@@ -75,26 +75,92 @@ npm run dev:local
 npm run dev:testnet  # Uses Sepolia (chain ID 11155111)
 ```
 
+### 5. Runtime Environment Configuration
+
+The app includes a Settings Modal for runtime configuration management:
+
+- **Location**: Click ⚙️ Settings button in header
+- **Storage**: `localStorage` with key `zuno-marketplace-env-config`
+- **Priority**: localStorage > process.env
+- **Features**: Import/paste/export .env files, validation, reset to defaults
+- **Use Cases**: Deployed apps, quick network switching, team collaboration
+
+**Configuration Manager API**:
+
+```typescript
+import { envConfigManager } from "@/lib/utils/env-config";
+
+// Get current config (localStorage > process.env)
+const config = envConfigManager.getConfig();
+
+// Set config (saves to localStorage + reloads page)
+envConfigManager.setConfig({
+  NEXT_PUBLIC_DEFAULT_CHAIN_ID: "31337",
+  NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL: "0x...",
+});
+
+// Clear config (removes localStorage + reloads page)
+envConfigManager.clearConfig();
+```
+
 ## Common Development Tasks
 
 ### Build & Development
 
 ```bash
 npm run dev              # Development with Turbopack
+npm run dev:local        # Start with local network (Chain ID: 31337)
+npm run dev:testnet      # Start with Sepolia testnet (Chain ID: 11155111)
 npm run build            # Production build
 npm run start            # Start production server
 npm run lint             # Run ESLint
+npm run lint:fix         # Run ESLint with auto-fix
 npm run type-check       # TypeScript type checking
-npm run clean            # Clean build artifacts
 ```
+
+### Utility Scripts
+
+**Via npm (recommended):**
+
+```bash
+npm run extract-abis         # Extract ABIs with default paths
+npm run extract-abis:help    # Show help and options
+npm run test:all             # Run all test scripts
+```
+
+**Direct usage:**
+
+```bash
+# Extract ABIs (supports custom paths)
+node scripts/extract-abis.js [--contracts-dir <path>] [--output-dir <path>]
+
+# Manage mint stages (TypeScript - requires tsx)
+npx tsx scripts/start-mint.ts <collection-address> [target-stage]
+
+# Manage allowlist (TypeScript - requires tsx)
+npx tsx scripts/manage-allowlist.ts <collection-address> <add|remove|check> <addresses...>
+
+# Collection creation (JavaScript)
+node scripts/collections/create-erc721.js
+node scripts/collections/create-erc1155.js
+
+# NFT minting (JavaScript)
+node scripts/nfts/mint-erc721.js <collection-address> [quantity] [recipient]
+node scripts/nfts/mint-erc1155.js <collection-address> <token-id> <amount> [recipient]
+```
+
+See `scripts/README.md` for complete script documentation.
 
 ### Working with Contracts
 
 **When contracts are updated**:
 
 1. Deploy new contracts in `zuno-marketplace-contracts`
-2. Copy MarketplaceHub address to `.env.local`
-3. Run `node scripts/extract-abis.js` to update ABIs
+2. Copy MarketplaceHub address to `.env.local` or Settings Modal
+3. Run extract-abis to update ABIs
+   - Via npm: `npm run extract-abis`
+   - With custom paths: `node scripts/extract-abis.js --contracts-dir /path/to/contracts/out`
+   - Show help: `npm run extract-abis:help`
 4. Restart dev server
 
 **Service initialization pattern**:
@@ -154,12 +220,19 @@ The project doesn't have formal tests yet. When testing manually:
 
 ### Environment Variables
 
-Required variables in `.env.local`:
+**Configuration Methods**:
+
+1. **Settings Modal** (Recommended): Click ⚙️ in header, import/paste/enter variables
+2. **`.env.local` file**: Traditional file-based configuration
+
+Required variables:
 
 ```bash
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337  # or 11155111 for Sepolia
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
 ```
+
+**Priority**: localStorage (Settings Modal) > process.env (.env.local)
 
 ### Path Aliases
 
@@ -205,10 +278,15 @@ src/
 │   ├── bundles/           # Bundle trading
 │   ├── offers/            # Offer management
 │   ├── admin/             # Admin dashboard
-│   └── analytics/         # Analytics dashboard
+│   ├── analytics/         # Analytics dashboard
+│   └── app-provider.tsx   # Client-side app wrapper with providers
 ├── components/
 │   ├── common/            # Shared components (Header, Footer, etc.)
 │   ├── features/          # Feature-specific components
+│   │   ├── env-config/   # Runtime environment configuration modal
+│   │   ├── collection/   # Collection management
+│   │   ├── marketplace/  # Marketplace features
+│   │   └── nft/          # NFT features
 │   └── ui/                # shadcn/ui components
 ├── lib/
 │   ├── contracts/
@@ -217,13 +295,16 @@ src/
 │   ├── services/
 │   │   ├── contracts/     # Contract service classes (13 services)
 │   │   ├── blockchain/    # Blockchain utilities
-│   │   └── web3/          # Web3 provider
+│   │   ├── web3/          # Web3 provider
+│   │   └── env-storage.service.ts  # Environment localStorage service
 │   ├── hooks/             # Custom React hooks
 │   ├── store/             # Redux store and slices
 │   ├── utils/             # Utility functions
+│   │   └── env-config.ts # Environment configuration manager
 │   ├── constants/         # App constants
 │   └── config/            # Configuration
 ├── types/                  # TypeScript type definitions
+│   └── env-config.ts      # Environment configuration types
 └── styles/                # Global styles
 ```
 
@@ -232,12 +313,19 @@ src/
 **"Hub not initialized"**
 
 - Ensure `initializeServices()` is called before using services
-- Check that `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` is set in `.env.local`
+- Check that `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` is set (Settings Modal or `.env.local`)
 
 **"Contract address not found"**
 
-- Verify correct chain ID (31337 = local, 11155111 = Sepolia)
-- Ensure contracts are deployed on the target network
+1. Using Settings Modal (Recommended):
+   - Click ⚙️ Settings in header
+   - Import/paste/enter configuration
+   - Save & Reload
+2. Using `.env.local`:
+   - Verify `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` or `NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA` is set
+   - Verify correct chain ID (31337 = local, 11155111 = Sepolia)
+   - Ensure contracts are deployed on the target network
+   - Restart dev server
 
 **"Transaction reverted: Not approved"**
 

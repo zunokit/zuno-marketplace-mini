@@ -20,6 +20,7 @@ import {
   Star,
   Activity,
   Volume2,
+  Settings,
 } from "lucide-react";
 
 // Demo data for landing page showcase
@@ -144,7 +145,9 @@ export default function Home() {
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6">
           <Badge variant="secondary" className="mb-3 sm:mb-4">
             <Star className="mr-1 h-3 w-3" />
-            <span className="text-xs sm:text-sm">The Premier NFT Marketplace</span>
+            <span className="text-xs sm:text-sm">
+              The Premier NFT Marketplace
+            </span>
           </Badge>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4 sm:mb-6">
@@ -164,7 +167,12 @@ export default function Home() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              className="w-full sm:w-auto"
+            >
               <Link href="/collections/create">Create Collection</Link>
             </Button>
           </div>
@@ -183,7 +191,9 @@ export default function Home() {
                 <stat.icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-xl sm:text-2xl font-bold">{stat.value}</div>
+                <div className="text-xl sm:text-2xl font-bold">
+                  {stat.value}
+                </div>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
                   <p className="text-xs text-muted-foreground">
                     {stat.description}
@@ -203,8 +213,12 @@ export default function Home() {
       <section className="py-8 sm:py-12 md:py-16">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Featured NFTs</h2>
-            <p className="text-sm sm:text-base text-muted-foreground">Handpicked by our curators</p>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
+              Featured NFTs
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Handpicked by our curators
+            </p>
           </div>
           <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href="/marketplace">
@@ -222,7 +236,9 @@ export default function Home() {
       <section className="py-8 sm:py-12 md:py-16">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">Trending Collections</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
+              Trending Collections
+            </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
               Most popular collections this week
             </p>
@@ -242,7 +258,9 @@ export default function Home() {
       {/* How It Works */}
       <section className="py-8 sm:py-12 md:py-16">
         <div className="text-center mb-8 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">How It Works</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-4">
+            How It Works
+          </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-4">
             Get started with Zuno in just a few simple steps
           </p>
