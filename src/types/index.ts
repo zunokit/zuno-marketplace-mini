@@ -372,3 +372,6 @@ export class TransactionError extends Error {
     this.name = "TransactionError";
   }
 }
+
+// Re-export event types
+export * from "./events";

@@ -27,6 +27,8 @@ const eslintConfig = [
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "react/no-unescaped-entities": "off",
+      "no-console": "error",
+      "no-debugger": "error",
     },
   },
 ];

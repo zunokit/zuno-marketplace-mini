@@ -6,6 +6,7 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import {
   ERC721Collection_ABI,
   ERC1155Collection_ABI,
@@ -313,9 +314,15 @@ export class CollectionService {
       tx.wait()
         .then((receipt: ethers.ContractTransactionReceipt | null) => {
           if (receipt && receipt.status === 1) {
-            console.log(`\n✅ Successfully minted ${quantity} ERC721 NFT(s)`);
-            console.log(`   Contract: ${collectionAddress}`);
-            console.log(`   Transaction: ${receipt.hash}`);
+            logger.success(
+              `Successfully minted ${quantity} ERC721 NFT(s)`,
+              {
+                contract: collectionAddress,
+                transaction: receipt.hash,
+                quantity,
+              },
+              { component: "CollectionService", action: "mintERC721" }
+            );
 
             // Parse Transfer events to get token IDs
             const transferEvents = receipt.logs
@@ -332,21 +339,38 @@ export class CollectionService {
               );
 
             if (transferEvents.length > 0) {
-              console.log(`   Token ID(s):`);
-              transferEvents.forEach((event: ethers.LogDescription | null) => {
-                if (event?.args?.tokenId) {
-                  console.log(`   - #${event.args.tokenId.toString()}`);
-                }
-              });
+              const tokenIds = transferEvents
+                .filter(
+                  (event: ethers.LogDescription | null) => event?.args?.tokenId
+                )
+                .map((event: ethers.LogDescription | null) =>
+                  event!.args.tokenId.toString()
+                );
+
+              logger.info(
+                `Minted token IDs: ${tokenIds.join(", ")}`,
+                {
+                  tokenIds,
+                  count: tokenIds.length,
+                },
+                { component: "CollectionService", action: "mintERC721" }
+              );
             }
 
-            console.log(
-              `\n💡 To import to MetaMask: Add NFT with contract ${collectionAddress}`
+            logger.info(
+              `To import to MetaMask: Add NFT with contract ${collectionAddress}`,
+              {
+                contract: collectionAddress,
+              },
+              { component: "CollectionService", action: "mintERC721" }
             );
           }
         })
         .catch((err: Error) => {
-          console.error("Failed to get mint receipt:", err.message);
+          logger.error("Failed to get mint receipt", err, {
+            component: "CollectionService",
+            action: "mintERC721",
+          });
         });
 
       return tx;
@@ -421,9 +445,21 @@ export class CollectionService {
     tx.wait()
       .then((receipt: ethers.ContractTransactionReceipt | null) => {
         if (receipt && receipt.status === 1) {
-          console.log(`\n✅ Successfully minted ${amount} ERC1155 NFT(s)`);
-          console.log(`   Contract: ${collectionAddress}`);
-          console.log(`   Transaction: ${receipt.hash}`);
+          logger.success(
+            `Successfully minted ${amount} ERC1155 NFT(s)`,
+            {
+              contract: collectionAddress,
+              amount,
+            },
+            { component: "CollectionService", action: "mintERC1155" }
+          );
+          logger.info(
+            `ERC1155 mint transaction completed`,
+            {
+              transaction: receipt.hash,
+            },
+            { component: "CollectionService", action: "mintERC1155" }
+          );
 
           // Parse Transfer events to get token IDs
           const mintedTokens: MintedToken[] = [];

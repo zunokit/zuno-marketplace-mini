@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { web3Provider, Web3Connection } from "@/lib/services/web3/Web3Provider";
 import { getDefaultChainId } from "@/lib/config/networks";
+import { logger } from "@/lib/utils/logger";
 
 export function useWeb3() {
   const [connection, setConnection] = useState<Web3Connection | null>(null);
@@ -45,7 +46,10 @@ export function useWeb3() {
       }
     } catch (err: any) {
       setError(err.message || "Failed to connect wallet");
-      console.error("Wallet connection error:", err);
+      logger.error("Wallet connection error", err, {
+        component: "useWeb3",
+        action: "connectWallet",
+      });
     } finally {
       setIsConnecting(false);
     }
@@ -71,7 +75,10 @@ export function useWeb3() {
       setConnection(newConn);
     } catch (err: any) {
       setError(err.message || "Failed to switch network");
-      console.error("Network switch error:", err);
+      logger.error("Network switch error", err, {
+        component: "useWeb3",
+        action: "switchNetwork",
+      });
     }
   }, []);
 

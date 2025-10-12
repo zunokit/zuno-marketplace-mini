@@ -5,10 +5,16 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ethers } from "ethers";
 import { eventService } from "@/lib/services/blockchain/EventService";
 import { collectionService } from "@/lib/services/contracts/CollectionService";
+import {
+  ParsedEvent,
+  ActivityEvent,
+  ActivityTrackingProps,
+  EventFilter,
+} from "@/types/events";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,25 +41,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-
-export interface ActivityEvent {
-  id: string;
-  type: "mint" | "transfer" | "sale" | "list" | "approval";
-  from: string;
-  to: string;
-  tokenId?: string;
-  amount?: string;
-  price?: string;
-  transactionHash: string;
-  blockNumber: number;
-  timestamp: number;
-  description: string;
-}
-
-interface ActivityTrackingProps {
-  collectionAddress: string;
-  tokenType: "ERC721" | "ERC1155";
-}
+import { logger } from "@/lib/utils/logger";
 
 export function ActivityTracking({
   collectionAddress,
@@ -63,7 +51,7 @@ export function ActivityTracking({
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<string>("all");
+  const [filter, setFilter] = useState<EventFilter>("all");
   const [subscriptionIds, setSubscriptionIds] = useState<string[]>([]);
 
   const loadActivities = useCallback(
@@ -131,8 +119,21 @@ export function ActivityTracking({
           .sort((a, b) => b.timestamp - a.timestamp);
 
         setActivities(processedActivities);
+        logger.info(
+          `Loaded ${processedActivities.length} activities for collection ${collectionAddress}`,
+          { activityCount: processedActivities.length },
+          {
+            component: "ActivityTracking",
+            action: "loadActivities",
+            collectionAddress,
+          }
+        );
       } catch (err: any) {
-        console.error("Failed to load activities:", err);
+        logger.error("Failed to load activities", err, {
+          component: "ActivityTracking",
+          action: "loadActivities",
+          collectionAddress,
+        });
         // Don't show error for common issues like no provider or no events
         if (err.message?.includes("No provider available")) {
           setError("Please connect your wallet to view activity");
@@ -150,141 +151,133 @@ export function ActivityTracking({
     [collectionAddress, tokenType]
   );
 
-  const processEvent = (event: any, index: number): ActivityEvent | null => {
-    try {
-      console.log("Raw event data:", event);
-      const { name, args, blockNumber, transactionHash, timestamp } = event;
+  const processEvent = useCallback(
+    (event: ParsedEvent, index: number): ActivityEvent | null => {
+      try {
+        const { name, args, blockNumber, transactionHash, timestamp } = event;
 
-      // If event doesn't have proper data structure, skip it
-      if (!name || !args || args.length === 0) {
-        console.log("Skipping event with invalid structure");
+        // Skip events with invalid structure
+        if (!name || !args || (Array.isArray(args) && args.length === 0)) {
+          return null;
+        }
+
+        let type: ActivityEvent["type"] = "transfer";
+        let description = "";
+        let from = "";
+        let to = "";
+        let tokenId = "";
+        let amount = "";
+        let price = "";
+
+        switch (name) {
+          case "Transfer":
+            // Handle both named and indexed arguments
+            from = args.from || args[0] || "";
+            to = args.to || args[1] || "";
+            tokenId = args.tokenId?.toString() || args[2]?.toString() || "";
+
+            // Skip events with empty data
+            if (!from && !to && !tokenId) {
+              return null;
+            }
+
+            // Skip invalid transfers (both from and to are zero address)
+            if (from === ethers.ZeroAddress && to === ethers.ZeroAddress) {
+              return null;
+            }
+
+            if (from === ethers.ZeroAddress) {
+              type = "mint";
+              description = tokenId ? `Minted token #${tokenId}` : "Minted NFT";
+            } else if (to === ethers.ZeroAddress) {
+              type = "transfer";
+              description = tokenId ? `Burned token #${tokenId}` : "Burned NFT";
+            } else {
+              type = "transfer";
+              description = tokenId
+                ? `Transferred token #${tokenId}`
+                : "Transferred NFT";
+            }
+            break;
+
+          case "TransferSingle":
+            from = args.from || args[0] || "";
+            to = args.to || args[1] || "";
+            tokenId = args.id?.toString() || args[2]?.toString() || "";
+            amount = args.value?.toString() || args[3]?.toString() || "";
+
+            if (from === ethers.ZeroAddress) {
+              type = "mint";
+              description = tokenId
+                ? `Minted ${amount} of token #${tokenId}`
+                : `Minted ${amount} NFTs`;
+            } else {
+              type = "transfer";
+              description = tokenId
+                ? `Transferred ${amount} of token #${tokenId}`
+                : `Transferred ${amount} NFTs`;
+            }
+            break;
+
+          case "TransferBatch":
+            from = args.from || args[0] || "";
+            to = args.to || args[1] || "";
+            const ids = args.ids || args[2] || [];
+            const values = args.values || args[3] || [];
+
+            type = "transfer";
+            description = `Batch transferred ${ids.length} tokens`;
+            break;
+
+          case "Approval":
+            from = args.owner || args[0] || "";
+            to = args.approved || args[1] || "";
+            tokenId = args.tokenId?.toString() || args[2]?.toString() || "";
+
+            type = "approval";
+            description = `Approved token #${tokenId}`;
+            break;
+
+          case "ApprovalForAll":
+            from = args.owner || args[0] || "";
+            to = args.operator || args[1] || "";
+            const approved = args.approved || args[2] || false;
+
+            type = "approval";
+            description = approved
+              ? "Approved all tokens"
+              : "Revoked all approvals";
+            break;
+
+          default:
+            return null;
+        }
+
+        const activityEvent = {
+          id: `${transactionHash || "unknown"}-${index}`,
+          type,
+          from,
+          to,
+          tokenId,
+          amount,
+          price,
+          transactionHash: transactionHash || "unknown",
+          blockNumber,
+          timestamp: timestamp || Date.now(),
+          description,
+        };
+
+        return activityEvent;
+      } catch (error) {
+        logger.error("Failed to process event", error, {
+          component: "ActivityTracking",
+          action: "processEvent",
+        });
         return null;
       }
-
-      let type: ActivityEvent["type"] = "transfer";
-      let description = "";
-      let from = "";
-      let to = "";
-      let tokenId = "";
-      let amount = "";
-      let price = "";
-
-      switch (name) {
-        case "Transfer":
-          // Handle both named and indexed arguments
-          from = args.from || args[0] || "";
-          to = args.to || args[1] || "";
-          tokenId = args.tokenId?.toString() || args[2]?.toString() || "";
-
-          // Debug log to see what we're getting
-          console.log("Processing Transfer event:", {
-            from,
-            to,
-            tokenId,
-            args,
-            argsLength: args.length,
-            argsKeys: Object.keys(args),
-          });
-
-          // If args is empty or all values are empty, skip this event
-          if (!from && !to && !tokenId) {
-            console.log("Skipping event with empty data");
-            return null;
-          }
-
-          // Skip invalid transfers (both from and to are zero address)
-          if (from === ethers.ZeroAddress && to === ethers.ZeroAddress) {
-            return null;
-          }
-
-          if (from === ethers.ZeroAddress) {
-            type = "mint";
-            description = tokenId ? `Minted token #${tokenId}` : "Minted NFT";
-          } else if (to === ethers.ZeroAddress) {
-            type = "transfer";
-            description = tokenId ? `Burned token #${tokenId}` : "Burned NFT";
-          } else {
-            type = "transfer";
-            description = tokenId
-              ? `Transferred token #${tokenId}`
-              : "Transferred NFT";
-          }
-          break;
-
-        case "TransferSingle":
-          from = args.from || args[0] || "";
-          to = args.to || args[1] || "";
-          tokenId = args.id?.toString() || args[2]?.toString() || "";
-          amount = args.value?.toString() || args[3]?.toString() || "";
-
-          if (from === ethers.ZeroAddress) {
-            type = "mint";
-            description = tokenId
-              ? `Minted ${amount} of token #${tokenId}`
-              : `Minted ${amount} NFTs`;
-          } else {
-            type = "transfer";
-            description = tokenId
-              ? `Transferred ${amount} of token #${tokenId}`
-              : `Transferred ${amount} NFTs`;
-          }
-          break;
-
-        case "TransferBatch":
-          from = args.from || args[0] || "";
-          to = args.to || args[1] || "";
-          const ids = args.ids || args[2] || [];
-          const values = args.values || args[3] || [];
-
-          type = "transfer";
-          description = `Batch transferred ${ids.length} tokens`;
-          break;
-
-        case "Approval":
-          from = args.owner || args[0] || "";
-          to = args.approved || args[1] || "";
-          tokenId = args.tokenId?.toString() || args[2]?.toString() || "";
-
-          type = "approval";
-          description = `Approved token #${tokenId}`;
-          break;
-
-        case "ApprovalForAll":
-          from = args.owner || args[0] || "";
-          to = args.operator || args[1] || "";
-          const approved = args.approved || args[2] || false;
-
-          type = "approval";
-          description = approved
-            ? "Approved all tokens"
-            : "Revoked all approvals";
-          break;
-
-        default:
-          return null;
-      }
-
-      const activityEvent = {
-        id: `${transactionHash || "unknown"}-${index}`,
-        type,
-        from,
-        to,
-        tokenId,
-        amount,
-        price,
-        transactionHash: transactionHash || "unknown",
-        blockNumber,
-        timestamp: timestamp || Date.now(),
-        description,
-      };
-
-      console.log("Created activity event:", activityEvent);
-      return activityEvent;
-    } catch (error) {
-      console.error("Failed to process event:", error);
-      return null;
-    }
-  };
+    },
+    []
+  );
 
   const subscribeToEvents = useCallback(async () => {
     try {
@@ -320,15 +313,23 @@ export function ActivityTracking({
 
       // Listen for new events
       const handleNewEvent = (event: CustomEvent) => {
-        console.log("Received new collection event:", event.detail);
         if (event.detail.collection === collectionAddress) {
-          // Process the new event immediately - use event.detail.data
           const newActivity = processEvent(event.detail.data, Date.now());
           if (newActivity) {
-            console.log("Adding new activity to list:", newActivity);
+            logger.info(
+              `New activity received: ${newActivity.type} for collection ${collectionAddress}`,
+              {
+                activityType: newActivity.type,
+                tokenId: newActivity.tokenId,
+                transactionHash: newActivity.transactionHash,
+              },
+              {
+                component: "ActivityTracking",
+                action: "handleNewEvent",
+                collectionAddress,
+              }
+            );
             setActivities((prev) => [newActivity, ...prev]);
-          } else {
-            console.log("Event processed but no activity created");
           }
         }
       };
@@ -359,12 +360,14 @@ export function ActivityTracking({
     };
   }, [collectionAddress, tokenType]);
 
-  const filteredActivities = activities.filter((activity) => {
-    if (filter === "all") return true;
-    return activity.type === filter;
-  });
+  const filteredActivities = useMemo(() => {
+    return activities.filter((activity) => {
+      if (filter === "all") return true;
+      return activity.type === filter;
+    });
+  }, [activities, filter]);
 
-  const getActivityIcon = (type: ActivityEvent["type"]) => {
+  const getActivityIcon = useCallback((type: ActivityEvent["type"]) => {
     switch (type) {
       case "mint":
         return <Package className="h-4 w-4 text-green-500" />;
@@ -379,9 +382,9 @@ export function ActivityTracking({
       default:
         return <Activity className="h-4 w-4" />;
     }
-  };
+  }, []);
 
-  const getActivityBadge = (type: ActivityEvent["type"]) => {
+  const getActivityBadge = useCallback((type: ActivityEvent["type"]) => {
     const variants = {
       mint: "default",
       transfer: "secondary",
@@ -395,17 +398,17 @@ export function ActivityTracking({
         {type.charAt(0).toUpperCase() + type.slice(1)}
       </Badge>
     );
-  };
+  }, []);
 
-  const formatAddress = (address: string) => {
+  const formatAddress = useCallback((address: string) => {
     if (!address || address === ethers.ZeroAddress) return "Zero Address";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
+  }, []);
 
-  const openEtherscan = (txHash: string) => {
+  const openEtherscan = useCallback((txHash: string) => {
     const explorerUrl = `https://etherscan.io/tx/${txHash}`;
     window.open(explorerUrl, "_blank");
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -469,7 +472,10 @@ export function ActivityTracking({
             Activity
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Select value={filter} onValueChange={setFilter}>
+            <Select
+              value={filter}
+              onValueChange={(value) => setFilter(value as EventFilter)}
+            >
               <SelectTrigger className="w-32">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue />

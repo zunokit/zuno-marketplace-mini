@@ -6,20 +6,12 @@
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { TokenType } from "@/types";
-
-export interface EventSubscription {
-  id: string;
-  contract: ethers.Contract;
-  event: string;
-  filter?: any;
-  callback: (event: any) => void;
-  unsubscribe: () => void;
-}
+import { ParsedEvent, EventSubscription } from "@/types/events";
 
 export class EventService {
   private provider: ethers.Provider | null = null;
   private subscriptions: Map<string, EventSubscription> = new Map();
-  private eventHistory: Map<string, any[]> = new Map();
+  private eventHistory: Map<string, ParsedEvent[]> = new Map();
 
   /**
    * Initialize the service
@@ -69,7 +61,13 @@ export class EventService {
     }
 
     logger.info(
-      `Subscribed to ${subscriptionIds.length} events for collection ${address}`
+      `Subscribed to ${subscriptionIds.length} events for collection ${address}`,
+      {
+        collectionAddress: address,
+        tokenType,
+        eventCount: subscriptionIds.length,
+        events: eventsToSubscribe,
+      }
     );
 
     return subscriptionIds;
@@ -81,7 +79,7 @@ export class EventService {
   async subscribe(
     contract: ethers.Contract,
     eventName: string,
-    callback: (event: any) => void,
+    callback: (event: ParsedEvent) => void,
     filter?: any
   ): Promise<string> {
     const id = `${contract.target}_${eventName}_${Date.now()}`;
@@ -92,8 +90,11 @@ export class EventService {
 
       // Subscribe to event
       const listener = (event: any) => {
-        console.log("Raw ethers event:", event);
         const parsedEvent = this.parseEvent([event], contract, eventName);
+        logger.debug(`Event received: ${eventName} on ${contract.target}`, {
+          blockNumber: parsedEvent.blockNumber,
+          transactionHash: parsedEvent.transactionHash,
+        });
         callback(parsedEvent);
         this.addToHistory(id, parsedEvent);
       };
@@ -114,7 +115,11 @@ export class EventService {
 
       this.subscriptions.set(id, subscription);
 
-      logger.debug(`Subscribed to ${eventName} on ${contract.target}`);
+      logger.info(`Subscribed to ${eventName} on ${contract.target}`, {
+        subscriptionId: id,
+        contractAddress: contract.target,
+        eventName,
+      });
 
       return id;
     } catch (error) {
@@ -155,7 +160,7 @@ export class EventService {
     fromBlock?: number,
     toBlock?: number,
     filter?: any
-  ): Promise<any[]> {
+  ): Promise<ParsedEvent[]> {
     try {
       const eventFilter = contract.filters[eventName]?.(...(filter || []));
 
@@ -181,13 +186,12 @@ export class EventService {
     args: any[],
     contract: ethers.Contract,
     eventName: string
-  ): any {
+  ): ParsedEvent {
     try {
-      const event = args[0]; // Event is the first argument now
+      const event = args[0];
 
-      console.log("Parsing event:", event);
-
-      if (event && event.log) {
+      // Handle event with log data (from queryFilter)
+      if (event?.log) {
         const parsed = contract.interface.parseLog({
           topics: event.log.topics,
           data: event.log.data,
@@ -195,7 +199,7 @@ export class EventService {
 
         return {
           name: eventName,
-          address: contract.target,
+          address: contract.target as string,
           blockNumber: event.log.blockNumber,
           transactionHash: event.log.transactionHash,
           args: parsed?.args || {},
@@ -203,11 +207,11 @@ export class EventService {
         };
       }
 
-      // Handle direct event object from ethers
-      if (event && event.args) {
+      // Handle direct event object from ethers (from event listeners)
+      if (event?.args) {
         return {
           name: eventName,
-          address: contract.target,
+          address: contract.target as string,
           blockNumber: event.blockNumber,
           transactionHash: event.transactionHash,
           args: event.args,
@@ -215,15 +219,29 @@ export class EventService {
         };
       }
 
+      // Fallback for malformed events
       return {
         name: eventName,
-        address: contract.target,
+        address: contract.target as string,
+        blockNumber: 0,
+        transactionHash: "",
         args: event || {},
         timestamp: Date.now(),
       };
     } catch (error) {
-      logger.error("Failed to parse event", error);
-      return { name: eventName, args: args, timestamp: Date.now() };
+      logger.error("Failed to parse event", {
+        error,
+        eventName,
+        contract: contract.target,
+      });
+      return {
+        name: eventName,
+        address: contract.target as string,
+        blockNumber: 0,
+        transactionHash: "",
+        args: {},
+        timestamp: Date.now(),
+      };
     }
   }
 
@@ -233,9 +251,15 @@ export class EventService {
   private handleCollectionEvent(
     address: string,
     eventName: string,
-    event: any
+    event: ParsedEvent
   ): void {
-    logger.debug(`Collection event: ${eventName} on ${address}`, event);
+    logger.info(`Collection event: ${eventName} on ${address}`, {
+      eventName,
+      collectionAddress: address,
+      blockNumber: event.blockNumber,
+      transactionHash: event.transactionHash,
+      timestamp: event.timestamp,
+    });
 
     // Emit custom events for UI updates
     if (typeof window !== "undefined") {
@@ -254,7 +278,7 @@ export class EventService {
   /**
    * Add event to history
    */
-  private addToHistory(subscriptionId: string, event: any): void {
+  private addToHistory(subscriptionId: string, event: ParsedEvent): void {
     if (!this.eventHistory.has(subscriptionId)) {
       this.eventHistory.set(subscriptionId, []);
     }
@@ -292,7 +316,7 @@ export class EventService {
   async watchTransaction(
     hash: string,
     expectedEvents?: string[]
-  ): Promise<{ receipt: ethers.TransactionReceipt; events: any[] }> {
+  ): Promise<{ receipt: ethers.TransactionReceipt; events: ParsedEvent[] }> {
     if (!this.provider) {
       throw new Error("Provider not available");
     }
@@ -303,7 +327,7 @@ export class EventService {
       throw new Error("Transaction receipt not found");
     }
 
-    const events: any[] = [];
+    const events: ParsedEvent[] = [];
 
     // Parse logs for expected events
     if (expectedEvents && receipt.logs) {
@@ -312,11 +336,12 @@ export class EventService {
           // Try to decode the log
           // This would need the contract interface to properly decode
           events.push({
+            name: "Unknown",
             address: log.address,
-            topics: log.topics,
-            data: log.data,
             blockNumber: receipt.blockNumber,
             transactionHash: receipt.hash,
+            args: {},
+            timestamp: Date.now(),
           });
         } catch {
           // Skip logs that can't be decoded
