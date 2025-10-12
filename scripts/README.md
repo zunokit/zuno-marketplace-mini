@@ -5,6 +5,7 @@ This directory contains test scripts for creating collections and minting NFTs o
 ## Setup
 
 1. Ensure your root `.env` file has the required configuration:
+
 ```bash
 # Check if .env exists in root
 cat ../.env
@@ -14,11 +15,13 @@ cp ../.env.example ../.env
 ```
 
 2. The scripts use the same environment variables as the main application:
+
 - `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` - Hub address for local network
 - `NEXT_PUBLIC_RPC_URL_LOCAL` - RPC URL for local network
 - Similar variables for Sepolia and Mainnet
 
 3. Make sure dependencies are installed:
+
 ```bash
 # In root directory
 npm install
@@ -40,19 +43,96 @@ scripts/
 │   └── batch-mint-erc1155.js
 ├── utils/              # Shared utilities
 │   └── config.js
+├── extract-abis.js     # Extract ABIs from contracts
+├── start-mint.ts       # Start minting for collections
+├── manage-allowlist.ts # Manage collection allowlists
 └── test-all.js         # Run all tests
 ```
 
 ## Usage
 
+### Extract ABIs from Contracts
+
+Extract contract ABIs from the compiled Foundry artifacts:
+
+```bash
+# Extract with default paths
+node scripts/extract-abis.js
+
+# Specify custom contracts directory
+node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
+
+# Specify custom output directory
+node scripts/extract-abis.js --output-dir /path/to/output
+
+# Use both custom paths
+node scripts/extract-abis.js --contracts-dir /path/to/contracts/out --output-dir /path/to/output
+
+# Show help
+node scripts/extract-abis.js --help
+```
+
+**Default paths:**
+
+- Contracts directory: `../zuno-marketplace-contracts/out`
+- Output directory: `./src/lib/contracts/abis`
+
+**Features:**
+
+- Automatically creates output directory if it doesn't exist
+- Validates contracts directory exists before extraction
+- Generates TypeScript index file with all ABI exports
+- Extracts 23+ contract ABIs in one command
+
+### Manage Mint Stages
+
+Update mint stage for a collection (requires collection owner):
+
+```bash
+# Progress to next stage (not_started -> allowlist -> public)
+npx tsx scripts/start-mint.ts 0xCollectionAddress
+
+# Skip directly to public mint (stage 2)
+npx tsx scripts/start-mint.ts 0xCollectionAddress 2
+
+# Skip to allowlist stage (stage 1)
+npx tsx scripts/start-mint.ts 0xCollectionAddress 1
+```
+
+**Mint Stages:**
+
+- `0`: Not Started - No minting allowed
+- `1`: Allowlist - Only allowlisted addresses can mint
+- `2`: Public - Anyone can mint
+
+### Manage Allowlist
+
+Add or remove addresses from collection allowlist:
+
+```bash
+# Add single address to allowlist
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress add 0xUserAddress
+
+# Add multiple addresses
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress add 0xAddr1 0xAddr2 0xAddr3
+
+# Remove address from allowlist
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress remove 0xUserAddress
+
+# Check if address is in allowlist
+npx tsx scripts/manage-allowlist.ts 0xCollectionAddress check 0xUserAddress
+```
+
 ### Create Collections
 
 #### ERC721 Collection
+
 ```bash
 node scripts/collections/create-erc721.js
 ```
 
 #### ERC1155 Collection
+
 ```bash
 node scripts/collections/create-erc1155.js
 ```
@@ -60,6 +140,7 @@ node scripts/collections/create-erc1155.js
 ### Mint NFTs
 
 #### Single ERC721 NFT
+
 ```bash
 # Mint 1 NFT
 node scripts/nfts/mint-erc721.js 0xCollectionAddress
@@ -72,6 +153,7 @@ node scripts/nfts/mint-erc721.js 0xCollectionAddress 1 0xRecipientAddress
 ```
 
 #### Single ERC1155 Token
+
 ```bash
 # Mint 100 units of token ID 1
 node scripts/nfts/mint-erc1155.js 0xCollectionAddress 1 100
@@ -83,6 +165,7 @@ node scripts/nfts/mint-erc1155.js 0xCollectionAddress 1 100 0xRecipientAddress
 ### Batch Mint NFTs
 
 #### Batch ERC721 NFTs
+
 ```bash
 # Mint 20 NFTs
 node scripts/nfts/batch-mint-erc721.js 0xCollectionAddress 20
@@ -92,17 +175,19 @@ node scripts/nfts/batch-mint-erc721.js 0xCollectionAddress 10 0xAddress1 0xAddre
 ```
 
 #### Batch ERC1155 Tokens
+
 ```bash
 # Mint multiple token IDs with different amounts
 node scripts/nfts/batch-mint-erc1155.js 0xCollectionAddress 1,2,3 100,200,300
 
 # This mints:
 # - 100 units of token ID 1
-# - 200 units of token ID 2  
+# - 200 units of token ID 2
 # - 300 units of token ID 3
 ```
 
 ### Run All Tests
+
 ```bash
 # Test everything: create collections and mint NFTs
 node scripts/test-all.js
@@ -129,22 +214,27 @@ NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET=
 ## Features
 
 ### Smart Contract Detection
+
 The scripts automatically detect and use the correct mint functions:
+
 - For ERC721: `mint`, `publicMint`, `safeMint`, `mintBatch`, etc.
 - For ERC1155: `mint`, `publicMint`, `mintBatch`, etc.
 
 ### Error Handling
+
 - Validates addresses and parameters
 - Checks mint prices and balances
 - Verifies collection metadata
 - Handles missing functions gracefully
 
 ### Batch Operations
+
 - Batch minting with automatic fallback to sequential minting
 - Multiple recipient support
 - Supply limit detection and adjustment
 
 ### Network Support
+
 - Local network (Anvil/Hardhat)
 - Sepolia testnet
 - Ethereum mainnet
@@ -152,15 +242,19 @@ The scripts automatically detect and use the correct mint functions:
 ## Troubleshooting
 
 ### "Hub address not configured"
+
 Make sure to set the hub address in your `.env` file for the network you're using.
 
 ### "No compatible mint function found"
+
 The collection contract might have different mint function names or requirements. Check the contract's ABI.
 
 ### "Collection name or symbol is empty"
+
 This is a known issue with some smart contract implementations. The collection is created but metadata might not be stored correctly.
 
 ### Transaction Reverts
+
 - Check you have enough ETH for gas and mint fees
 - Verify the collection hasn't reached max supply
 - Ensure you're using the correct network

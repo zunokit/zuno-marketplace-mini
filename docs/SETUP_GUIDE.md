@@ -5,6 +5,7 @@ Complete guide to setting up the Zuno Marketplace frontend application.
 ## Table of Contents
 
 - [Quick Setup](#quick-setup)
+- [Runtime Environment Configuration](#runtime-environment-configuration)
 - [Local Development (Real Contracts)](#local-development-real-contracts)
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
@@ -43,9 +44,122 @@ pnpm install
 cp .env.example .env.local
 ```
 
-4. **Start local development**
+4. **Start development server**
 
-Follow the steps below to set up local blockchain development.
+```bash
+npm run dev
+# or
+pnpm dev
+```
+
+5. **Configure environment variables**
+
+Use the built-in Settings Modal (recommended) or manually edit `.env.local`.
+
+## Runtime Environment Configuration
+
+The marketplace includes a user-friendly Settings Modal for managing environment variables at runtime. This is the **recommended** configuration method.
+
+### Using the Settings Modal
+
+#### Step 1: Open Settings
+
+1. Start the application (`npm run dev`)
+2. Click the **⚙️ Settings** button in the header
+3. The Environment Configuration modal will open
+
+#### Step 2: Configure Variables
+
+Choose one of three methods:
+
+**Method 1: Import File**
+
+1. Click **Import File** button
+2. Select your `.env.local` or `.env` file
+3. Variables automatically populate in the form
+
+**Method 2: Paste Content**
+
+1. Click **Paste .env** button
+2. Paste your .env file content into the text area
+3. Click **Load Variables**
+4. All variables auto-populate
+
+Example paste format:
+
+```bash
+# Chain configuration
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
+```
+
+**Method 3: Manual Input**
+
+- Enter each variable value directly in the form
+- Required fields are marked with `*`
+- Hover over field labels for descriptions
+
+#### Step 3: Save Configuration
+
+1. Review all variables
+2. Click **Save & Reload**
+3. Configuration saves to `localStorage`
+4. Page automatically reloads with new settings
+
+#### Managing Configuration
+
+**Export Configuration**
+
+- Click **Export** button to download current config as `.env.local` file
+- Share with team members or use for backup
+
+**Reset to Defaults**
+
+- Click **Reset to Defaults** (visible when using stored config)
+- Clears localStorage and uses `.env.local` file values
+- Requires confirmation
+
+**View Current Status**
+
+- Header shows "(Using stored config)" when localStorage is active
+- Form displays current values from localStorage or `.env.local`
+
+### Configuration Priority
+
+The app uses the following priority order:
+
+1. **localStorage** (set via Settings Modal) - Highest priority
+2. **process.env** (build-time .env.local) - Fallback
+
+This allows you to override build-time configuration at runtime, perfect for:
+
+- Deployed apps (Vercel, Netlify, etc.)
+- Testing different networks without rebuilding
+- Quick environment switching
+- Team collaboration with different settings
+
+### Technical Details
+
+**Storage:**
+
+- Key: `zuno-marketplace-env-config`
+- Location: Browser localStorage
+- Format: JSON
+- Persistence: Survives page reloads and browser restarts
+
+**Validation:**
+
+- Required fields must be filled
+- Chain ID must be 1, 11155111, or 31337
+- Contract addresses must be valid Ethereum addresses (0x + 40 hex chars)
+- Real-time error messages guide corrections
+
+**Security:**
+
+- Configuration stored locally in browser only
+- Not transmitted to any servers
+- Cleared when localStorage is cleared
+- Reset button available for instant cleanup
 
 ## Local Development (Real Contracts)
 
@@ -86,7 +200,18 @@ MarketplaceHub deployed at: 0x5FbDB2315678afecb367f032d93F642f64180aa3
 
 #### Step 3: Configure Frontend
 
-Edit `.env.local`:
+**Option A: Using Settings Modal (Recommended)**
+
+1. Start the app: `npm run dev`
+2. Click ⚙️ Settings in header
+3. Enter or paste configuration:
+   ```
+   NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
+   NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
+   ```
+4. Click **Save & Reload**
+
+**Option B: Edit `.env.local` file**
 
 ```bash
 NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
@@ -99,11 +224,23 @@ NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
 # Return to frontend directory
 cd ../zuno-marketplace-mini
 
-# Extract ABIs from compiled contracts
+# Extract ABIs from compiled contracts (default paths)
 node scripts/extract-abis.js
+
+# Or with custom contracts directory
+node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
+
+# Show all options
+node scripts/extract-abis.js --help
 ```
 
-This will extract 18+ contract ABIs and generate TypeScript exports.
+This will extract 23+ contract ABIs and generate TypeScript exports.
+
+**Available options:**
+
+- `--contracts-dir <path>`: Custom contracts output directory (default: `../zuno-marketplace-contracts/out`)
+- `--output-dir <path>`: Custom ABIs output directory (default: `./src/lib/contracts/abis`)
+- `--help`: Show help message
 
 #### Step 5: Start Frontend
 
@@ -157,7 +294,18 @@ forge script script/deploy/DeployAll.s.sol \
 
 #### Step 4: Configure Frontend
 
-Edit `.env.local`:
+**Option A: Using Settings Modal (Recommended)**
+
+1. Start the app: `npm run dev`
+2. Click ⚙️ Settings in header
+3. Enter configuration:
+   ```
+   NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x... # Your deployed address
+   NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
+   ```
+4. Click **Save & Reload**
+
+**Option B: Edit `.env.local` file**
 
 ```bash
 NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x... # Your deployed address
@@ -169,6 +317,9 @@ NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
 ```bash
 cd ../zuno-marketplace-mini
 node scripts/extract-abis.js
+
+# Or with custom paths if needed
+# node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
 ```
 
 #### Step 6: Start Frontend
@@ -185,33 +336,59 @@ npm run dev
 
 ## Environment Variables
 
+### Configuration Methods
+
+1. **Settings Modal (Recommended)**: Click ⚙️ in header, configure visually
+2. **`.env.local` file**: Traditional file-based configuration
+
 ### Required Variables
 
-| Variable                       | Description                | Example                                 |
-| ------------------------------ | -------------------------- | --------------------------------------- |
-| `NEXT_PUBLIC_DEFAULT_CHAIN_ID` | Default blockchain network | `31337` (local) or `11155111` (Sepolia) |
+| Variable                       | Description                | Example                                 | Required |
+| ------------------------------ | -------------------------- | --------------------------------------- | -------- |
+| `NEXT_PUBLIC_DEFAULT_CHAIN_ID` | Default blockchain network | `31337` (local) or `11155111` (Sepolia) | Yes      |
 
 ### Contract Addresses
 
-| Variable                              | Description                 | When to Use                  |
-| ------------------------------------- | --------------------------- | ---------------------------- |
-| `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL`   | Local network Hub address   | Local development with Anvil |
-| `NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA` | Sepolia testnet Hub address | Testnet deployment           |
+| Variable                              | Description                 | When to Use                  | Required |
+| ------------------------------------- | --------------------------- | ---------------------------- | -------- |
+| `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL`   | Local network Hub address   | Local development with Anvil | No       |
+| `NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA` | Sepolia testnet Hub address | Testnet deployment           | No       |
+| `NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET` | Mainnet Hub address         | Production deployment        | No       |
+
+**Note**: At least one contract address must be provided for the network you're using.
 
 ### Complete .env.local Examples
 
 **Local Network:**
 
 ```bash
-NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
+# Chain Configuration
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
+
+# Contract Addresses
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
 ```
 
 **Sepolia Testnet:**
 
 ```bash
-NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x1234567890123456789012345678901234567890
+# Chain Configuration
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111
+
+# Contract Addresses
+NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x1234567890123456789012345678901234567890
+```
+
+**All Networks (for deployed apps):**
+
+```bash
+# Chain Configuration
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337
+
+# Contract Addresses - All Networks
+NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x5FbDB2315678afecb367f032d93F642f64180aa3
+NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA=0x1234567890123456789012345678901234567890
+NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET=0x0987654321098765432109876543210987654321
 ```
 
 ## Troubleshooting
@@ -233,9 +410,18 @@ await initializeServices(provider, signer);
 
 #### "Contract address not found" Error
 
-**Cause**: Missing or incorrect MarketplaceHub address in `.env.local`.
+**Cause**: Missing or incorrect MarketplaceHub address.
 
 **Solution**:
+
+**Using Settings Modal (Recommended):**
+
+1. Click ⚙️ Settings in header
+2. Import/paste/enter your configuration
+3. Ensure correct MarketplaceHub address for your network
+4. Click **Save & Reload**
+
+**Using .env.local file:**
 
 1. Check `.env.local` file exists
 2. Verify `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL` or `NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA` is set
@@ -282,6 +468,9 @@ await exchangeService.createListing({ ... });
 ```bash
 # Re-extract ABIs
 node scripts/extract-abis.js
+
+# Or with custom paths
+node scripts/extract-abis.js --contracts-dir /path/to/contracts/out
 
 # Restart dev server
 npm run dev
@@ -353,7 +542,13 @@ npm install
 
 ### Custom RPC Endpoints
 
-Add to `.env.local`:
+**Option A: Settings Modal**
+
+1. Click ⚙️ Settings
+2. Add variables manually or via paste
+3. Save & Reload
+
+**Option B: .env.local file**
 
 ```bash
 NEXT_PUBLIC_SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/YOUR_KEY
@@ -381,8 +576,38 @@ export const CONTRACT_ADDRESSES = {
 
 1. Deploy contracts locally with Anvil
 2. Keep Anvil running in background
-3. Configure MarketplaceHub address in `.env.local`
-4. Benefit from fast transactions and unlimited ETH
+3. Configure MarketplaceHub address via Settings Modal or `.env.local`
+4. Extract ABIs: `node scripts/extract-abis.js`
+5. Benefit from fast transactions and unlimited ETH
+
+### Script Usage
+
+**Extract ABIs:**
+
+```bash
+node scripts/extract-abis.js                                    # Default paths
+node scripts/extract-abis.js --contracts-dir /custom/path       # Custom contracts dir
+node scripts/extract-abis.js --output-dir ./custom/abis         # Custom output dir
+node scripts/extract-abis.js --help                             # Show help
+```
+
+**Manage Collections (TypeScript):**
+
+```bash
+npx tsx scripts/start-mint.ts 0xCollection                      # Progress mint stage
+npx tsx scripts/start-mint.ts 0xCollection 2                    # Skip to public mint
+npx tsx scripts/manage-allowlist.ts 0xCollection add 0xAddr     # Add to allowlist
+npx tsx scripts/manage-allowlist.ts 0xCollection check 0xAddr   # Check allowlist
+```
+
+**Create & Mint (JavaScript):**
+
+```bash
+node scripts/collections/create-erc721.js                       # Create ERC721
+node scripts/nfts/mint-erc721.js 0xCollection 5                # Mint 5 NFTs
+```
+
+See [`scripts/README.md`](../scripts/README.md) for complete documentation.
 
 ## Next Steps
 

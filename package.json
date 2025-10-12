@@ -11,7 +11,9 @@
     "dev:testnet": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111 npm run dev",
     "dev:local": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337 npm run dev",
     "type-check": "tsc --noEmit",
-    "clean": "rm -rf .next dist node_modules/.cache"
+    "extract-abis": "node scripts/extract-abis.js",
+    "extract-abis:help": "node scripts/extract-abis.js --help",
+    "test:all": "node scripts/test-all.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
