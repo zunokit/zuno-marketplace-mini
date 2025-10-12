@@ -54,6 +54,8 @@ class EnvConfigManager {
         process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA,
       NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET:
         process.env.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET,
+      NEXT_PUBLIC_DEFAULT_ALLOWLIST:
+        process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
     };
 
     this.cachedConfig = envConfig;
@@ -136,6 +138,24 @@ class EnvConfigManager {
   isConfiguredForChain(chainId: number): boolean {
     const hubAddress = this.getMarketplaceHubAddress(chainId);
     return !!hubAddress && hubAddress.length > 0;
+  }
+
+  /**
+   * Get allowlist addresses as array
+   * Parses comma-separated string into array of addresses
+   */
+  getAllowlistAddresses(): string[] {
+    const allowlistStr = this.get('NEXT_PUBLIC_DEFAULT_ALLOWLIST');
+
+    if (!allowlistStr || allowlistStr.trim() === '') {
+      return [];
+    }
+
+    // Split by comma and clean up addresses
+    return allowlistStr
+      .split(',')
+      .map(addr => addr.trim())
+      .filter(addr => addr.length > 0);
   }
 }
 

@@ -5,6 +5,7 @@
 
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
 import { initializeServices } from "@/lib/services/contracts";
+import { envConfigManager } from "@/lib/utils/env-config";
 
 export class Web3Utils {
   private provider: BrowserProvider | JsonRpcProvider | null = null;
@@ -46,7 +47,8 @@ export class Web3Utils {
    * Initialize fallback JSON-RPC provider for read-only operations
    */
   private initializeFallbackProvider(): void {
-    const chainId = process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337";
+    const chainIdNum = envConfigManager.getDefaultChainId();
+    const chainId = chainIdNum.toString();
     let rpcUrl = "";
 
     // Determine RPC URL based on chain ID

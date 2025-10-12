@@ -8,34 +8,28 @@ import { envConfigManager } from "@/lib/utils/env-config";
  * Hub provides getAllAddresses() to discover all contract addresses
  * Only MarketplaceHub address is required per network
  *
- * Priority: localStorage (runtime config) > process.env
+ * Priority: localStorage (runtime config) > process.env (handled by envConfigManager)
  */
 export const CONTRACT_ADDRESSES = {
   // Ethereum Mainnet
   1: {
     // Single entry point - Hub provides all other addresses
     MARKETPLACE_HUB:
-      envConfigManager.get("NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET") ||
-      process.env.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET ||
-      "",
+      envConfigManager.getMarketplaceHubAddress(1) || "",
   },
 
   // Sepolia Testnet
   11155111: {
     // Single entry point - Hub provides all other addresses
     MARKETPLACE_HUB:
-      envConfigManager.get("NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA") ||
-      process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA ||
-      "",
+      envConfigManager.getMarketplaceHubAddress(11155111) || "",
   },
 
   // Local development (Hardhat/Anvil)
   31337: {
     // Single entry point - Hub provides all other addresses
     MARKETPLACE_HUB:
-      envConfigManager.get("NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL") ||
-      process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL ||
-      "",
+      envConfigManager.getMarketplaceHubAddress(31337) || "",
   },
 };
 

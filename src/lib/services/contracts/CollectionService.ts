@@ -819,6 +819,7 @@ export class CollectionService {
     const methodConfigs = {
       name: { fallback: "Unknown Collection" },
       symbol: { fallback: "UNKNOWN" },
+      description: { fallback: "" },
       totalSupply: {
         fallback: "0",
         transform: (v: bigint) => v.toString(),
@@ -831,33 +832,79 @@ export class CollectionService {
         fallback: "0",
         transform: (v: bigint) => ethers.formatEther(v),
       },
+      royaltyFee: {
+        fallback: "0",
+        transform: (v: bigint) => v.toString(),
+      },
     };
 
     // Fetch all basic properties in parallel
-    const [name, symbol, totalSupply, maxSupply, mintPrice] = await Promise.all(
-      [
-        safeContractCall(collection, "name", methodConfigs.name.fallback),
-        safeContractCall(collection, "symbol", methodConfigs.symbol.fallback),
+    // Try both standard and custom method names for better compatibility
+    const [
+      name,
+      symbol,
+      description,
+      totalSupply,
+      maxSupply,
+      mintPrice,
+      royaltyFee,
+    ] = await Promise.all([
+      safeContractCall(collection, "name", methodConfigs.name.fallback),
+      safeContractCall(collection, "symbol", methodConfigs.symbol.fallback),
+      safeContractCall(
+        collection,
+        "getDescription",
+        methodConfigs.description.fallback
+      ),
+      // Try getTotalMinted() first (custom), then totalSupply() (standard)
+      safeContractCall(
+        collection,
+        "getTotalMinted",
+        methodConfigs.totalSupply.fallback,
+        methodConfigs.totalSupply.transform
+      ).catch(() =>
         safeContractCall(
           collection,
           "totalSupply",
           methodConfigs.totalSupply.fallback,
           methodConfigs.totalSupply.transform
-        ),
+        )
+      ),
+      // Try getMaxSupply() first (custom), then maxSupply() (standard)
+      safeContractCall(
+        collection,
+        "getMaxSupply",
+        methodConfigs.maxSupply.fallback,
+        methodConfigs.maxSupply.transform
+      ).catch(() =>
         safeContractCall(
           collection,
           "maxSupply",
           methodConfigs.maxSupply.fallback,
           methodConfigs.maxSupply.transform
-        ),
+        )
+      ),
+      // Try getMintPrice() first (custom), then mintPrice() (standard)
+      safeContractCall(
+        collection,
+        "getMintPrice",
+        methodConfigs.mintPrice.fallback,
+        methodConfigs.mintPrice.transform
+      ).catch(() =>
         safeContractCall(
           collection,
           "mintPrice",
           methodConfigs.mintPrice.fallback,
           methodConfigs.mintPrice.transform
-        ),
-      ]
-    );
+        )
+      ),
+      safeContractCall(
+        collection,
+        "getRoyaltyFee",
+        methodConfigs.royaltyFee.fallback,
+        methodConfigs.royaltyFee.transform
+      ),
+    ]);
 
     // Handle baseURI with multiple fallback strategies
     const baseURI = await this.getBaseURI(collection);
@@ -866,10 +913,12 @@ export class CollectionService {
       address,
       name,
       symbol,
+      description,
       totalSupply,
       tokenType,
       maxSupply,
       mintPrice,
+      royaltyFee,
       baseURI,
     };
   }

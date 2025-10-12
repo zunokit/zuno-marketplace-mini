@@ -13,6 +13,7 @@ export interface EnvVariable {
 export interface EnvConfig {
   NEXT_PUBLIC_DEFAULT_CHAIN_ID: string;
   NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL?: string;
+  NEXT_PUBLIC_DEFAULT_ALLOWLIST?: string;
   NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA?: string;
   NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET?: string;
   [key: string]: string | undefined;
@@ -48,6 +49,12 @@ export const ENV_VARIABLE_DEFINITIONS: EnvVariable[] = [
     value: '',
     description: 'MarketplaceHub contract address for Ethereum mainnet',
     required: false,
+  },
+  {
+    key: 'NEXT_PUBLIC_DEFAULT_ALLOWLIST',
+    value: '',
+    description: 'Default allowlist addresses (comma-separated)',
+    required: true,
   },
 ];
 

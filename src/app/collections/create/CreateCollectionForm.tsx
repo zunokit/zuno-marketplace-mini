@@ -47,6 +47,7 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { envConfigManager } from "@/lib/utils/env-config";
 
 // Form validation schema
 const formSchema = z.object({
@@ -129,7 +130,8 @@ export default function CreateCollectionForm() {
       maxSupply: "10000",
       mintLimitPerWallet: "50",
       mintPrice: "10",
-      allowlist: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
+      // Convert comma-separated allowlist to newline-separated for textarea
+      allowlist: envConfigManager.getAllowlistAddresses().join("\n"),
       baseTokenURI: "https://api.example.com/metadata/",
     },
   });
