@@ -1,5 +1,6 @@
 import { ENV } from "@/lib/config/env";
 import { envConfigManager } from "@/lib/utils/env-config";
+import { logger } from "@/lib/utils/logger";
 
 /**
  * Contract addresses for different networks
@@ -14,22 +15,19 @@ export const CONTRACT_ADDRESSES = {
   // Ethereum Mainnet
   1: {
     // Single entry point - Hub provides all other addresses
-    MARKETPLACE_HUB:
-      envConfigManager.getMarketplaceHubAddress(1) || "",
+    MARKETPLACE_HUB: envConfigManager.getMarketplaceHubAddress(1) || "",
   },
 
   // Sepolia Testnet
   11155111: {
     // Single entry point - Hub provides all other addresses
-    MARKETPLACE_HUB:
-      envConfigManager.getMarketplaceHubAddress(11155111) || "",
+    MARKETPLACE_HUB: envConfigManager.getMarketplaceHubAddress(11155111) || "",
   },
 
   // Local development (Hardhat/Anvil)
   31337: {
     // Single entry point - Hub provides all other addresses
-    MARKETPLACE_HUB:
-      envConfigManager.getMarketplaceHubAddress(31337) || "",
+    MARKETPLACE_HUB: envConfigManager.getMarketplaceHubAddress(31337) || "",
   },
 };
 
@@ -40,8 +38,14 @@ export function getContractAddresses(chainId: number = 31337) {
   const addresses =
     CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES];
   if (!addresses) {
-    console.warn(`No contract addresses found for chain ID: ${chainId}`);
-    console.log(`Supported chains: ${Object.keys(CONTRACT_ADDRESSES).join(", ")}`);
+    logger.warn(
+      `No contract addresses found for chain ID: ${chainId}`,
+      {
+        chainId,
+        supportedChains: Object.keys(CONTRACT_ADDRESSES),
+      },
+      { component: "ContractAddresses", action: "getHubAddress" }
+    );
     // Return empty configuration for unsupported networks
     return {
       MARKETPLACE_HUB: "",
@@ -59,13 +63,13 @@ export function getMarketplaceHubAddress(chainId: number = 31337): string {
 
   // Don't throw for unsupported networks, return empty string
   if (!address) {
-    console.warn(
-      `MarketplaceHub address not configured for chain ${chainId}`
+    logger.warn(
+      `MarketplaceHub address not configured for chain ${chainId}`,
+      { chainId },
+      { component: "ContractAddresses", action: "getHubAddress" }
     );
     return "";
   }
 
   return address;
 }
-
-

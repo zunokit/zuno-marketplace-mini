@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
+
 /**
  * Timelock Management Admin Page
  * Manage time-locked administrative actions for security
@@ -61,7 +63,10 @@ export default function TimelockManagementPage() {
       const actions = await timelockService.getPendingActions();
       setPendingActions(actions);
     } catch (error) {
-      console.error("Failed to load pending actions:", error);
+      logger.error("Failed to load pending actions", error, {
+        component: "AdminTimelockPage",
+        action: "loadPendingActions",
+      });
     }
   };
 

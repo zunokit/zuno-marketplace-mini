@@ -496,25 +496,40 @@ export class CollectionService {
           }
 
           if (mintedTokens.length > 0) {
-            console.log(`   Token ID(s):`);
-            mintedTokens.forEach(({ tokenId, amount }) => {
-              console.log(`   - #${tokenId}: ${amount} NFT(s)`);
-            });
+            const tokenSummary = mintedTokens
+              .map(({ tokenId, amount }) => `#${tokenId}: ${amount} NFT(s)`)
+              .join(", ");
 
-            if (mintedTokens.length === 1) {
-              console.log(
-                `\n💡 To import to MetaMask: Add NFT with contract ${collectionAddress} and token ID ${mintedTokens[0].tokenId}`
-              );
-            } else {
-              console.log(
-                `\n💡 To import to MetaMask: Add each token ID separately in MetaMask NFTs tab`
-              );
-            }
+            logger.info(
+              `ERC1155 minted tokens: ${tokenSummary}`,
+              {
+                mintedTokens,
+                count: mintedTokens.length,
+              },
+              { component: "CollectionService", action: "mintERC1155" }
+            );
+
+            const metaMaskMessage =
+              mintedTokens.length === 1
+                ? `To import to MetaMask: Add NFT with contract ${collectionAddress} and token ID ${mintedTokens[0].tokenId}`
+                : `To import to MetaMask: Add each token ID separately in MetaMask NFTs tab`;
+
+            logger.info(
+              metaMaskMessage,
+              {
+                contract: collectionAddress,
+                tokenCount: mintedTokens.length,
+              },
+              { component: "CollectionService", action: "mintERC1155" }
+            );
           }
         }
       })
       .catch((err: Error) => {
-        console.error("Failed to get mint receipt:", err.message);
+        logger.error("Failed to get mint receipt", err, {
+          component: "CollectionService",
+          action: "mintERC1155",
+        });
       });
 
     return tx;

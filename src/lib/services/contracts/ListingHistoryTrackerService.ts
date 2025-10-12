@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { ListingHistoryTracker_ABI } from "@/lib/contracts/abis";
 
@@ -20,7 +21,7 @@ export enum TransactionType {
   OFFER_ACCEPTED = 4,
   AUCTION_STARTED = 5,
   BID_PLACED = 6,
-  AUCTION_ENDED = 7
+  AUCTION_ENDED = 7,
 }
 
 export interface TransactionRecord {
@@ -105,7 +106,10 @@ export class ListingHistoryTrackerService {
     // Get tracker address from hub
     // TODO: Add getListingHistoryTracker() to Hub
 
-    console.log("✅ ListingHistoryTrackerService initialized");
+    logger.success("ListingHistoryTrackerService initialized", null, {
+      component: "ListingHistoryTrackerService",
+      action: "initialize",
+    });
   }
 
   /**
@@ -180,23 +184,20 @@ export class ListingHistoryTrackerService {
       buyer: r.buyer,
       price: r.price,
       timestamp: r.timestamp,
-      txHash: r.txHash
+      txHash: r.txHash,
     }));
   }
 
   /**
    * Get last sale price for an NFT
    */
-  async getLastSalePrice(
-    collection: string,
-    tokenId: bigint
-  ): Promise<bigint> {
+  async getLastSalePrice(collection: string, tokenId: bigint): Promise<bigint> {
     const history = await this.getNFTHistory(collection, tokenId, 1);
 
     if (history.length === 0) return BigInt(0);
 
     const lastSale = history.find(
-      h => h.txType === TransactionType.SALE_COMPLETED
+      (h) => h.txType === TransactionType.SALE_COMPLETED
     );
 
     return lastSale ? lastSale.price : BigInt(0);
@@ -221,7 +222,7 @@ export class ListingHistoryTrackerService {
       floorPrice: stats.floorPrice,
       ceilingPrice: stats.ceilingPrice,
       lastSalePrice: stats.lastSalePrice,
-      lastSaleTimestamp: stats.lastSaleTimestamp
+      lastSaleTimestamp: stats.lastSaleTimestamp,
     };
   }
 
@@ -239,7 +240,7 @@ export class ListingHistoryTrackerService {
     return points.map((p: any) => ({
       price: p.price,
       timestamp: p.timestamp,
-      source: p.source
+      source: p.source,
     }));
   }
 
@@ -295,7 +296,7 @@ export class ListingHistoryTrackerService {
       averageSalePrice: stats.averageSalePrice,
       averagePurchasePrice: stats.averagePurchasePrice,
       firstActivityTimestamp: stats.firstActivityTimestamp,
-      lastActivityTimestamp: stats.lastActivityTimestamp
+      lastActivityTimestamp: stats.lastActivityTimestamp,
     };
   }
 
@@ -312,7 +313,7 @@ export class ListingHistoryTrackerService {
     return {
       asSeller: stats.totalVolumeAsSeller,
       asBuyer: stats.totalVolumeAsBuyer,
-      total: stats.totalVolumeAsSeller + stats.totalVolumeAsBuyer
+      total: stats.totalVolumeAsSeller + stats.totalVolumeAsBuyer,
     };
   }
 
@@ -331,7 +332,10 @@ export class ListingHistoryTrackerService {
       listings: stats.totalListingsCreated,
       sales: stats.totalSalesMade,
       purchases: stats.totalPurchases,
-      total: stats.totalListingsCreated + stats.totalSalesMade + stats.totalPurchases
+      total:
+        stats.totalListingsCreated +
+        stats.totalSalesMade +
+        stats.totalPurchases,
     };
   }
 
@@ -353,7 +357,7 @@ export class ListingHistoryTrackerService {
       totalSales: stats.totalSales,
       averagePrice: stats.averagePrice,
       uniqueCollections: stats.uniqueCollections,
-      uniqueUsers: stats.uniqueUsers
+      uniqueUsers: stats.uniqueUsers,
     };
   }
 
@@ -371,7 +375,7 @@ export class ListingHistoryTrackerService {
       offerVolume: volume.offerVolume,
       auctionVolume: volume.auctionVolume,
       totalVolume: volume.totalVolume,
-      transactionCount: volume.transactionCount
+      transactionCount: volume.transactionCount,
     };
   }
 
@@ -399,7 +403,7 @@ export class ListingHistoryTrackerService {
       [TransactionType.OFFER_ACCEPTED]: "Offer Accepted",
       [TransactionType.AUCTION_STARTED]: "Auction Started",
       [TransactionType.BID_PLACED]: "Bid Placed",
-      [TransactionType.AUCTION_ENDED]: "Auction Ended"
+      [TransactionType.AUCTION_ENDED]: "Auction Ended",
     };
 
     return names[type] || "Unknown";
@@ -450,7 +454,7 @@ export class ListingHistoryTrackerService {
     const volumeData = await Promise.all(
       collections.map(async (collection) => ({
         collection,
-        volume: await this.getCollectionVolume(collection)
+        volume: await this.getCollectionVolume(collection),
       }))
     );
 
@@ -506,9 +510,9 @@ export class ListingHistoryTrackerService {
     timestamp: number;
     price: number;
   }> {
-    return priceHistory.map(p => ({
+    return priceHistory.map((p) => ({
       timestamp: Number(p.timestamp) * 1000,
-      price: parseFloat(ethers.formatEther(p.price))
+      price: parseFloat(ethers.formatEther(p.price)),
     }));
   }
 
@@ -526,7 +530,7 @@ export class ListingHistoryTrackerService {
         total: BigInt(0),
         average: BigInt(0),
         peak: BigInt(0),
-        peakDate: BigInt(0)
+        peakDate: BigInt(0),
       };
     }
 
@@ -541,7 +545,7 @@ export class ListingHistoryTrackerService {
       total,
       average,
       peak: peak.totalVolume,
-      peakDate: peak.date
+      peakDate: peak.date,
     };
   }
 }

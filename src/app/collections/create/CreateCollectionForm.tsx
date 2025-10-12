@@ -6,6 +6,7 @@
 "use client";
 
 import { useState } from "react";
+import { logger } from "@/lib/utils/logger";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -132,7 +133,7 @@ export default function CreateCollectionForm() {
       mintPrice: "10",
       // Convert comma-separated allowlist to newline-separated for textarea
       allowlist: envConfigManager.getAllowlistAddresses().join("\n"),
-      baseTokenURI: "https://api.example.com/metadata/",
+      baseTokenURI: "https://api.example.com/metadata",
     },
   });
 
@@ -218,7 +219,10 @@ export default function CreateCollectionForm() {
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);
     } catch (error: any) {
-      console.error("Failed to create collection:", error);
+      logger.error("Failed to create collection", error, {
+        component: "CreateCollectionForm",
+        action: "createCollection",
+      });
       // Error is already handled in the hook
     }
   };

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { CollectionsGrid } from "@/components/features/collection/CollectionsGrid";
 import { Input } from "@/components/ui/input";
@@ -66,49 +67,70 @@ export default function CollectionsPage() {
 
       // Check if we're in browser environment
       if (typeof window === "undefined") {
-        console.log("⚠️ Not in browser environment");
+        logger.warn("Not in browser environment", null, {
+          component: "CollectionsPage",
+          action: "loadCollections",
+        });
         setError("Browser environment required for blockchain connection");
         return;
       }
 
       // Initialize web3 and services
-      console.log("🔗 Initializing Web3 provider...");
+      logger.info("Initializing Web3 provider", null, {
+        component: "CollectionsPage",
+        action: "loadCollections",
+      });
       await web3Utils.initializeProvider();
       const provider = web3Utils.getProvider();
 
       if (!provider) {
-        console.log("❌ No Web3 provider available");
+        logger.error("No Web3 provider available", null, {
+          component: "CollectionsPage",
+          action: "loadCollections",
+        });
         setError(
           "Web3 provider not available. Please connect your wallet to view collections."
         );
         return;
       }
 
-      console.log("✅ Web3 provider initialized");
+      logger.success("Web3 provider initialized", null, {
+        component: "CollectionsPage",
+        action: "loadCollections",
+      });
 
       // Initialize collection query service
-      console.log("🔍 Initializing collection query service...");
+      logger.info("Initializing collection query service", null, {
+        component: "CollectionsPage",
+        action: "loadCollections",
+      });
       await collectionQueryService.initialize(provider);
 
       // Get all collections from blockchain
-      console.log("📡 Loading collections from blockchain...");
+      logger.info("Loading collections from blockchain", null, {
+        component: "CollectionsPage",
+        action: "loadCollections",
+      });
       const blockchainCollections =
         await collectionQueryService.getAllCollections();
 
-      console.log(
-        `✅ Found ${blockchainCollections.length} collections from blockchain`
+      logger.success(
+        `Found ${blockchainCollections.length} collections from blockchain`,
+        { count: blockchainCollections.length },
+        { component: "CollectionsPage", action: "loadCollections" }
       );
-      console.log("🔍 Collections data:", blockchainCollections);
 
       // Debug: Check if collections are valid
       const validCollections = blockchainCollections.filter(
         (c) => c && c.address && c.name
       );
-      console.log(`✅ Valid collections: ${validCollections.length}`);
+      logger.success(
+        `Valid collections: ${validCollections.length}`,
+        { validCount: validCollections.length },
+        { component: "CollectionsPage", action: "loadCollections" }
+      );
 
       setCollections(blockchainCollections);
-      console.log("🔄 Collections state updated");
-      console.log("🔍 State collections:", blockchainCollections.slice(0, 2)); // Show first 2 for debugging
 
       if (blockchainCollections.length === 0) {
         // Check if contracts are deployed
@@ -126,7 +148,10 @@ export default function CollectionsPage() {
         }
       }
     } catch (error) {
-      console.error("❌ Error loading collections:", error);
+      logger.error("Error loading collections", error, {
+        component: "CollectionsPage",
+        action: "loadCollections",
+      });
       setError(
         `Failed to load collections from blockchain: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -205,7 +230,11 @@ export default function CollectionsPage() {
       }
     });
 
-    console.log("🔍 Filtered collections:", filtered);
+    logger.debug(
+      "Filtered collections",
+      { filtered },
+      { component: "CollectionsPage", action: "filterCollections" }
+    );
     return filtered;
   }, [collections, searchQuery, sortBy, filterBy]);
 

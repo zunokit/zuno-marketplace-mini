@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
+
 /**
  * Royalty Management Admin Page
  * Configure advanced royalty settings for NFT collections
@@ -80,7 +82,10 @@ export default function RoyaltyManagementPage() {
       const caps = await royaltyManagerService.getGlobalCaps();
       setGlobalCaps(caps);
     } catch (error) {
-      console.error("Failed to load global caps:", error);
+      logger.error("Failed to load global caps", error, {
+        component: "AdminRoyaltiesPage",
+        action: "loadGlobalCaps",
+      });
     }
   };
 

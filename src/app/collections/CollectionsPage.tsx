@@ -6,6 +6,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import { useRouter } from "next/navigation";
 import { ethers } from "ethers";
 import { TokenType } from "@/types";
@@ -279,7 +280,10 @@ export default function CollectionsPage() {
 
       setCollections(formattedCollections);
     } catch (error) {
-      console.error("Failed to load collections:", error);
+      logger.error("Failed to load collections", error, {
+        component: "CollectionsPage",
+        action: "loadCollections",
+      });
       toast.error("Failed to load collections");
       setCollections([]);
     } finally {

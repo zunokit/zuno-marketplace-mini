@@ -6,6 +6,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { logger } from "@/lib/utils/logger";
+import { generateReactKey } from "@/lib/utils/uuid";
 import { ethers } from "ethers";
 import { eventService } from "@/lib/services/blockchain/EventService";
 import { collectionService } from "@/lib/services/contracts/CollectionService";
@@ -41,7 +43,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { logger } from "@/lib/utils/logger";
 
 export function ActivityTracking({
   collectionAddress,
@@ -81,7 +82,10 @@ export function ActivityTracking({
             await web3Utils.initializeProvider();
             provider = web3Utils.getProvider();
           } catch (initError) {
-            console.error("Failed to initialize provider:", initError);
+            logger.error("Failed to initialize provider", initError, {
+              component: "ActivityTracking",
+              action: "initializeProvider",
+            });
             throw new Error("No provider available");
           }
         }
@@ -167,7 +171,7 @@ export function ActivityTracking({
         let to = "";
         let tokenId = "";
         let amount = "";
-        let price = "";
+        const price = "";
 
         switch (name) {
           case "Transfer":
@@ -254,7 +258,9 @@ export function ActivityTracking({
         }
 
         const activityEvent = {
-          id: `${transactionHash || "unknown"}-${index}`,
+          id: generateReactKey(
+            `${transactionHash || "unknown"}-${timestamp || Date.now()}`
+          ),
           type,
           from,
           to,
@@ -291,16 +297,20 @@ export function ActivityTracking({
           await web3Utils.initializeProvider();
           provider = web3Utils.getProvider();
         } catch (initError) {
-          console.log(
-            "Failed to initialize provider for subscription:",
-            initError
+          logger.error(
+            "Failed to initialize provider for subscription",
+            initError,
+            { component: "ActivityTracking", action: "subscribeToEvents" }
           );
           return;
         }
       }
 
       if (!provider) {
-        console.log("No provider available for event subscription");
+        logger.warn("No provider available for event subscription", null, {
+          component: "ActivityTracking",
+          action: "subscribeToEvents",
+        });
         return;
       }
 
@@ -314,7 +324,7 @@ export function ActivityTracking({
       // Listen for new events
       const handleNewEvent = (event: CustomEvent) => {
         if (event.detail.collection === collectionAddress) {
-          const newActivity = processEvent(event.detail.data, Date.now());
+          const newActivity = processEvent(event.detail.data, 0);
           if (newActivity) {
             logger.info(
               `New activity received: ${newActivity.type} for collection ${collectionAddress}`,
@@ -346,7 +356,10 @@ export function ActivityTracking({
         );
       };
     } catch (error) {
-      console.error("Failed to subscribe to events:", error);
+      logger.error("Failed to subscribe to events", error, {
+        component: "ActivityTracking",
+        action: "subscribeToEvents",
+      });
     }
   }, [collectionAddress, tokenType, loadActivities]);
 

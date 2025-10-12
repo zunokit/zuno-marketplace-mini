@@ -4,6 +4,7 @@
  */
 
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import { exchangeService } from "./ExchangeService";
 import { auctionService } from "./AuctionService";
 import { bundleService } from "./BundleService";
@@ -54,7 +55,6 @@ export type {
 } from "./OfferService";
 
 export { collectionService, CollectionService } from "./CollectionService";
-
 
 export { feeManagerService, FeeManagerService } from "./FeeManagerService";
 export type {
@@ -145,10 +145,11 @@ export type {
   PendingAction,
 } from "./TimelockService";
 
-export { collectionQueryService, CollectionQueryService } from "./CollectionQueryService";
-export type {
-  CollectionData,
+export {
+  collectionQueryService,
+  CollectionQueryService,
 } from "./CollectionQueryService";
+export type { CollectionData } from "./CollectionQueryService";
 
 /**
  * Initialize all services
@@ -194,22 +195,48 @@ export async function initializeServices(
         timelockService,
       ];
 
-      await Promise.all(services.map((svc) => svc.initialize(provider, signer)));
+      await Promise.all(
+        services.map((svc) => svc.initialize(provider, signer))
+      );
 
-      console.log(
-        `✅ All marketplace services initialized (${services.length} services)`
+      logger.success(
+        `All marketplace services initialized (${services.length} services)`,
+        {
+          serviceCount: services.length,
+        },
+        { component: "ContractServices", action: "initialize" }
       );
     } else {
-      console.log(
-        "⚠️ Marketplace services not initialized - contracts not deployed"
+      logger.warn(
+        "Marketplace services not initialized - contracts not deployed",
+        null,
+        {
+          component: "ContractServices",
+          action: "initialize",
+        }
       );
-      console.log(
-        "Deploy the contracts using the zuno-marketplace-contracts repository"
+      logger.info(
+        "Deploy the contracts using the zuno-marketplace-contracts repository",
+        null,
+        {
+          component: "ContractServices",
+          action: "initialize",
+        }
       );
     }
   } catch (error) {
-    console.error("Failed to initialize services:", error);
+    logger.error("Failed to initialize services", error, {
+      component: "ContractServices",
+      action: "initialize",
+    });
     // Don't throw - allow app to run in limited mode
-    console.log("⚠️ Running in limited mode without smart contract features");
+    logger.warn(
+      "Running in limited mode without smart contract features",
+      null,
+      {
+        component: "ContractServices",
+        action: "initialize",
+      }
+    );
   }
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
+
 /**
  * Emergency Controls Admin Page
  * Emergency pause/blacklist using EmergencyManagerService
@@ -75,7 +77,10 @@ export default function EmergencyControlsPage() {
       const status = await emergencyManagerService.getEmergencyStatus();
       setEmergencyStatus(status);
     } catch (error) {
-      console.error("Failed to load emergency status:", error);
+      logger.error("Failed to load emergency status", error, {
+        component: "AdminEmergencyPage",
+        action: "loadEmergencyStatus",
+      });
     }
   };
 

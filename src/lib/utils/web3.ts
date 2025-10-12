@@ -6,6 +6,7 @@
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
 import { initializeServices } from "@/lib/services/contracts";
 import { envConfigManager } from "@/lib/utils/env-config";
+import { logger } from "./logger";
 
 export class Web3Utils {
   private provider: BrowserProvider | JsonRpcProvider | null = null;
@@ -23,23 +24,38 @@ export class Web3Utils {
           await this.provider.send("eth_requestAccounts", []);
           this.signer = await this.provider.getSigner();
         } catch (error) {
-          console.error("Failed to connect to MetaMask:", error);
+          logger.error("Failed to connect to MetaMask", error, {
+            component: "Web3Utils",
+            action: "initializeProvider",
+          });
           // Fall back to JSON-RPC provider
           this.initializeFallbackProvider();
         }
       } else {
         // No MetaMask, use JSON-RPC provider for read-only operations
-        console.log("No MetaMask detected, using fallback RPC provider");
+        logger.info("No MetaMask detected, using fallback RPC provider", null, {
+          component: "Web3Utils",
+          action: "initializeProvider",
+        });
         this.initializeFallbackProvider();
       }
 
       // Initialize all contract services with Hub pattern
       await initializeServices(this.provider, this.signer);
 
-      console.log("✅ Web3 and contract services initialized");
+      logger.success("Web3 and contract services initialized", null, {
+        component: "Web3Utils",
+        action: "initializeProvider",
+      });
     } catch (error) {
-      console.error("Failed to initialize Web3 provider:", error);
-      throw new Error("Failed to initialize Web3 provider: " + (error instanceof Error ? error.message : "Unknown error"));
+      logger.error("Failed to initialize Web3 provider", error, {
+        component: "Web3Utils",
+        action: "initializeProvider",
+      });
+      throw new Error(
+        "Failed to initialize Web3 provider: " +
+          (error instanceof Error ? error.message : "Unknown error")
+      );
     }
   }
 
@@ -54,19 +70,31 @@ export class Web3Utils {
     // Determine RPC URL based on chain ID
     switch (chainId) {
       case "31337": // Local development
-        rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "http://127.0.0.1:8545";
+        rpcUrl =
+          process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "http://127.0.0.1:8545";
         break;
       case "1": // Ethereum Mainnet
-        rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "https://eth-mainnet.alchemyapi.io/v2/YOUR-API-KEY";
+        rpcUrl =
+          process.env.NEXT_PUBLIC_RPC_URL_MAINNET ||
+          "https://eth-mainnet.alchemyapi.io/v2/YOUR-API-KEY";
         break;
       case "11155111": // Sepolia Testnet
-        rpcUrl = process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA || "https://sepolia.infura.io/v3/YOUR-PROJECT-ID";
+        rpcUrl =
+          process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA ||
+          "https://sepolia.infura.io/v3/YOUR-PROJECT-ID";
         break;
       default:
         throw new Error(`Unsupported chain ID: ${chainId}`);
     }
 
-    console.log(`Connecting to RPC: ${rpcUrl} (Chain ID: ${chainId})`);
+    logger.info(
+      `Connecting to RPC: ${rpcUrl} (Chain ID: ${chainId})`,
+      {
+        rpcUrl,
+        chainId,
+      },
+      { component: "Web3Utils", action: "initializeFallbackProvider" }
+    );
     this.provider = new JsonRpcProvider(rpcUrl);
     this.signer = null; // No signer for read-only provider
   }
@@ -97,9 +125,15 @@ export class Web3Utils {
       this.provider = new BrowserProvider(window.ethereum);
       await this.provider.send("eth_requestAccounts", []);
       this.signer = await this.provider.getSigner();
-      console.log("✅ MetaMask connected for transactions");
+      logger.success("MetaMask connected for transactions", null, {
+        component: "Web3Utils",
+        action: "connectWallet",
+      });
     } catch (error) {
-      throw new Error("Failed to connect MetaMask: " + (error instanceof Error ? error.message : "Unknown error"));
+      throw new Error(
+        "Failed to connect MetaMask: " +
+          (error instanceof Error ? error.message : "Unknown error")
+      );
     }
   }
 
@@ -111,7 +145,10 @@ export class Web3Utils {
     try {
       return await this.signer.getAddress();
     } catch (error) {
-      console.error("Failed to get account:", error);
+      logger.error("Failed to get account", error, {
+        component: "Web3Utils",
+        action: "getAccount",
+      });
       return null;
     }
   }
@@ -141,7 +178,10 @@ export class Web3Utils {
     try {
       return await this.provider.getNetwork();
     } catch (error) {
-      console.error("Failed to get network:", error);
+      logger.error("Failed to get network", error, {
+        component: "Web3Utils",
+        action: "getNetwork",
+      });
       return null;
     }
   }

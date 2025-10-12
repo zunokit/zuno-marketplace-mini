@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { getHubAddress } from "@/lib/config/networks";
 import { MarketplaceHub_ABI } from "@/lib/contracts/abis";
 import { ZERO_ADDRESS } from "@/lib/constants";
+import { logger } from "@/lib/utils/logger";
 
 export interface MarketplaceAddresses {
   hub: string;
@@ -54,7 +55,7 @@ export class MarketplaceHubService {
     if (!hubAddress || hubAddress === ZERO_ADDRESS) {
       throw new Error(
         `MarketplaceHub not configured for chain ${chainId}. ` +
-        `Please deploy contracts and configure hub address in .env file.`
+          `Please deploy contracts and configure hub address in .env file.`
       );
     }
 
@@ -63,7 +64,7 @@ export class MarketplaceHubService {
     if (code === "0x") {
       throw new Error(
         `No contract deployed at MarketplaceHub address ${hubAddress} on chain ${chainId}. ` +
-        `Please ensure contracts are deployed to the network.`
+          `Please ensure contracts are deployed to the network.`
       );
     }
 
@@ -76,16 +77,24 @@ export class MarketplaceHubService {
     try {
       // Load all addresses from hub
       await this.loadAddresses();
-      console.log("✅ MarketplaceHub initialized from contract:", {
-        hub: hubAddress,
-        chainId,
-        addresses: this.addresses,
-      });
+      logger.success(
+        "MarketplaceHub initialized from contract",
+        {
+          hub: hubAddress,
+          chainId,
+          addresses: this.addresses,
+        },
+        { component: "MarketplaceHubService", action: "initialize" }
+      );
     } catch (error: any) {
-      console.error("❌ Failed to load addresses from hub:", error?.message || error);
+      logger.error("Failed to load addresses from hub", error, {
+        component: "MarketplaceHubService",
+        action: "initialize",
+      });
       throw new Error(
-        `Failed to initialize MarketplaceHub: ${error?.message || 'Unknown error'}. ` +
-        `Please check contract deployment and ABI compatibility.`
+        `Failed to initialize MarketplaceHub: ${
+          error?.message || "Unknown error"
+        }. ` + `Please check contract deployment and ABI compatibility.`
       );
     }
   }
@@ -114,8 +123,6 @@ export class MarketplaceHubService {
       offerManager: result[9],
     };
   }
-
-
 
   /**
    * Get all marketplace addresses

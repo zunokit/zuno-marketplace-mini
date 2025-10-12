@@ -6,6 +6,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import { useParams } from "next/navigation";
 import { useCollection } from "@/hooks/use-collection";
 import { useWallet } from "@/providers/WalletProvider";
@@ -84,7 +85,10 @@ export function CollectionDetail() {
         setError("Collection not found or invalid address");
       }
     } catch (err: any) {
-      console.error("Failed to fetch collection info:", err);
+      logger.error("Failed to fetch collection info", err, {
+        component: "CollectionDetail",
+        action: "fetchCollectionInfo",
+      });
       setError(err.message || "Failed to load collection information");
     } finally {
       setIsLoading(false);

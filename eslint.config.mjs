@@ -31,6 +31,12 @@ const eslintConfig = [
       "no-debugger": "error",
     },
   },
+  {
+    files: ["src/lib/utils/logger.ts", "src/lib/utils/interceptor.ts"],
+    rules: {
+      "no-console": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

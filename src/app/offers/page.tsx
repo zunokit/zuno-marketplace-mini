@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import Image from "next/image";
 import {
   Card,
@@ -145,7 +146,10 @@ export default function OffersPage() {
       setActiveOffers(active.map(convertOfferInfo));
       setUserOffers(user.map(convertOfferInfo));
     } catch (error) {
-      console.error("Error loading offers:", error);
+      logger.error("Error loading offers", error, {
+        component: "OffersPage",
+        action: "loadOffers",
+      });
       toast({
         title: "Error Loading Offers",
         description:
@@ -392,7 +396,9 @@ export default function OffersPage() {
         <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2">
           💰 NFT Offers
         </h1>
-        <p className="text-sm sm:text-base text-muted-foreground">Make and manage offers on NFTs</p>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          Make and manage offers on NFTs
+        </p>
       </div>
 
       {/* Tabs */}

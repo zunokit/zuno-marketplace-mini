@@ -2,6 +2,7 @@
  * Utility Functions - Centralized Export
  */
 
+import { logger } from "@/lib/utils/logger";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -45,7 +46,8 @@ export const formatters = {
    * Format date
    */
   formatDate(timestamp: number | Date): string {
-    const date = timestamp instanceof Date ? timestamp : new Date(timestamp * 1000);
+    const date =
+      timestamp instanceof Date ? timestamp : new Date(timestamp * 1000);
     return new Intl.DateTimeFormat("en-US", {
       year: "numeric",
       month: "short",
@@ -80,7 +82,7 @@ export const formatters = {
     const k = 1024;
     const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   },
 
   /**
@@ -163,8 +165,9 @@ export const stringUtils = {
    * Convert to title case
    */
   toTitleCase(str: string): string {
-    return str.replace(/\w\S*/g, (txt) =>
-      txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+    return str.replace(
+      /\w\S*/g,
+      (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
     );
   },
 
@@ -257,7 +260,10 @@ export const storage = {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (error) {
-      console.error("Failed to save to localStorage:", error);
+      logger.error("Failed to save to localStorage", error, {
+        component: "LocalStorage",
+        action: "save",
+      });
     }
   },
 
@@ -269,7 +275,10 @@ export const storage = {
     try {
       localStorage.removeItem(key);
     } catch (error) {
-      console.error("Failed to remove from localStorage:", error);
+      logger.error("Failed to remove from localStorage", error, {
+        component: "LocalStorage",
+        action: "remove",
+      });
     }
   },
 
@@ -281,7 +290,10 @@ export const storage = {
     try {
       localStorage.clear();
     } catch (error) {
-      console.error("Failed to clear localStorage:", error);
+      logger.error("Failed to clear localStorage", error, {
+        component: "LocalStorage",
+        action: "clear",
+      });
     }
   },
 };

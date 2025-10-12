@@ -103,6 +103,55 @@ envConfigManager.setConfig({
 envConfigManager.clearConfig();
 ```
 
+### 6. Production-Ready Logging System
+
+The project uses a custom logger utility instead of `console.log` statements:
+
+- **ESLint Enforcement**: `no-console: "error"` rule prevents direct console usage
+- **Structured Logging**: Context-aware logging with component and action tracking
+- **Performance Tracking**: Built-in timer functionality
+- **Production Ready**: Automatic error monitoring integration (Sentry ready)
+- **Development/Production Modes**: Different logging behavior per environment
+
+**Logger Usage**:
+
+```typescript
+import { logger } from "@/lib/utils/logger";
+
+// Basic logging
+logger.info(
+  "User action completed",
+  { userId: "0x123..." },
+  {
+    component: "UserProfile",
+    action: "updateProfile",
+  }
+);
+
+// Performance tracking
+logger.startTimer("api-call");
+// ... API call
+logger.endTimer("api-call", "API call completed");
+
+// Error logging with context
+logger.error("Failed to create listing", error, {
+  component: "ListingForm",
+  action: "createListing",
+});
+
+// Context management
+logger.setGlobalContext({ userId: "0x123...", sessionId: "abc..." });
+```
+
+**Logger Features**:
+
+- ✅ Structured logging with context
+- ✅ Performance tracking with timers
+- ✅ Production/development mode handling
+- ✅ Error monitoring integration (Sentry ready)
+- ✅ Log history and filtering
+- ✅ ESLint enforcement (no-console rule)
+
 ## Common Development Tasks
 
 ### Build & Development
@@ -120,7 +169,7 @@ npm run type-check       # TypeScript type checking
 
 ### Utility Scripts
 
-**Via npm (recommended):**
+**Via npm (recommended)**:
 
 ```bash
 npm run extract-abis         # Extract ABIs with default paths
@@ -128,7 +177,7 @@ npm run extract-abis:help    # Show help and options
 npm run test:all             # Run all test scripts
 ```
 
-**Direct usage:**
+**Direct usage**:
 
 ```bash
 # Extract ABIs (supports custom paths)
@@ -266,6 +315,49 @@ NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
 - React 19 with Next.js 15 App Router
 - Tailwind CSS v4 for styling
 - ESLint for code quality
+- **NO console.log statements** - use `logger` utility instead
+- **ESLint no-console rule enforced** - prevents direct console usage
+
+### Logging Standards
+
+- **Always use logger instead of console.log**:
+
+  ```typescript
+  // ❌ Don't use
+  console.log("Debug info");
+  console.error("Error occurred");
+
+  // ✅ Use logger instead
+  import { logger } from "@/lib/utils/logger";
+  logger.info("Debug info", data, {
+    component: "ComponentName",
+    action: "actionName",
+  });
+  logger.error("Error occurred", error, {
+    component: "ComponentName",
+    action: "actionName",
+  });
+  ```
+
+- **Include context in all log calls**:
+
+  ```typescript
+  logger.info(
+    "User action",
+    { userId, action },
+    {
+      component: "UserProfile",
+      action: "updateProfile",
+    }
+  );
+  ```
+
+- **Use appropriate log levels**:
+  - `logger.debug()` - Development debugging
+  - `logger.info()` - General information
+  - `logger.warn()` - Warnings
+  - `logger.error()` - Errors
+  - `logger.success()` - Success operations
 
 ## Project Structure
 
@@ -300,11 +392,14 @@ src/
 │   ├── hooks/             # Custom React hooks
 │   ├── store/             # Redux store and slices
 │   ├── utils/             # Utility functions
-│   │   └── env-config.ts # Environment configuration manager
+│   │   ├── env-config.ts # Environment configuration manager
+│   │   └── logger.ts     # Production-ready logger utility
 │   ├── constants/         # App constants
 │   └── config/            # Configuration
 ├── types/                  # TypeScript type definitions
-│   └── env-config.ts      # Environment configuration types
+│   ├── index.ts           # Main type exports
+│   ├── env-config.ts      # Environment configuration types
+│   └── events.ts          # Event-related types
 └── styles/                # Global styles
 ```
 
@@ -334,6 +429,12 @@ src/
 **"ABIs outdated"**
 
 - Run `node scripts/extract-abis.js` to regenerate ABIs from latest contracts
+
+**"ESLint no-console error"**
+
+- Replace `console.log` with `logger.info()` and add context
+- Replace `console.error` with `logger.error()` and add context
+- Import logger: `import { logger } from "@/lib/utils/logger"`
 
 ## Additional Documentation
 

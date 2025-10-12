@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
 import { NFTCard } from "./NFTCard";
 
 interface NFT {
@@ -27,15 +28,15 @@ interface CollectionNFTsProps {
 
 export function CollectionNFTs({ nfts = [] }: CollectionNFTsProps) {
   const handleLike = (nftId: string) => {
-    console.log("Like NFT:", nftId);
+    logger.info("Like NFT", { nftId }, { component: "CollectionNFTs", action: "likeNFT" });
   };
 
   const handleBuy = (nftId: string) => {
-    console.log("Buy NFT:", nftId);
+    logger.info("Buy NFT", { nftId }, { component: "CollectionNFTs", action: "buyNFT" });
   };
 
   const handleMakeOffer = (nftId: string) => {
-    console.log("Make offer:", nftId);
+    logger.info("Make offer", { nftId }, { component: "CollectionNFTs", action: "makeOffer" });
   };
 
   if (!nfts || nfts.length === 0) {

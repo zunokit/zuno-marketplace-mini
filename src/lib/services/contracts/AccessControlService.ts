@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { MarketplaceAccessControl_ABI } from "@/lib/contracts/abis";
 
@@ -18,7 +19,7 @@ export enum MarketplaceRole {
   OPERATOR = "OPERATOR_ROLE",
   VERIFIER = "VERIFIER_ROLE",
   EMERGENCY = "EMERGENCY_ROLE",
-  PAUSER = "PAUSER_ROLE"
+  PAUSER = "PAUSER_ROLE",
 }
 
 export interface RolePermissions {
@@ -42,8 +43,8 @@ export interface RoleAssignment {
 }
 
 export interface RoleMemberInfo {
-  current: bigint;   // Current number of members
-  maximum: bigint;   // Maximum allowed members
+  current: bigint; // Current number of members
+  maximum: bigint; // Maximum allowed members
 }
 
 // ============================================================================
@@ -63,7 +64,7 @@ export class AccessControlService {
     OPERATOR: ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE")),
     VERIFIER: ethers.keccak256(ethers.toUtf8Bytes("VERIFIER_ROLE")),
     EMERGENCY: ethers.keccak256(ethers.toUtf8Bytes("EMERGENCY_ROLE")),
-    PAUSER: ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE"))
+    PAUSER: ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE")),
   };
 
   /**
@@ -79,7 +80,10 @@ export class AccessControlService {
     // Get access control address from hub
     // TODO: Add getAccessControl() to Hub
 
-    console.log("✅ AccessControlService initialized");
+    logger.success("AccessControlService initialized", null, {
+      component: "AccessControlService",
+      action: "initialize",
+    });
   }
 
   /**
@@ -326,7 +330,7 @@ export class AccessControlService {
       assignedBy: h.assignedBy,
       assignedAt: h.assignedAt,
       reason: h.reason,
-      isActive: h.isActive
+      isActive: h.isActive,
     }));
   }
 
@@ -339,8 +343,10 @@ export class AccessControlService {
    */
   getRoleHash(roleName: MarketplaceRole | string): string {
     if (Object.values(MarketplaceRole).includes(roleName as MarketplaceRole)) {
-      return this.ROLES[roleName as keyof typeof this.ROLES] ||
-             ethers.keccak256(ethers.toUtf8Bytes(roleName));
+      return (
+        this.ROLES[roleName as keyof typeof this.ROLES] ||
+        ethers.keccak256(ethers.toUtf8Bytes(roleName))
+      );
     }
     return ethers.keccak256(ethers.toUtf8Bytes(roleName));
   }
@@ -350,13 +356,15 @@ export class AccessControlService {
    */
   static getRoleName(roleHash: string): string {
     const roleMap: Record<string, string> = {
-      [ethers.keccak256(ethers.toUtf8Bytes("DEFAULT_ADMIN_ROLE"))]: "Super Admin",
+      [ethers.keccak256(ethers.toUtf8Bytes("DEFAULT_ADMIN_ROLE"))]:
+        "Super Admin",
       [ethers.keccak256(ethers.toUtf8Bytes("ADMIN_ROLE"))]: "Admin",
       [ethers.keccak256(ethers.toUtf8Bytes("MODERATOR_ROLE"))]: "Moderator",
       [ethers.keccak256(ethers.toUtf8Bytes("OPERATOR_ROLE"))]: "Operator",
       [ethers.keccak256(ethers.toUtf8Bytes("VERIFIER_ROLE"))]: "Verifier",
-      [ethers.keccak256(ethers.toUtf8Bytes("EMERGENCY_ROLE"))]: "Emergency Manager",
-      [ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE"))]: "Pauser"
+      [ethers.keccak256(ethers.toUtf8Bytes("EMERGENCY_ROLE"))]:
+        "Emergency Manager",
+      [ethers.keccak256(ethers.toUtf8Bytes("PAUSER_ROLE"))]: "Pauser",
     };
 
     return roleMap[roleHash] || "Unknown Role";
@@ -453,7 +461,7 @@ export class AccessControlService {
       canPauseSystem: perms.canPauseSystem,
       canModifyRoles: perms.canModifyRoles,
       canAccessEmergency: perms.canAccessEmergency,
-      canVerifyCollections: perms.canVerifyCollections
+      canVerifyCollections: perms.canVerifyCollections,
     };
   }
 

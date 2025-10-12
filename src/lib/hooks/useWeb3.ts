@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { logger } from "@/lib/utils/logger";
 import { web3Utils } from "@/lib/utils/web3";
 import type { ethers } from "ethers";
 
@@ -48,7 +49,10 @@ export function useWeb3(): UseWeb3Return {
       setBalance(bal);
     } catch (err: any) {
       setError(err.message || "Failed to connect wallet");
-      console.error("Wallet connection error:", err);
+      logger.error("Wallet connection error", err, {
+        component: "useWeb3",
+        action: "connectWallet",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -80,7 +84,10 @@ export function useWeb3(): UseWeb3Return {
       setChainId(network ? Number(network.chainId) : null);
     } catch (err: any) {
       setError(err.message || "Failed to switch network");
-      console.error("Network switch error:", err);
+      logger.error("Network switch error", err, {
+        component: "useWeb3",
+        action: "switchNetwork",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +116,10 @@ export function useWeb3(): UseWeb3Return {
       const bal = await web3Utils.getBalance();
       setBalance(bal);
     } catch (err) {
-      console.error("Failed to update balance:", err);
+      logger.error("Failed to update balance", err, {
+        component: "useWeb3",
+        action: "updateBalance",
+      });
     }
   }, [account]);
 
@@ -158,7 +168,10 @@ export function useWeb3(): UseWeb3Return {
           await connect();
         }
       } catch (err) {
-        console.error("Auto-connect failed:", err);
+        logger.error("Auto-connect failed", err, {
+          component: "useWeb3",
+          action: "autoConnect",
+        });
       }
     };
 

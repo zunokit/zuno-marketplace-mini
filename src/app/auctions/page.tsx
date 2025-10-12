@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { logger } from "@/lib/utils/logger";
 import Image from "next/image";
 import {
   Card,
@@ -172,11 +173,11 @@ export default function AuctionsPage() {
       // Note: Services already initialized via initializeServices() in useWeb3
       // TODO: These methods don't exist in current AuctionService
       // Need to implement or remove this functionality
-      console.warn("Real auction data not yet implemented");
+      logger.warn("Real auction data not yet implemented", null, { component: "AuctionsPage", action: "loadAuctions" });
       setActiveAuctions([]);
       setUserAuctions([]);
     } catch (error) {
-      console.error("Error loading auctions:", error);
+      logger.error("Error loading auctions", error, { component: "AuctionsPage", action: "loadAuctions" });
       toast({
         title: "Error Loading Auctions",
         description:

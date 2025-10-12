@@ -6,10 +6,8 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
-import {
-  EnglishAuction_ABI,
-  DutchAuction_ABI,
-} from "@/lib/contracts/abis";
+import { logger } from "@/lib/utils/logger";
+import { EnglishAuction_ABI, DutchAuction_ABI } from "@/lib/contracts/abis";
 
 export interface EnglishAuctionParams {
   nftContract: string;
@@ -60,7 +58,10 @@ export class AuctionService {
     this.provider = provider;
     this.signer = signer || null;
 
-    console.log("✅ AuctionService initialized");
+    logger.success("AuctionService initialized", null, {
+      component: "AuctionService",
+      action: "initialize",
+    });
   }
 
   /**
@@ -72,11 +73,7 @@ export class AuctionService {
     }
 
     const address = marketplaceHubService.getEnglishAuction();
-    return new ethers.Contract(
-      address,
-      EnglishAuction_ABI,
-      this.signer
-    );
+    return new ethers.Contract(address, EnglishAuction_ABI, this.signer);
   }
 
   /**
@@ -88,11 +85,7 @@ export class AuctionService {
     }
 
     const address = marketplaceHubService.getDutchAuction();
-    return new ethers.Contract(
-      address,
-      DutchAuction_ABI,
-      this.signer
-    );
+    return new ethers.Contract(address, DutchAuction_ABI, this.signer);
   }
 
   /**
@@ -116,7 +109,10 @@ export class AuctionService {
 
       return tx;
     } catch (error) {
-      console.error("Error creating English auction:", error);
+      logger.error("Error creating English auction", error, {
+        component: "AuctionService",
+        action: "createEnglishAuction",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -143,7 +139,10 @@ export class AuctionService {
 
       return tx;
     } catch (error) {
-      console.error("Error creating Dutch auction:", error);
+      logger.error("Error creating Dutch auction", error, {
+        component: "AuctionService",
+        action: "createDutchAuction",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -164,7 +163,10 @@ export class AuctionService {
 
       return tx;
     } catch (error) {
-      console.error("Error placing bid:", error);
+      logger.error("Error placing bid", error, {
+        component: "AuctionService",
+        action: "placeBid",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -185,7 +187,10 @@ export class AuctionService {
 
       return tx;
     } catch (error) {
-      console.error("Error buying from Dutch auction:", error);
+      logger.error("Error buying from Dutch auction", error, {
+        component: "AuctionService",
+        action: "buyFromDutchAuction",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -201,7 +206,10 @@ export class AuctionService {
       const tx = await auction.cancelAuction(auctionId);
       return tx;
     } catch (error) {
-      console.error("Error canceling English auction:", error);
+      logger.error("Error canceling English auction", error, {
+        component: "AuctionService",
+        action: "cancelEnglishAuction",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -217,7 +225,10 @@ export class AuctionService {
       const tx = await auction.cancelAuction(auctionId);
       return tx;
     } catch (error) {
-      console.error("Error canceling Dutch auction:", error);
+      logger.error("Error canceling Dutch auction", error, {
+        component: "AuctionService",
+        action: "cancelDutchAuction",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -233,7 +244,10 @@ export class AuctionService {
       const tx = await auction.endAuction(auctionId);
       return tx;
     } catch (error) {
-      console.error("Error ending English auction:", error);
+      logger.error("Error ending English auction", error, {
+        component: "AuctionService",
+        action: "endEnglishAuction",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -247,7 +261,10 @@ export class AuctionService {
       const auctionInfo = await auction.getAuction(auctionId);
       return auctionInfo;
     } catch (error) {
-      console.error("Error getting English auction info:", error);
+      logger.error("Error getting English auction info", error, {
+        component: "AuctionService",
+        action: "getEnglishAuctionInfo",
+      });
       throw error;
     }
   }
@@ -261,7 +278,10 @@ export class AuctionService {
       const auctionInfo = await auction.getAuction(auctionId);
       return auctionInfo;
     } catch (error) {
-      console.error("Error getting Dutch auction info:", error);
+      logger.error("Error getting Dutch auction info", error, {
+        component: "AuctionService",
+        action: "getDutchAuctionInfo",
+      });
       throw error;
     }
   }
@@ -274,7 +294,10 @@ export class AuctionService {
       const auction = this.getDutchAuctionContract();
       return await auction.getCurrentPrice(auctionId);
     } catch (error) {
-      console.error("Error getting current Dutch price:", error);
+      logger.error("Error getting current Dutch price", error, {
+        component: "AuctionService",
+        action: "getCurrentDutchPrice",
+      });
       throw error;
     }
   }

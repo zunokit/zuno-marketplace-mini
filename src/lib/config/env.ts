@@ -6,6 +6,7 @@
  */
 
 import { envConfigManager } from "@/lib/utils/env-config";
+import { logger } from "@/lib/utils/logger";
 
 /**
  * Get environment configuration with runtime priority
@@ -27,7 +28,14 @@ export function validateEnvironment() {
   const isUsingStored = envConfigManager.isUsingStoredConfig();
 
   // Log current mode
-  console.log(
-    `🔧 NFT Marketplace - Chain ID: ${ENV.DEFAULT_CHAIN_ID}${isUsingStored ? " (Runtime Config)" : ""}`
+  // Environment configuration loaded
+  logger.info(
+    "Environment configuration loaded",
+    {
+      message: `🔧 NFT Marketplace - Chain ID: ${ENV.DEFAULT_CHAIN_ID}${
+        isUsingStored ? " (Runtime Config)" : ""
+      }`,
+    },
+    { component: "Env", action: "validateEnvironment" }
   );
 }

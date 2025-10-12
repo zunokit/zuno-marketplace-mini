@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { logger } from "@/lib/utils/logger";
 import { CollectionCard } from "./CollectionCard";
 
 interface Collection {
@@ -38,16 +39,27 @@ export function CollectionsGrid({
   viewMode = "grid",
 }: CollectionsGridProps) {
   const router = useRouter();
-  
-  console.log("🎨 CollectionsGrid received collections:", collections.length);
-  console.log("🎨 First collection:", collections[0]);
+
+  logger.info(
+    "CollectionsGrid received collections",
+    { count: collections.length, firstCollection: collections[0] },
+    { component: "CollectionsGrid", action: "render" }
+  );
 
   const handleFollow = (collectionAddress: string) => {
-    console.log("Follow collection:", collectionAddress);
+    logger.info(
+      "Follow collection",
+      { collectionAddress },
+      { component: "CollectionsGrid", action: "followCollection" }
+    );
   };
 
   const handleView = (collectionAddress: string) => {
-    console.log("View collection:", collectionAddress);
+    logger.info(
+      "View collection",
+      { collectionAddress },
+      { component: "CollectionsGrid", action: "viewCollection" }
+    );
     router.push(`/collections/${collectionAddress}`);
   };
 

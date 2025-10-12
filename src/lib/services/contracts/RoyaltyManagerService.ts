@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { AdvancedRoyaltyManager_ABI } from "@/lib/contracts/abis";
 
@@ -13,27 +14,27 @@ import { AdvancedRoyaltyManager_ABI } from "@/lib/contracts/abis";
 // ============================================================================
 
 export interface AdvancedRoyaltyInfo {
-  hasAdvancedRoyalty: boolean;  // Whether collection uses advanced royalty
-  totalRoyaltyBps: bigint;      // Total royalty percentage (basis points)
-  maxRoyaltyBps: bigint;        // Maximum allowed royalty for this collection
-  useERC2981: boolean;          // Whether to use ERC2981 standard
-  allowOverrides: boolean;      // Whether to allow royalty overrides
-  lastUpdated: bigint;          // Last update timestamp
-  updatedBy: string;            // Who last updated the royalty
+  hasAdvancedRoyalty: boolean; // Whether collection uses advanced royalty
+  totalRoyaltyBps: bigint; // Total royalty percentage (basis points)
+  maxRoyaltyBps: bigint; // Maximum allowed royalty for this collection
+  useERC2981: boolean; // Whether to use ERC2981 standard
+  allowOverrides: boolean; // Whether to allow royalty overrides
+  lastUpdated: bigint; // Last update timestamp
+  updatedBy: string; // Who last updated the royalty
 }
 
 export interface RoyaltyRecipient {
-  recipient: string;            // Recipient address
-  basisPoints: bigint;          // Royalty percentage in basis points
-  role: string;                 // Role description (e.g., "creator", "platform", "charity")
-  isActive: boolean;            // Whether this recipient is active
+  recipient: string; // Recipient address
+  basisPoints: bigint; // Royalty percentage in basis points
+  role: string; // Role description (e.g., "creator", "platform", "charity")
+  isActive: boolean; // Whether this recipient is active
 }
 
 export interface RoyaltyCaps {
-  maxTotalRoyalty: bigint;      // Maximum total royalty (basis points)
-  maxSingleRecipient: bigint;   // Maximum for single recipient
-  maxRecipients: bigint;        // Maximum number of recipients
-  enforceGlobalCaps: boolean;   // Whether to enforce global caps
+  maxTotalRoyalty: bigint; // Maximum total royalty (basis points)
+  maxSingleRecipient: bigint; // Maximum for single recipient
+  maxRecipients: bigint; // Maximum number of recipients
+  enforceGlobalCaps: boolean; // Whether to enforce global caps
 }
 
 export interface RoyaltyDistribution {
@@ -43,8 +44,8 @@ export interface RoyaltyDistribution {
 }
 
 export interface RoyaltyInfo {
-  receiver: string;             // ERC2981 royalty receiver
-  royaltyAmount: bigint;        // Royalty amount in wei
+  receiver: string; // ERC2981 royalty receiver
+  royaltyAmount: bigint; // Royalty amount in wei
 }
 
 // ============================================================================
@@ -69,13 +70,18 @@ export class RoyaltyManagerService {
     // Get royalty manager address from hub's fee registry
     // TODO: Add getRoyaltyManager() to FeeRegistry or Hub
 
-    console.log("✅ RoyaltyManagerService initialized");
+    logger.success("RoyaltyManagerService initialized", null, {
+      component: "RoyaltyManagerService",
+      action: "initialize",
+    });
   }
 
   /**
    * Get royalty manager contract instance
    */
-  private getRoyaltyManagerContract(readOnly: boolean = false): ethers.Contract {
+  private getRoyaltyManagerContract(
+    readOnly: boolean = false
+  ): ethers.Contract {
     if (readOnly && this.provider) {
       if (!this.royaltyManagerAddress) {
         throw new Error("RoyaltyManager address not configured");
@@ -126,7 +132,7 @@ export class RoyaltyManagerService {
 
     return {
       receiver,
-      royaltyAmount
+      royaltyAmount,
     };
   }
 
@@ -144,7 +150,7 @@ export class RoyaltyManagerService {
       useERC2981: info.useERC2981,
       allowOverrides: info.allowOverrides,
       lastUpdated: info.lastUpdated,
-      updatedBy: info.updatedBy
+      updatedBy: info.updatedBy,
     };
   }
 
@@ -159,7 +165,7 @@ export class RoyaltyManagerService {
       recipient: r.recipient,
       basisPoints: r.basisPoints,
       role: r.role,
-      isActive: r.isActive
+      isActive: r.isActive,
     }));
   }
 
@@ -182,7 +188,7 @@ export class RoyaltyManagerService {
       maxTotalRoyalty: caps.maxTotalRoyalty,
       maxSingleRecipient: caps.maxSingleRecipient,
       maxRecipients: caps.maxRecipients,
-      enforceGlobalCaps: caps.enforceGlobalCaps
+      enforceGlobalCaps: caps.enforceGlobalCaps,
     };
   }
 
@@ -245,7 +251,10 @@ export class RoyaltyManagerService {
   ): Promise<ethers.ContractTransactionResponse> {
     const contract = this.getRoyaltyManagerContract();
 
-    const tx = await contract.removeRoyaltyRecipient(collection, recipientAddress);
+    const tx = await contract.removeRoyaltyRecipient(
+      collection,
+      recipientAddress
+    );
     await tx.wait();
 
     return tx;
@@ -260,7 +269,10 @@ export class RoyaltyManagerService {
   ): Promise<ethers.ContractTransactionResponse> {
     const contract = this.getRoyaltyManagerContract();
 
-    const tx = await contract.setCustomRoyaltyContract(collection, customContract);
+    const tx = await contract.setCustomRoyaltyContract(
+      collection,
+      customContract
+    );
     await tx.wait();
 
     return tx;
@@ -313,16 +325,16 @@ export class RoyaltyManagerService {
 
     // Calculate distributions
     const distributions: RoyaltyDistribution[] = recipients
-      .filter(r => r.isActive)
-      .map(r => ({
+      .filter((r) => r.isActive)
+      .map((r) => ({
         recipient: r.recipient,
         amount: (salePrice * r.basisPoints) / BigInt(10000),
-        role: r.role
+        role: r.role,
       }));
 
     return {
       tx,
-      distributions
+      distributions,
     };
   }
 
@@ -407,7 +419,7 @@ export class RoyaltyManagerService {
 
     const distributions = new Map<string, bigint>();
 
-    recipients.forEach(recipient => {
+    recipients.forEach((recipient) => {
       const amount = (totalRoyalty * recipient.basisPoints) / totalBps;
       distributions.set(recipient.recipient, amount);
     });

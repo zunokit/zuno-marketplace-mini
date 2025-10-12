@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { CollectionVerifier_ABI } from "@/lib/contracts/abis";
 
@@ -17,12 +18,12 @@ export enum VerificationStatus {
   PENDING = 1,
   VERIFIED = 2,
   REJECTED = 3,
-  REVOKED = 4
+  REVOKED = 4,
 }
 
 export interface CollectionVerification {
   isVerified: boolean;
-  verificationTier: string;           // "basic", "premium", "featured"
+  verificationTier: string; // "basic", "premium", "featured"
   verifiedAt: bigint;
   verifiedBy: string;
   expiresAt: bigint;
@@ -74,7 +75,10 @@ export class CollectionVerifierService {
     // Get verifier address from hub
     // TODO: Add getCollectionVerifier() to Hub
 
-    console.log("✅ CollectionVerifierService initialized");
+    logger.success("CollectionVerifierService initialized", null, {
+      component: "CollectionVerifierService",
+      action: "initialize",
+    });
   }
 
   /**
@@ -134,7 +138,7 @@ export class CollectionVerifierService {
       verifiedAt: verification.verifiedAt,
       verifiedBy: verification.verifiedBy,
       expiresAt: verification.expiresAt,
-      status: verification.status
+      status: verification.status,
     };
   }
 
@@ -154,7 +158,7 @@ export class CollectionVerifierService {
       category: metadata.category,
       creatorAddress: metadata.creatorAddress,
       totalSupply: metadata.totalSupply,
-      socialLinks: metadata.socialLinks
+      socialLinks: metadata.socialLinks,
     };
   }
 
@@ -175,7 +179,7 @@ export class CollectionVerifierService {
       verificationTier: request.verificationTier,
       fee: request.fee,
       status: request.status,
-      reviewNotes: request.reviewNotes
+      reviewNotes: request.reviewNotes,
     };
   }
 
@@ -287,7 +291,10 @@ export class CollectionVerifierService {
   ): Promise<ethers.ContractTransactionResponse> {
     const contract = this.getVerifierContract();
 
-    const tx = await contract.batchVerifyCollections(collections, verificationTiers);
+    const tx = await contract.batchVerifyCollections(
+      collections,
+      verificationTiers
+    );
     await tx.wait();
 
     return tx;
@@ -334,7 +341,7 @@ export class CollectionVerifierService {
       [VerificationStatus.PENDING]: "Pending Review",
       [VerificationStatus.VERIFIED]: "Verified",
       [VerificationStatus.REJECTED]: "Rejected",
-      [VerificationStatus.REVOKED]: "Revoked"
+      [VerificationStatus.REVOKED]: "Revoked",
     };
 
     return names[status] || "Unknown";
@@ -347,7 +354,7 @@ export class CollectionVerifierService {
     const badges: Record<string, string> = {
       basic: "✓",
       premium: "⭐",
-      featured: "👑"
+      featured: "👑",
     };
 
     return badges[tier.toLowerCase()] || "✓";
@@ -410,7 +417,7 @@ export class CollectionVerifierService {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -426,25 +433,27 @@ export class CollectionVerifierService {
       basic: {
         name: "Basic",
         description: "Standard verification for legitimate collections",
-        badge: "✓"
+        badge: "✓",
       },
       premium: {
         name: "Premium",
         description: "Enhanced verification with priority support",
-        badge: "⭐"
+        badge: "⭐",
       },
       featured: {
         name: "Featured",
         description: "Top-tier verification with maximum visibility",
-        badge: "👑"
-      }
+        badge: "👑",
+      },
     };
 
-    return tiers[tier.toLowerCase()] || {
-      name: "Unknown",
-      description: "Unknown tier",
-      badge: "?"
-    };
+    return (
+      tiers[tier.toLowerCase()] || {
+        name: "Unknown",
+        description: "Unknown tier",
+        badge: "?",
+      }
+    );
   }
 
   /**
@@ -457,7 +466,9 @@ export class CollectionVerifierService {
       Tier: ${request.verificationTier}
       Status: ${this.getStatusName(request.status)}
       Fee: ${this.formatFee(request.fee)} ETH
-      Requested: ${new Date(Number(request.requestedAt) * 1000).toLocaleDateString()}
+      Requested: ${new Date(
+        Number(request.requestedAt) * 1000
+      ).toLocaleDateString()}
     `.trim();
   }
 }

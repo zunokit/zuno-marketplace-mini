@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { logger } from "@/lib/utils/logger";
 import { ethers } from "ethers";
 import {
   Card,
@@ -135,7 +136,7 @@ export default function MintNFTPage() {
         isLoadingInfo: false,
       }));
     } catch (error) {
-      console.error("Error loading collection info:", error);
+      logger.error("Error loading collection info", error, { component: "NFTCreatePage", action: "loadCollectionInfo" });
       toast({
         title: "Error",
         description: "Failed to load collection information",
@@ -289,7 +290,7 @@ export default function MintNFTPage() {
         setState(prev => ({ ...prev, mintAmount: 1 }));
       }
     } catch (error: any) {
-      console.error("Minting error:", error);
+      logger.error("Minting error", error, { component: "NFTCreatePage", action: "mintNFT" });
       
       // Handle user rejection
       if (error.code === "ACTION_REJECTED" || error.code === 4001) {
