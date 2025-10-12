@@ -3,8 +3,9 @@
 import { motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { logger } from "@/lib/utils/logger";
+import { useDraggablePosition } from "@/hooks/use-draggable-position";
 
 interface DraggableSettingsButtonProps {
   onClick: () => void;
@@ -15,86 +16,20 @@ const STORAGE_KEY = "draggable-settings-position";
 export function DraggableSettingsButton({
   onClick,
 }: DraggableSettingsButtonProps) {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [isClient, setIsClient] = useState(false);
 
-  // Ensure we're on the client side
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const { position, isClient, savePosition, getDragConstraints } =
+    useDraggablePosition({
+      storageKey: STORAGE_KEY,
+      buttonSize: 48,
+      margin: 24,
+    });
 
-  // Load saved position from localStorage on mount
-  useEffect(() => {
-    if (!isClient) return;
-
-    try {
-      const savedPosition = localStorage.getItem(STORAGE_KEY);
-      if (savedPosition) {
-        const { x, y } = JSON.parse(savedPosition);
-        // Validate position is within viewport
-        const maxX = window.innerWidth - 48;
-        const maxY = window.innerHeight - 48;
-        const validPosition = {
-          x: Math.max(0, Math.min(x, maxX)),
-          y: Math.max(0, Math.min(y, maxY)),
-        };
-        setPosition(validPosition);
-        logger.info(
-          "Loaded saved position for draggable settings button",
-          validPosition,
-          {
-            component: "DraggableSettingsButton",
-            action: "loadPosition",
-          }
-        );
-      } else {
-        // Default position: bottom-right corner (like Next.js dev button)
-        const defaultPosition = {
-          x: window.innerWidth - 80, // 48px button + 32px margin
-          y: window.innerHeight - 80,
-        };
-        setPosition(defaultPosition);
-        logger.info(
-          "Using default position for draggable settings button",
-          defaultPosition,
-          {
-            component: "DraggableSettingsButton",
-            action: "setDefaultPosition",
-          }
-        );
-      }
-    } catch (error) {
-      logger.error("Failed to load saved position", error, {
-        component: "DraggableSettingsButton",
-        action: "loadPosition",
-      });
-      // Fallback to safe default position
-      setPosition({
-        x: window.innerWidth - 80,
-        y: window.innerHeight - 80,
-      });
-    }
-  }, [isClient]);
-
-  // Save position to localStorage when dragging ends
+  // Save position when dragging ends
   const handleDragEnd = (event: any, info: any) => {
     const newPosition = { x: info.point.x, y: info.point.y };
-    setPosition(newPosition);
+    savePosition(newPosition);
     setIsDragging(false);
-
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newPosition));
-      logger.info("Saved draggable settings button position", newPosition, {
-        component: "DraggableSettingsButton",
-        action: "savePosition",
-      });
-    } catch (error) {
-      logger.error("Failed to save position", error, {
-        component: "DraggableSettingsButton",
-        action: "savePosition",
-      });
-    }
   };
 
   const handleDragStart = () => {
@@ -129,44 +64,18 @@ export function DraggableSettingsButton({
     return null;
   }
 
-  // Force position to be visible - reset to bottom-right if position is invalid
-  const safePosition = (() => {
-    const maxX = window.innerWidth - 68;
-    const maxY = window.innerHeight - 68;
-
-    // If position is outside viewport, reset to bottom-right
-    if (
-      position.x > maxX ||
-      position.y > maxY ||
-      position.x < 0 ||
-      position.y < 0
-    ) {
-      return { x: maxX, y: maxY };
-    }
-
-    return {
-      x: Math.max(20, Math.min(position.x, maxX)),
-      y: Math.max(20, Math.min(position.y, maxY)),
-    };
-  })();
-
   return (
     <motion.div
       drag
       dragMomentum={false}
       dragElastic={0}
-      dragConstraints={{
-        left: 0,
-        right: window.innerWidth - 48,
-        top: 0,
-        bottom: window.innerHeight - 48,
-      }}
+      dragConstraints={getDragConstraints()}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      initial={{ x: safePosition.x, y: safePosition.y }}
+      initial={{ x: position.x, y: position.y }}
       animate={{
-        x: safePosition.x,
-        y: safePosition.y,
+        x: position.x,
+        y: position.y,
         scale: isDragging ? 1.1 : 1,
       }}
       transition={{

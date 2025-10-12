@@ -48,6 +48,7 @@ class EnvConfigManager {
     const envConfig: EnvConfig = {
       NEXT_PUBLIC_DEFAULT_CHAIN_ID:
         process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337",
+      NEXT_PUBLIC_DEFAULT_ALLOWLIST: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
       NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL:
         process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL,
       NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA:
@@ -57,7 +58,6 @@ class EnvConfigManager {
       NEXT_PUBLIC_RPC_URL_LOCAL: process.env.NEXT_PUBLIC_RPC_URL_LOCAL,
       NEXT_PUBLIC_RPC_URL_SEPOLIA: process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA,
       NEXT_PUBLIC_RPC_URL_MAINNET: process.env.NEXT_PUBLIC_RPC_URL_MAINNET,
-      NEXT_PUBLIC_DEFAULT_ALLOWLIST: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
     };
 
     this.cachedConfig = envConfig;
@@ -103,7 +103,9 @@ class EnvConfigManager {
    * Check if using localStorage configuration
    */
   isUsingStoredConfig(): boolean {
-    return envStorageService.hasStoredConfig();
+    const isUsingStored = envStorageService.hasStoredConfig();
+    console.log("🔧 [EnvConfig] isUsingStoredConfig:", isUsingStored);
+    return isUsingStored;
   }
 
   /**
@@ -111,17 +113,29 @@ class EnvConfigManager {
    */
   getMarketplaceHubAddress(chainId: number): string | undefined {
     const config = this.getConfig();
+    const isUsingStored = this.isUsingStoredConfig();
 
+    let address: string | undefined;
     switch (chainId) {
       case 31337:
-        return config.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL;
+        address = config.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL;
+        break;
       case 11155111:
-        return config.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA;
+        address = config.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA;
+        break;
       case 1:
-        return config.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET;
+        address = config.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET;
+        break;
       default:
-        return undefined;
+        address = undefined;
     }
+
+    console.log(`🔧 [EnvConfig] getMarketplaceHubAddress(${chainId}):`, {
+      address,
+      source: isUsingStored ? "localStorage" : "process.env",
+    });
+
+    return address;
   }
 
   /**

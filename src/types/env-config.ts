@@ -36,6 +36,12 @@ export const ENV_VARIABLE_DEFINITIONS: EnvVariable[] = [
     required: true,
   },
   {
+    key: "NEXT_PUBLIC_DEFAULT_ALLOWLIST",
+    value: "",
+    description: "Default allowlist addresses (comma-separated)",
+    required: false,
+  },
+  {
     key: "NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL",
     value: "",
     description: "MarketplaceHub contract address for local network",
@@ -55,27 +61,21 @@ export const ENV_VARIABLE_DEFINITIONS: EnvVariable[] = [
   },
   {
     key: "NEXT_PUBLIC_RPC_URL_LOCAL",
-    value: "http://127.0.0.1:8545",
-    description: "RPC URL for local network (Anvil/Hardhat)",
+    value: "",
+    description: "RPC URL for local network (Anvil/Hardhat) - Optional",
     required: false,
   },
   {
     key: "NEXT_PUBLIC_RPC_URL_SEPOLIA",
-    value: "https://rpc.sepolia.org",
-    description: "RPC URL for Sepolia testnet",
+    value: "",
+    description: "RPC URL for Sepolia testnet - Optional",
     required: false,
   },
   {
     key: "NEXT_PUBLIC_RPC_URL_MAINNET",
-    value: "https://eth.public-rpc.com",
-    description: "RPC URL for Ethereum mainnet",
-    required: false,
-  },
-  {
-    key: "NEXT_PUBLIC_DEFAULT_ALLOWLIST",
     value: "",
-    description: "Default allowlist addresses (comma-separated)",
-    required: true,
+    description: "RPC URL for Ethereum mainnet - Optional",
+    required: false,
   },
 ];
 
