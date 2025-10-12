@@ -36,6 +36,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import { collectionService } from "@/lib/services/contracts/CollectionService";
+import { ProviderFactory } from "@/lib/services/web3/provider-factory";
 
 // Types
 interface MintPageState {
@@ -105,7 +106,7 @@ export default function MintNFTPage() {
       );
       if (!collection) throw new Error("Collection not found");
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = ProviderFactory.createBrowserProvider();
       await collectionService.initialize(provider);
 
       const tokenType = collection.type as "ERC721" | "ERC1155";
@@ -135,12 +136,17 @@ export default function MintNFTPage() {
         mintInfo: mintData,
         isLoadingInfo: false,
       }));
-    } catch (error) {
-      logger.error("Error loading collection info", error, { component: "NFTCreatePage", action: "loadCollectionInfo" });
-      toast({
-        title: "Error",
-        description: "Failed to load collection information",
-        variant: "destructive",
+    } catch (error: any) {
+      await ProviderFactory.handleProviderError(error).catch((err) => {
+        logger.error("Error loading collection info", err, {
+          component: "NFTCreatePage",
+          action: "loadCollectionInfo"
+        });
+        toast({
+          title: "Error",
+          description: err.message || "Failed to load collection information",
+          variant: "destructive",
+        });
       });
       setState(prev => ({ ...prev, isLoadingInfo: false }));
     }
@@ -218,7 +224,7 @@ export default function MintNFTPage() {
     setState(prev => ({ ...prev, isMinting: true }));
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = ProviderFactory.createBrowserProvider();
       const signer = await provider.getSigner();
       await collectionService.initialize(provider, signer);
 
@@ -290,19 +296,22 @@ export default function MintNFTPage() {
         setState(prev => ({ ...prev, mintAmount: 1 }));
       }
     } catch (error: any) {
-      logger.error("Minting error", error, { component: "NFTCreatePage", action: "mintNFT" });
-      
-      // Handle user rejection
       if (error.code === "ACTION_REJECTED" || error.code === 4001) {
         toast({
           title: "Transaction Cancelled",
           description: "You rejected the transaction",
         });
       } else {
-        toast({
-          title: "Minting Failed",
-          description: error.message || "Failed to mint NFT",
-          variant: "destructive",
+        await ProviderFactory.handleProviderError(error).catch((err) => {
+          logger.error("Minting error", err, {
+            component: "NFTCreatePage",
+            action: "mintNFT"
+          });
+          toast({
+            title: "Minting Failed",
+            description: err.message || "Failed to mint NFT",
+            variant: "destructive",
+          });
         });
       }
     } finally {

@@ -16,6 +16,7 @@ import { ethers } from "ethers";
 import { toast } from "sonner";
 import { logger } from "@/lib/utils/logger";
 import { envConfigManager } from "@/lib/utils/env-config";
+import { ProviderFactory } from "@/lib/services/web3/provider-factory";
 
 interface WalletContextType {
   // Connection state
@@ -142,7 +143,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       setIsConnecting(true);
 
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
+      const web3Provider = ProviderFactory.createBrowserProvider();
       const accounts = await web3Provider.send("eth_accounts", []);
 
       if (accounts.length > 0) {
@@ -159,9 +160,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
         logger.info("Wallet reconnected", { account: accounts[0] });
       }
-    } catch (error) {
-      logger.error("Failed to reconnect wallet", error);
-      localStorage.removeItem(STORAGE_KEY);
+    } catch (error: any) {
+      await ProviderFactory.handleProviderError(error).catch((err) => {
+        logger.error("Reconnect failed", err);
+        toast.warning(err.message);
+        disconnect();
+      });
     } finally {
       setIsConnecting(false);
     }
@@ -177,9 +181,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       setIsConnecting(true);
 
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
-
-      // Request account access
+      const web3Provider = ProviderFactory.createBrowserProvider();
       const accounts = await web3Provider.send("eth_requestAccounts", []);
 
       if (accounts.length === 0) {

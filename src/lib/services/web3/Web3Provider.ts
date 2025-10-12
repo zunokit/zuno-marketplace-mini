@@ -6,6 +6,7 @@
 
 import { ethers } from 'ethers';
 import { getNetworkConfig } from '@/lib/config/networks';
+import { ProviderFactory } from './provider-factory';
 
 export enum WalletType {
   METAMASK = 'metamask',
@@ -70,11 +71,9 @@ export class Web3Provider {
       throw new Error('No injected Web3 provider found');
     }
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    
-    // Request account access
+    const provider = ProviderFactory.createBrowserProvider();
     await provider.send('eth_requestAccounts', []);
-    
+
     const signer = await provider.getSigner();
     const account = await signer.getAddress();
     const network = await provider.getNetwork();

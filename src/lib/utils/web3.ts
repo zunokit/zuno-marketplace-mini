@@ -6,6 +6,7 @@
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
 import { initializeServices } from "@/lib/services/contracts";
 import { envConfigManager } from "@/lib/utils/env-config";
+import { ProviderFactory } from "@/lib/services/web3/provider-factory";
 import { logger } from "./logger";
 
 export class Web3Utils {
@@ -20,7 +21,7 @@ export class Web3Utils {
       // Check for MetaMask or other Web3 provider
       if (typeof window !== "undefined" && window.ethereum) {
         try {
-          this.provider = new BrowserProvider(window.ethereum);
+          this.provider = ProviderFactory.createBrowserProvider();
           await this.provider.send("eth_requestAccounts", []);
           this.signer = await this.provider.getSigner();
         } catch (error) {
@@ -122,7 +123,7 @@ export class Web3Utils {
     }
 
     try {
-      this.provider = new BrowserProvider(window.ethereum);
+      this.provider = ProviderFactory.createBrowserProvider();
       await this.provider.send("eth_requestAccounts", []);
       this.signer = await this.provider.getSigner();
       logger.success("MetaMask connected for transactions", null, {
