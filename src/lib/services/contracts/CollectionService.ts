@@ -1043,7 +1043,6 @@ export class CollectionService {
    * Format transaction error for user-friendly messages
    */
   private formatTransactionError(error: unknown): Error {
-    // Type guard for error object
     const err = error as {
       code?: string | number;
       message?: string;
@@ -1051,6 +1050,12 @@ export class CollectionService {
       data?: string;
       error?: { message?: string };
     };
+
+    logger.error("Transaction error details", error, {
+      component: "CollectionService",
+      action: "formatTransactionError",
+    });
+
     if (err.code === "ACTION_REJECTED" || err.code === 4001) {
       return new Error("Transaction was rejected by user");
     }
