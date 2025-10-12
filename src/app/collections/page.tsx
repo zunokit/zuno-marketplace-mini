@@ -152,11 +152,22 @@ export default function CollectionsPage() {
         component: "CollectionsPage",
         action: "loadCollections",
       });
-      setError(
-        `Failed to load collections from blockchain: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+
+      // Provide more helpful error messages
+      let errorMessage = "Failed to load collections from blockchain";
+      if (error instanceof Error) {
+        if (error.message.includes("MarketplaceHub not configured")) {
+          errorMessage = `Network Configuration Error: ${error.message}`;
+        } else if (error.message.includes("No contract deployed")) {
+          errorMessage = `Contract Deployment Error: ${error.message}`;
+        } else if (error.message.includes("Hub not initialized")) {
+          errorMessage = `Service Initialization Error: ${error.message}`;
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+
+      setError(errorMessage);
       setCollections([]);
     } finally {
       setLoading(false);

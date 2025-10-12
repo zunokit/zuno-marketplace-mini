@@ -9,6 +9,7 @@ import { getHubAddress } from "@/lib/config/networks";
 import { MarketplaceHub_ABI } from "@/lib/contracts/abis";
 import { ZERO_ADDRESS } from "@/lib/constants";
 import { logger } from "@/lib/utils/logger";
+import { envConfigManager } from "@/lib/utils/env-config";
 
 export interface MarketplaceAddresses {
   hub: string;
@@ -51,11 +52,52 @@ export class MarketplaceHubService {
     const chainId = Number(network.chainId);
     const hubAddress = getHubAddress(chainId);
 
+    // Debug logging
+    logger.info(
+      "MarketplaceHub initialization",
+      {
+        chainId,
+        hubAddress,
+        networkName: network.name,
+      },
+      { component: "MarketplaceHubService", action: "initialize" }
+    );
+
     // Check if hub address is configured
     if (!hubAddress || hubAddress === ZERO_ADDRESS) {
+      // Get all available hub addresses for debugging
+      const availableAddresses = {
+        local: getHubAddress(31337),
+        sepolia: getHubAddress(11155111),
+        mainnet: getHubAddress(1),
+      };
+
+      logger.error(
+        "MarketplaceHub not configured",
+        {
+          currentChainId: chainId,
+          availableAddresses,
+          defaultChainId: envConfigManager.getDefaultChainId(),
+        },
+        { component: "MarketplaceHubService", action: "initialize" }
+      );
+
+      // Try to suggest a solution
+      const defaultChainId = envConfigManager.getDefaultChainId();
+      const hasDefaultConfig = !!getHubAddress(defaultChainId);
+
+      let suggestion = "";
+      if (hasDefaultConfig && chainId !== defaultChainId) {
+        suggestion = ` Try switching to chain ${defaultChainId} (configured in Settings).`;
+      } else if (!hasDefaultConfig) {
+        suggestion = ` Please configure MarketplaceHub address for chain ${chainId} in Settings Modal.`;
+      }
+
       throw new Error(
-        `MarketplaceHub not configured for chain ${chainId}. ` +
-          `Please deploy contracts and configure hub address in .env file.`
+        `MarketplaceHub not configured for chain ${chainId} (${network.name}). ` +
+          `Available addresses: ${JSON.stringify(
+            availableAddresses
+          )}.${suggestion}`
       );
     }
 
