@@ -3,11 +3,11 @@
  * React hook for Web3 wallet connection management
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { web3Provider, Web3Connection } from '@/lib/services/web3/Web3Provider';
-import { DEFAULT_CHAIN_ID } from '@/lib/config/networks';
+import { useState, useEffect, useCallback } from "react";
+import { web3Provider, Web3Connection } from "@/lib/services/web3/Web3Provider";
+import { getDefaultChainId } from "@/lib/config/networks";
 
 export function useWeb3() {
   const [connection, setConnection] = useState<Web3Connection | null>(null);
@@ -20,31 +20,32 @@ export function useWeb3() {
   const connect = useCallback(async () => {
     setIsConnecting(true);
     setError(null);
-    
+
     try {
       const conn = await web3Provider.connect();
-      
+
       // Check if on correct network
-      if (conn.chainId !== DEFAULT_CHAIN_ID) {
+      const defaultChainId = getDefaultChainId();
+      if (conn.chainId !== defaultChainId) {
         const shouldSwitch = window.confirm(
           `You are connected to the wrong network (chainId: ${conn.chainId}).\n` +
-          `Would you like to switch to the correct network (chainId: ${DEFAULT_CHAIN_ID})?`
+            `Would you like to switch to the correct network (chainId: ${defaultChainId})?`
         );
-        
+
         if (shouldSwitch) {
-          await web3Provider.switchNetwork(DEFAULT_CHAIN_ID);
+          await web3Provider.switchNetwork(defaultChainId);
           // Re-connect after network switch
           const newConn = await web3Provider.connect();
           setConnection(newConn);
         } else {
-          setError('Please switch to the correct network');
+          setError("Please switch to the correct network");
         }
       } else {
         setConnection(conn);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to connect wallet');
-      console.error('Wallet connection error:', err);
+      setError(err.message || "Failed to connect wallet");
+      console.error("Wallet connection error:", err);
     } finally {
       setIsConnecting(false);
     }
@@ -69,8 +70,8 @@ export function useWeb3() {
       const newConn = await web3Provider.connect();
       setConnection(newConn);
     } catch (err: any) {
-      setError(err.message || 'Failed to switch network');
-      console.error('Network switch error:', err);
+      setError(err.message || "Failed to switch network");
+      console.error("Network switch error:", err);
     }
   }, []);
 
@@ -79,7 +80,7 @@ export function useWeb3() {
    */
   useEffect(() => {
     // Only run on client side
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const existingConnection = web3Provider.getConnection();
       if (existingConnection) {
         setConnection(existingConnection);
@@ -95,7 +96,7 @@ export function useWeb3() {
     chainId: connection?.chainId || null,
     walletType: connection?.walletType || null,
     error,
-    
+
     // Actions
     connect,
     disconnect,

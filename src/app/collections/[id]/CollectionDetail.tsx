@@ -10,6 +10,7 @@ import { useParams } from "next/navigation";
 import { useCollection } from "@/hooks/use-collection";
 import { useWallet } from "@/providers/WalletProvider";
 import { MintNFTButton } from "@/components/features/nft/MintNFTButton";
+import { ActivityTracking } from "@/components/features/collection/ActivityTracking";
 import { CollectionInfo, TokenType } from "@/types";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
@@ -412,13 +413,10 @@ export function CollectionDetail() {
         </TabsContent>
 
         <TabsContent value="activity">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center text-muted-foreground">
-                Activity tracking coming soon...
-              </p>
-            </CardContent>
-          </Card>
+          <ActivityTracking
+            collectionAddress={collectionAddress}
+            tokenType={tokenType}
+          />
         </TabsContent>
       </Tabs>
     </div>
