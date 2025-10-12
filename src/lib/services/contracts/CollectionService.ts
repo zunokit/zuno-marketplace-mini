@@ -6,6 +6,7 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import {
   ERC721Collection_ABI,
   ERC1155Collection_ABI,
@@ -313,9 +314,15 @@ export class CollectionService {
       tx.wait()
         .then((receipt: ethers.ContractTransactionReceipt | null) => {
           if (receipt && receipt.status === 1) {
-            console.log(`\n✅ Successfully minted ${quantity} ERC721 NFT(s)`);
-            console.log(`   Contract: ${collectionAddress}`);
-            console.log(`   Transaction: ${receipt.hash}`);
+            logger.success(
+              `Successfully minted ${quantity} ERC721 NFT(s)`,
+              {
+                contract: collectionAddress,
+                transaction: receipt.hash,
+                quantity,
+              },
+              { component: "CollectionService", action: "mintERC721" }
+            );
 
             // Parse Transfer events to get token IDs
             const transferEvents = receipt.logs
@@ -332,21 +339,38 @@ export class CollectionService {
               );
 
             if (transferEvents.length > 0) {
-              console.log(`   Token ID(s):`);
-              transferEvents.forEach((event: ethers.LogDescription | null) => {
-                if (event?.args?.tokenId) {
-                  console.log(`   - #${event.args.tokenId.toString()}`);
-                }
-              });
+              const tokenIds = transferEvents
+                .filter(
+                  (event: ethers.LogDescription | null) => event?.args?.tokenId
+                )
+                .map((event: ethers.LogDescription | null) =>
+                  event!.args.tokenId.toString()
+                );
+
+              logger.info(
+                `Minted token IDs: ${tokenIds.join(", ")}`,
+                {
+                  tokenIds,
+                  count: tokenIds.length,
+                },
+                { component: "CollectionService", action: "mintERC721" }
+              );
             }
 
-            console.log(
-              `\n💡 To import to MetaMask: Add NFT with contract ${collectionAddress}`
+            logger.info(
+              `To import to MetaMask: Add NFT with contract ${collectionAddress}`,
+              {
+                contract: collectionAddress,
+              },
+              { component: "CollectionService", action: "mintERC721" }
             );
           }
         })
         .catch((err: Error) => {
-          console.error("Failed to get mint receipt:", err.message);
+          logger.error("Failed to get mint receipt", err, {
+            component: "CollectionService",
+            action: "mintERC721",
+          });
         });
 
       return tx;
@@ -421,9 +445,21 @@ export class CollectionService {
     tx.wait()
       .then((receipt: ethers.ContractTransactionReceipt | null) => {
         if (receipt && receipt.status === 1) {
-          console.log(`\n✅ Successfully minted ${amount} ERC1155 NFT(s)`);
-          console.log(`   Contract: ${collectionAddress}`);
-          console.log(`   Transaction: ${receipt.hash}`);
+          logger.success(
+            `Successfully minted ${amount} ERC1155 NFT(s)`,
+            {
+              contract: collectionAddress,
+              amount,
+            },
+            { component: "CollectionService", action: "mintERC1155" }
+          );
+          logger.info(
+            `ERC1155 mint transaction completed`,
+            {
+              transaction: receipt.hash,
+            },
+            { component: "CollectionService", action: "mintERC1155" }
+          );
 
           // Parse Transfer events to get token IDs
           const mintedTokens: MintedToken[] = [];
@@ -460,25 +496,40 @@ export class CollectionService {
           }
 
           if (mintedTokens.length > 0) {
-            console.log(`   Token ID(s):`);
-            mintedTokens.forEach(({ tokenId, amount }) => {
-              console.log(`   - #${tokenId}: ${amount} NFT(s)`);
-            });
+            const tokenSummary = mintedTokens
+              .map(({ tokenId, amount }) => `#${tokenId}: ${amount} NFT(s)`)
+              .join(", ");
 
-            if (mintedTokens.length === 1) {
-              console.log(
-                `\n💡 To import to MetaMask: Add NFT with contract ${collectionAddress} and token ID ${mintedTokens[0].tokenId}`
-              );
-            } else {
-              console.log(
-                `\n💡 To import to MetaMask: Add each token ID separately in MetaMask NFTs tab`
-              );
-            }
+            logger.info(
+              `ERC1155 minted tokens: ${tokenSummary}`,
+              {
+                mintedTokens,
+                count: mintedTokens.length,
+              },
+              { component: "CollectionService", action: "mintERC1155" }
+            );
+
+            const metaMaskMessage =
+              mintedTokens.length === 1
+                ? `To import to MetaMask: Add NFT with contract ${collectionAddress} and token ID ${mintedTokens[0].tokenId}`
+                : `To import to MetaMask: Add each token ID separately in MetaMask NFTs tab`;
+
+            logger.info(
+              metaMaskMessage,
+              {
+                contract: collectionAddress,
+                tokenCount: mintedTokens.length,
+              },
+              { component: "CollectionService", action: "mintERC1155" }
+            );
           }
         }
       })
       .catch((err: Error) => {
-        console.error("Failed to get mint receipt:", err.message);
+        logger.error("Failed to get mint receipt", err, {
+          component: "CollectionService",
+          action: "mintERC1155",
+        });
       });
 
     return tx;
@@ -819,6 +870,7 @@ export class CollectionService {
     const methodConfigs = {
       name: { fallback: "Unknown Collection" },
       symbol: { fallback: "UNKNOWN" },
+      description: { fallback: "" },
       totalSupply: {
         fallback: "0",
         transform: (v: bigint) => v.toString(),
@@ -831,33 +883,79 @@ export class CollectionService {
         fallback: "0",
         transform: (v: bigint) => ethers.formatEther(v),
       },
+      royaltyFee: {
+        fallback: "0",
+        transform: (v: bigint) => v.toString(),
+      },
     };
 
     // Fetch all basic properties in parallel
-    const [name, symbol, totalSupply, maxSupply, mintPrice] = await Promise.all(
-      [
-        safeContractCall(collection, "name", methodConfigs.name.fallback),
-        safeContractCall(collection, "symbol", methodConfigs.symbol.fallback),
+    // Try both standard and custom method names for better compatibility
+    const [
+      name,
+      symbol,
+      description,
+      totalSupply,
+      maxSupply,
+      mintPrice,
+      royaltyFee,
+    ] = await Promise.all([
+      safeContractCall(collection, "name", methodConfigs.name.fallback),
+      safeContractCall(collection, "symbol", methodConfigs.symbol.fallback),
+      safeContractCall(
+        collection,
+        "getDescription",
+        methodConfigs.description.fallback
+      ),
+      // Try getTotalMinted() first (custom), then totalSupply() (standard)
+      safeContractCall(
+        collection,
+        "getTotalMinted",
+        methodConfigs.totalSupply.fallback,
+        methodConfigs.totalSupply.transform
+      ).catch(() =>
         safeContractCall(
           collection,
           "totalSupply",
           methodConfigs.totalSupply.fallback,
           methodConfigs.totalSupply.transform
-        ),
+        )
+      ),
+      // Try getMaxSupply() first (custom), then maxSupply() (standard)
+      safeContractCall(
+        collection,
+        "getMaxSupply",
+        methodConfigs.maxSupply.fallback,
+        methodConfigs.maxSupply.transform
+      ).catch(() =>
         safeContractCall(
           collection,
           "maxSupply",
           methodConfigs.maxSupply.fallback,
           methodConfigs.maxSupply.transform
-        ),
+        )
+      ),
+      // Try getMintPrice() first (custom), then mintPrice() (standard)
+      safeContractCall(
+        collection,
+        "getMintPrice",
+        methodConfigs.mintPrice.fallback,
+        methodConfigs.mintPrice.transform
+      ).catch(() =>
         safeContractCall(
           collection,
           "mintPrice",
           methodConfigs.mintPrice.fallback,
           methodConfigs.mintPrice.transform
-        ),
-      ]
-    );
+        )
+      ),
+      safeContractCall(
+        collection,
+        "getRoyaltyFee",
+        methodConfigs.royaltyFee.fallback,
+        methodConfigs.royaltyFee.transform
+      ),
+    ]);
 
     // Handle baseURI with multiple fallback strategies
     const baseURI = await this.getBaseURI(collection);
@@ -866,10 +964,12 @@ export class CollectionService {
       address,
       name,
       symbol,
+      description,
       totalSupply,
       tokenType,
       maxSupply,
       mintPrice,
+      royaltyFee,
       baseURI,
     };
   }
@@ -943,7 +1043,6 @@ export class CollectionService {
    * Format transaction error for user-friendly messages
    */
   private formatTransactionError(error: unknown): Error {
-    // Type guard for error object
     const err = error as {
       code?: string | number;
       message?: string;
@@ -951,6 +1050,12 @@ export class CollectionService {
       data?: string;
       error?: { message?: string };
     };
+
+    logger.error("Transaction error details", error, {
+      component: "CollectionService",
+      action: "formatTransactionError",
+    });
+
     if (err.code === "ACTION_REJECTED" || err.code === 4001) {
       return new Error("Transaction was rejected by user");
     }

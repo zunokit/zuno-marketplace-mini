@@ -3,12 +3,20 @@
  * Manages wallet connection with persistence
  */
 
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { ethers } from 'ethers';
-import { toast } from 'sonner';
-import { logger } from '@/lib/utils/logger';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import { ethers } from "ethers";
+import { toast } from "sonner";
+import { logger } from "@/lib/utils/logger";
+import { envConfigManager } from "@/lib/utils/env-config";
+import { ProviderFactory } from "@/lib/services/web3/provider-factory";
 
 interface WalletContextType {
   // Connection state
@@ -17,24 +25,23 @@ interface WalletContextType {
   account: string | null;
   chainId: number | null;
   balance: string | null;
-  
+
   // Provider & Signer
   provider: ethers.BrowserProvider | null;
   signer: ethers.JsonRpcSigner | null;
-  
+
   // Actions
   connect: () => Promise<void>;
   disconnect: () => void;
   switchNetwork: (chainId: number) => Promise<void>;
-  
+
   // Utils
   refreshBalance: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'wallet_connection';
-const SUPPORTED_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '31337');
+const STORAGE_KEY = "wallet_connection";
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
@@ -49,7 +56,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const savedConnection = localStorage.getItem(STORAGE_KEY);
     if (savedConnection) {
-      const { account: savedAccount, chainId: savedChainId } = JSON.parse(savedConnection);
+      const { account: savedAccount, chainId: savedChainId } =
+        JSON.parse(savedConnection);
       if (savedAccount) {
         // Auto-reconnect
         reconnectWallet();
@@ -57,48 +65,60 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Setup event listeners
-    if (typeof window !== 'undefined' && window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
-      window.ethereum.on('disconnect', handleDisconnect);
+    if (typeof window !== "undefined" && window.ethereum) {
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", handleChainChanged);
+      window.ethereum.on("disconnect", handleDisconnect);
     }
 
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
-        window.ethereum.removeListener('disconnect', handleDisconnect);
+        window.ethereum.removeListener(
+          "accountsChanged",
+          handleAccountsChanged
+        );
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+        window.ethereum.removeListener("disconnect", handleDisconnect);
       }
     };
   }, []);
 
   // Handle account change
-  const handleAccountsChanged = useCallback((accounts: string[]) => {
-    if (accounts.length === 0) {
-      disconnect();
-    } else if (accounts[0] !== account) {
-      setAccount(accounts[0]);
-      refreshBalance();
-      saveConnection(accounts[0], chainId);
-    }
-  }, [account, chainId]);
+  const handleAccountsChanged = useCallback(
+    (accounts: string[]) => {
+      if (accounts.length === 0) {
+        disconnect();
+      } else if (accounts[0] !== account) {
+        setAccount(accounts[0]);
+        refreshBalance();
+        saveConnection(accounts[0], chainId);
+      }
+    },
+    [account, chainId]
+  );
 
   // Handle chain change
-  const handleChainChanged = useCallback((newChainId: string) => {
-    const chainIdNum = parseInt(newChainId, 16);
-    setChainId(chainIdNum);
-    
-    if (chainIdNum !== SUPPORTED_CHAIN_ID) {
-      toast.warning(`Please switch to the correct network (Chain ID: ${SUPPORTED_CHAIN_ID})`);
-    }
-    
-    if (account) {
-      saveConnection(account, chainIdNum);
-    }
-    
-    // Reload to reset state properly
-    window.location.reload();
-  }, [account]);
+  const handleChainChanged = useCallback(
+    (newChainId: string) => {
+      const chainIdNum = parseInt(newChainId, 16);
+      setChainId(chainIdNum);
+
+      const supportedChainId = envConfigManager.getDefaultChainId();
+      if (chainIdNum !== supportedChainId) {
+        toast.warning(
+          `Please switch to the correct network (Chain ID: ${supportedChainId})`
+        );
+      }
+
+      if (account) {
+        saveConnection(account, chainIdNum);
+      }
+
+      // Reload to reset state properly
+      window.location.reload();
+    },
+    [account]
+  );
 
   // Handle disconnect
   const handleDisconnect = useCallback(() => {
@@ -118,14 +138,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const reconnectWallet = async () => {
     try {
       if (!window.ethereum) {
-        throw new Error('No wallet found');
+        throw new Error("No wallet found");
       }
 
       setIsConnecting(true);
-      
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await web3Provider.send('eth_accounts', []);
-      
+
+      const web3Provider = ProviderFactory.createBrowserProvider();
+      const accounts = await web3Provider.send("eth_accounts", []);
+
       if (accounts.length > 0) {
         const network = await web3Provider.getNetwork();
         const signer = await web3Provider.getSigner();
@@ -138,11 +158,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         setBalance(ethers.formatEther(balance));
         setIsConnected(true);
 
-        logger.info('Wallet reconnected', { account: accounts[0] });
+        logger.info("Wallet reconnected", { account: accounts[0] });
       }
-    } catch (error) {
-      logger.error('Failed to reconnect wallet', error);
-      localStorage.removeItem(STORAGE_KEY);
+    } catch (error: any) {
+      await ProviderFactory.handleProviderError(error).catch((err) => {
+        logger.error("Reconnect failed", err);
+        toast.warning(err.message);
+        disconnect();
+      });
     } finally {
       setIsConnecting(false);
     }
@@ -152,33 +175,32 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = async () => {
     try {
       if (!window.ethereum) {
-        toast.error('Please install MetaMask or another Web3 wallet');
-        throw new Error('No wallet found');
+        toast.error("Please install MetaMask or another Web3 wallet");
+        throw new Error("No wallet found");
       }
 
       setIsConnecting(true);
 
-      const web3Provider = new ethers.BrowserProvider(window.ethereum);
-      
-      // Request account access
-      const accounts = await web3Provider.send('eth_requestAccounts', []);
-      
+      const web3Provider = ProviderFactory.createBrowserProvider();
+      const accounts = await web3Provider.send("eth_requestAccounts", []);
+
       if (accounts.length === 0) {
-        throw new Error('No accounts found');
+        throw new Error("No accounts found");
       }
 
       const network = await web3Provider.getNetwork();
       const currentChainId = Number(network.chainId);
 
       // Check if on correct network
-      if (currentChainId !== SUPPORTED_CHAIN_ID) {
+      const supportedChainId = envConfigManager.getDefaultChainId();
+      if (currentChainId !== supportedChainId) {
         const shouldSwitch = confirm(
           `You are on the wrong network (Chain ID: ${currentChainId}).\n` +
-          `Would you like to switch to the correct network (Chain ID: ${SUPPORTED_CHAIN_ID})?`
+            `Would you like to switch to the correct network (Chain ID: ${supportedChainId})?`
         );
 
         if (shouldSwitch) {
-          await switchNetwork(SUPPORTED_CHAIN_ID);
+          await switchNetwork(supportedChainId);
           // Re-run connect after network switch
           return connect();
         }
@@ -197,18 +219,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // Save connection
       saveConnection(accounts[0], currentChainId);
 
-      toast.success('Wallet connected successfully');
-      logger.info('Wallet connected', { account: accounts[0], chainId: currentChainId });
-
+      toast.success("Wallet connected successfully");
+      logger.info("Wallet connected", {
+        account: accounts[0],
+        chainId: currentChainId,
+      });
     } catch (error: any) {
-      logger.error('Failed to connect wallet', error);
-      
+      logger.error("Failed to connect wallet", error);
+
       if (error.code === 4001) {
-        toast.error('Connection rejected by user');
+        toast.error("Connection rejected by user");
       } else {
-        toast.error(error.message || 'Failed to connect wallet');
+        toast.error(error.message || "Failed to connect wallet");
       }
-      
+
       throw error;
     } finally {
       setIsConnecting(false);
@@ -223,26 +247,26 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setChainId(null);
     setBalance(null);
     setIsConnected(false);
-    
+
     // Clear saved connection
     localStorage.removeItem(STORAGE_KEY);
-    
-    toast.info('Wallet disconnected');
-    logger.info('Wallet disconnected');
+
+    toast.info("Wallet disconnected");
+    logger.info("Wallet disconnected");
   };
 
   // Switch network
   const switchNetwork = async (targetChainId: number) => {
     try {
       if (!window.ethereum) {
-        throw new Error('No wallet found');
+        throw new Error("No wallet found");
       }
 
       const chainIdHex = `0x${targetChainId.toString(16)}`;
 
       try {
         await window.ethereum.request({
-          method: 'wallet_switchEthereumChain',
+          method: "wallet_switchEthereumChain",
           params: [{ chainId: chainIdHex }],
         });
       } catch (switchError: any) {
@@ -255,40 +279,64 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      toast.success('Network switched successfully');
+      toast.success("Network switched successfully");
     } catch (error: any) {
-      logger.error('Failed to switch network', error);
-      toast.error('Failed to switch network');
+      logger.error("Failed to switch network", error);
+      toast.error("Failed to switch network");
       throw error;
     }
   };
 
   // Add network to wallet
   const addNetwork = async (chainId: number) => {
+    // Get RPC URL from config
+    const rpcUrl = envConfigManager.getRpcUrl(chainId);
+
     // Define network parameters based on chainId
     const networks: Record<number, any> = {
       31337: {
-        chainId: '0x7a69',
-        chainName: 'Localhost',
+        chainId: "0x7a69",
+        chainName: "Local Network",
         nativeCurrency: {
-          name: 'Ethereum',
-          symbol: 'ETH',
+          name: "Ethereum",
+          symbol: "ETH",
           decimals: 18,
         },
-        rpcUrls: ['http://localhost:8545'],
+        rpcUrls: [rpcUrl || "http://127.0.0.1:8545"],
         blockExplorerUrls: [],
       },
-      // Add more networks as needed
+      11155111: {
+        chainId: "0xaa36a7",
+        chainName: "Sepolia",
+        nativeCurrency: {
+          name: "Ethereum",
+          symbol: "ETH",
+          decimals: 18,
+        },
+        rpcUrls: [rpcUrl || "https://rpc.sepolia.org"],
+        blockExplorerUrls: ["https://sepolia.etherscan.io"],
+      },
+      1: {
+        chainId: "0x1",
+        chainName: "Ethereum",
+        nativeCurrency: {
+          name: "Ethereum",
+          symbol: "ETH",
+          decimals: 18,
+        },
+        rpcUrls: [rpcUrl || "https://eth.public-rpc.com"],
+        blockExplorerUrls: ["https://etherscan.io"],
+      },
     };
 
     const networkParams = networks[chainId];
-    
+
     if (!networkParams) {
       throw new Error(`Unknown network: ${chainId}`);
     }
 
     await window.ethereum.request({
-      method: 'wallet_addEthereumChain',
+      method: "wallet_addEthereumChain",
       params: [networkParams],
     });
   };
@@ -300,7 +348,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const balance = await provider.getBalance(account);
         setBalance(ethers.formatEther(balance));
       } catch (error) {
-        logger.error('Failed to refresh balance', error);
+        logger.error("Failed to refresh balance", error);
       }
     }
   };
@@ -328,16 +376,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <WalletContext.Provider value={value}>
-      {children}
-    </WalletContext.Provider>
+    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
   );
 }
 
 export function useWallet() {
   const context = useContext(WalletContext);
   if (context === undefined) {
-    throw new Error('useWallet must be used within a WalletProvider');
+    throw new Error("useWallet must be used within a WalletProvider");
   }
   return context;
 }

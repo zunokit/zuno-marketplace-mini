@@ -2,6 +2,8 @@
  * Application Constants
  */
 
+import { envConfigManager } from "@/lib/utils/env-config";
+
 // Network Constants
 export const SUPPORTED_CHAIN_IDS = {
   MAINNET: 1,
@@ -123,7 +125,7 @@ export const STORAGE_KEYS = {
 } as const;
 
 // API Endpoints (if using backend)
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+export const API_BASE_URL = envConfigManager.get("NEXT_PUBLIC_API_URL") || "";
 
 // Feature Flags
 export const FEATURES = {

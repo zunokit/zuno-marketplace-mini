@@ -6,6 +6,7 @@
 "use client";
 
 import { useState } from "react";
+import { logger } from "@/lib/utils/logger";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,6 +48,7 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { envConfigManager } from "@/lib/utils/env-config";
 
 // Form validation schema
 const formSchema = z.object({
@@ -129,8 +131,9 @@ export default function CreateCollectionForm() {
       maxSupply: "10000",
       mintLimitPerWallet: "50",
       mintPrice: "10",
-      allowlist: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
-      baseTokenURI: "https://api.example.com/metadata/",
+      // Convert comma-separated allowlist to newline-separated for textarea
+      allowlist: envConfigManager.getAllowlistAddresses().join("\n"),
+      baseTokenURI: "https://api.example.com/metadata",
     },
   });
 
@@ -216,7 +219,10 @@ export default function CreateCollectionForm() {
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);
     } catch (error: any) {
-      console.error("Failed to create collection:", error);
+      logger.error("Failed to create collection", error, {
+        component: "CreateCollectionForm",
+        action: "createCollection",
+      });
       // Error is already handled in the hook
     }
   };

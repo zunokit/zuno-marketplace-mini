@@ -5,6 +5,7 @@
  */
 
 import { ethers } from "ethers";
+import { logger } from "@/lib/utils/logger";
 import { marketplaceHubService } from "./MarketplaceHubService";
 import { AdvancedFeeManager_ABI } from "@/lib/contracts/abis";
 
@@ -104,10 +105,10 @@ export class FeeManagerService {
       // For now, we'll need to get it from FeeRegistry contract
       // TODO: Add getFeeManager() to FeeRegistry or Hub
       
-      console.log("✅ FeeManagerService initialized with fee registry:", feeRegistryAddress);
+      logger.success("FeeManagerService initialized with fee registry", { feeRegistryAddress }, { component: "FeeManagerService", action: "initialize" });
     } catch (error) {
-      console.log("⚠️ FeeManagerService initialized without fee registry access:", error instanceof Error ? error.message : String(error));
-      console.log("✅ FeeManagerService initialized in limited mode");
+      logger.warn("FeeManagerService initialized without fee registry access", error, { component: "FeeManagerService", action: "initialize" });
+      logger.success("FeeManagerService initialized in limited mode", null, { component: "FeeManagerService", action: "initialize" });
     }
   }
 

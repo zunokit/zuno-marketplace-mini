@@ -122,8 +122,6 @@ export function useCollection(): UseCollectionReturn {
       setTransactionHash(null);
 
       try {
-        toast.loading("Creating collection...");
-
         // Ensure mintStartTime is a string for the service
         const serviceParams = {
           ...params,
@@ -178,13 +176,14 @@ export function useCollection(): UseCollectionReturn {
         if (!rawInfo) return null;
 
         // Transform the raw info to match the expected CollectionInfo type
+        // Note: rawInfo.mintPrice is already formatted as ETH string (e.g., "0.01")
         const info: CollectionInfo = {
           address: rawInfo.address,
           tokenType: tokenType,
           metadata: {
             name: rawInfo.name || "",
             symbol: rawInfo.symbol || "",
-            description: "",
+            description: rawInfo.description || "",
             image: "",
             banner: "",
             website: "",
@@ -193,10 +192,12 @@ export function useCollection(): UseCollectionReturn {
             category: "",
           },
           config: {
+            // mintPrice from service is already in ETH format string, convert back to wei
             mintPrice: rawInfo.mintPrice
               ? ethers.parseEther(rawInfo.mintPrice)
               : BigInt(0),
-            royaltyFee: 0,
+            // royaltyFee is in basis points (e.g., 500 = 5%)
+            royaltyFee: rawInfo.royaltyFee ? parseInt(rawInfo.royaltyFee) : 0,
             maxSupply: rawInfo.maxSupply
               ? BigInt(rawInfo.maxSupply)
               : BigInt(0),
@@ -218,38 +219,42 @@ export function useCollection(): UseCollectionReturn {
           },
         };
 
-        // Get additional mint info if account is connected
-        if (account) {
-          try {
-            const mintInfo = await collectionService.getMintInfo(
-              address,
-              account,
-              tokenType
+        // Get additional mint info (use account or zero address as fallback)
+        const userAddress = account || ethers.ZeroAddress;
+        try {
+          const mintInfo = await collectionService.getMintInfo(
+            address,
+            userAddress,
+            tokenType
+          );
+          if (mintInfo) {
+            // Update config with data from mintInfo
+            info.config.mintLimitPerWallet = BigInt(
+              mintInfo.mintLimitPerWallet || 0
             );
-            if (mintInfo) {
-              info.mintInfo = {
-                currentStage:
-                  mintInfo.mintStage === "allowlist"
-                    ? MintStage.ALLOWLIST
-                    : mintInfo.mintStage === "public"
-                    ? MintStage.PUBLIC
-                    : MintStage.INACTIVE,
-                // currentMintPrice is already in wei from CollectionService
-                currentPrice: BigInt(mintInfo.currentMintPrice || "0"),
-                isAllowlisted: mintInfo.isAllowlisted,
-                mintedPerWallet: BigInt(mintInfo.mintedPerWallet || 0),
-                mintLimitPerWallet: BigInt(mintInfo.mintLimitPerWallet || 0),
-                canMint: mintInfo.canMint,
-                remainingSupply:
-                  BigInt(mintInfo.maxSupply || 0) -
-                  BigInt(mintInfo.totalMinted || 0),
-                totalMinted: BigInt(mintInfo.totalMinted || 0),
-                maxSupply: BigInt(mintInfo.maxSupply || 0),
-              };
-            }
-          } catch (err) {
-            logger.warn("Failed to get mint info", err);
+
+            info.mintInfo = {
+              currentStage:
+                mintInfo.mintStage === "allowlist"
+                  ? MintStage.ALLOWLIST
+                  : mintInfo.mintStage === "public"
+                  ? MintStage.PUBLIC
+                  : MintStage.INACTIVE,
+              // currentMintPrice is already in wei from CollectionService
+              currentPrice: BigInt(mintInfo.currentMintPrice || "0"),
+              isAllowlisted: mintInfo.isAllowlisted,
+              mintedPerWallet: BigInt(mintInfo.mintedPerWallet || 0),
+              mintLimitPerWallet: BigInt(mintInfo.mintLimitPerWallet || 0),
+              canMint: mintInfo.canMint,
+              remainingSupply:
+                BigInt(mintInfo.maxSupply || 0) -
+                BigInt(mintInfo.totalMinted || 0),
+              totalMinted: BigInt(mintInfo.totalMinted || 0),
+              maxSupply: BigInt(mintInfo.maxSupply || 0),
+            };
           }
+        } catch (err) {
+          logger.warn("Failed to get mint info", err);
         }
 
         return info;
@@ -278,13 +283,6 @@ export function useCollection(): UseCollectionReturn {
       setTransactionHash(null);
 
       try {
-        // Show loading toast
-        const toastId = toast.loading(
-          `Minting ${params.quantity || 1} NFT${
-            (params.quantity || 1) > 1 ? "s" : ""
-          }...`
-        );
-
         const tokenType = params.tokenType || "ERC721";
 
         const txResponse = await collectionService.mint({
@@ -299,9 +297,7 @@ export function useCollection(): UseCollectionReturn {
           typeof txResponse === "string" ? txResponse : txResponse.hash;
         setTransactionHash(txHash);
 
-        // Update toast
         toast.success("NFT(s) minted successfully!", {
-          id: toastId,
           description: `Transaction: ${
             typeof txHash === "string" ? txHash.slice(0, 10) : "Pending"
           }...`,
@@ -434,10 +430,6 @@ export function useCollection(): UseCollectionReturn {
       setError(null);
 
       try {
-        const toastId = toast.loading(
-          approved ? "Approving collection..." : "Revoking approval..."
-        );
-
         // Try both token types to detect which one it is
         let tokenType: "ERC721" | "ERC1155" = "ERC721";
         try {
@@ -458,7 +450,6 @@ export function useCollection(): UseCollectionReturn {
           typeof txResponse === "string" ? txResponse : txResponse.hash || "";
 
         toast.success(approved ? "Collection approved" : "Approval revoked", {
-          id: toastId,
           description: `Transaction: ${
             txHash ? txHash.slice(0, 10) : "Pending"
           }...`,
@@ -497,8 +488,6 @@ export function useCollection(): UseCollectionReturn {
       setError(null);
 
       try {
-        const toastId = toast.loading("Updating mint stage...");
-
         const txResponse = await collectionService.updateMintStage(
           collection,
           tokenType === TokenType.ERC721 ? "ERC721" : "ERC1155"
@@ -508,7 +497,6 @@ export function useCollection(): UseCollectionReturn {
           typeof txResponse === "string" ? txResponse : txResponse.hash || "";
 
         toast.success("Mint stage updated successfully!", {
-          id: toastId,
           description: `Transaction: ${
             txHash ? txHash.slice(0, 10) : "Pending"
           }...`,

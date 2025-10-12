@@ -6,6 +6,7 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import { OfferManager_ABI } from "@/lib/contracts/abis";
 
 export interface NFTOfferParams {
@@ -62,9 +63,10 @@ export class OfferService {
     const addresses = marketplaceHubService.getAddresses();
     this.offerManagerAddress = addresses.offerManager;
 
-    console.log(
-      "✅ OfferService initialized with OfferManager:",
-      this.offerManagerAddress
+    logger.success(
+      "OfferService initialized with OfferManager",
+      { offerManagerAddress: this.offerManagerAddress },
+      { component: "OfferService", action: "initialize" }
     );
   }
 
@@ -119,7 +121,10 @@ export class OfferService {
 
       throw new Error("OfferCreated event not found");
     } catch (error) {
-      console.error("Error creating NFT offer:", error);
+      logger.error("Error creating NFT offer", error, {
+        component: "OfferService",
+        action: "createNFTOffer",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -156,7 +161,10 @@ export class OfferService {
 
       throw new Error("OfferCreated event not found");
     } catch (error) {
-      console.error("Error creating collection offer:", error);
+      logger.error("Error creating collection offer", error, {
+        component: "OfferService",
+        action: "createCollectionOffer",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -194,7 +202,10 @@ export class OfferService {
 
       throw new Error("OfferCreated event not found");
     } catch (error) {
-      console.error("Error creating trait offer:", error);
+      logger.error("Error creating trait offer", error, {
+        component: "OfferService",
+        action: "createTraitOffer",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -210,7 +221,10 @@ export class OfferService {
       const tx = await contract.acceptOffer(offerId);
       return tx;
     } catch (error) {
-      console.error("Error accepting offer:", error);
+      logger.error("Error accepting offer", error, {
+        component: "OfferService",
+        action: "acceptOffer",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -226,7 +240,10 @@ export class OfferService {
       const tx = await contract.cancelOffer(offerId);
       return tx;
     } catch (error) {
-      console.error("Error canceling offer:", error);
+      logger.error("Error canceling offer", error, {
+        component: "OfferService",
+        action: "cancelOffer",
+      });
       throw this.formatTransactionError(error);
     }
   }
@@ -265,7 +282,10 @@ export class OfferService {
         traits: offer.traits,
       };
     } catch (error) {
-      console.error("Error getting offer:", error);
+      logger.error("Error getting offer", error, {
+        component: "OfferService",
+        action: "getOffer",
+      });
       throw error;
     }
   }
@@ -284,7 +304,10 @@ export class OfferService {
         offerIds.map((id: bigint) => this.getOffer(id.toString()))
       );
     } catch (error) {
-      console.error("Error getting NFT offers:", error);
+      logger.error("Error getting NFT offers", error, {
+        component: "OfferService",
+        action: "getNFTOffers",
+      });
       throw error;
     }
   }
@@ -300,7 +323,10 @@ export class OfferService {
         offerIds.map((id: bigint) => this.getOffer(id.toString()))
       );
     } catch (error) {
-      console.error("Error getting user offers:", error);
+      logger.error("Error getting user offers", error, {
+        component: "OfferService",
+        action: "getUserOffers",
+      });
       throw error;
     }
   }
@@ -325,7 +351,10 @@ export class OfferService {
       const allIds = idsByType.flat();
       return Promise.all(allIds.map((id) => this.getOffer(id)));
     } catch (error) {
-      console.error("Error getting active offers:", error);
+      logger.error("Error getting active offers", error, {
+        component: "OfferService",
+        action: "getActiveOffers",
+      });
       throw error;
     }
   }

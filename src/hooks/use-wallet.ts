@@ -1,48 +1,56 @@
-'use client'
-import { useCallback, useEffect } from 'react'
-import { useAppDispatch, useAppSelector } from '@/lib/store/hooks'
+"use client";
+import { useCallback, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { logger } from "@/lib/utils/logger";
 import {
   setConnecting,
   setConnected,
   setDisconnected,
   setBalance,
   setError,
-} from '@/lib/store/slices/walletSlice'
-import { web3Utils } from '@/lib/utils/web3'
+} from "@/lib/store/slices/walletSlice";
+import { web3Utils } from "@/lib/utils/web3";
 
 export const useWallet = () => {
-  const dispatch = useAppDispatch()
-  const wallet = useAppSelector((state) => state.wallet)
+  const dispatch = useAppDispatch();
+  const wallet = useAppSelector((state) => state.wallet);
 
   /**
    * Connect to wallet
    */
   const connect = useCallback(async () => {
     try {
-      dispatch(setConnecting(true))
-      
-      await web3Utils.initializeProvider()
-      const account = await web3Utils.getAccount()
-      const balance = await web3Utils.getBalance()
+      dispatch(setConnecting(true));
+
+      await web3Utils.initializeProvider();
+      const account = await web3Utils.getAccount();
+      const balance = await web3Utils.getBalance();
 
       if (account) {
-        dispatch(setConnected({ account, balance }))
+        dispatch(setConnected({ account, balance }));
       } else {
-        throw new Error('No account found')
+        throw new Error("No account found");
       }
     } catch (error) {
-      console.error('Failed to connect wallet:', error)
-      dispatch(setError(error instanceof Error ? error.message : 'Failed to connect wallet'))
+      logger.error("Failed to connect wallet", error, {
+        component: "useWallet",
+        action: "connectWallet",
+      });
+      dispatch(
+        setError(
+          error instanceof Error ? error.message : "Failed to connect wallet"
+        )
+      );
     }
-  }, [dispatch])
+  }, [dispatch]);
 
   /**
    * Disconnect wallet
    */
   const disconnect = useCallback(() => {
-    web3Utils.disconnect()
-    dispatch(setDisconnected())
-  }, [dispatch])
+    web3Utils.disconnect();
+    dispatch(setDisconnected());
+  }, [dispatch]);
 
   /**
    * Update balance
@@ -50,39 +58,55 @@ export const useWallet = () => {
   const updateBalance = useCallback(async () => {
     try {
       if (wallet.account) {
-        const balance = await web3Utils.getBalance(wallet.account)
-        dispatch(setBalance(balance))
+        const balance = await web3Utils.getBalance(wallet.account);
+        dispatch(setBalance(balance));
       }
     } catch (error) {
-      console.error('Failed to update balance:', error)
+      logger.error("Failed to update balance", error, {
+        component: "useWallet",
+        action: "updateBalance",
+      });
     }
-  }, [wallet.account, dispatch])
+  }, [wallet.account, dispatch]);
 
   /**
    * Switch network
    */
-  const switchNetwork = useCallback(async (chainId: string) => {
-    try {
-      await web3Utils.switchNetwork(chainId)
-      // Re-fetch account info after network switch
-      await connect()
-    } catch (error) {
-      console.error('Failed to switch network:', error)
-      dispatch(setError(error instanceof Error ? error.message : 'Failed to switch network'))
-    }
-  }, [connect, dispatch])
+  const switchNetwork = useCallback(
+    async (chainId: string) => {
+      try {
+        await web3Utils.switchNetwork(chainId);
+        // Re-fetch account info after network switch
+        await connect();
+      } catch (error) {
+        logger.error("Failed to switch network", error, {
+          component: "useWallet",
+          action: "switchNetwork",
+        });
+        dispatch(
+          setError(
+            error instanceof Error ? error.message : "Failed to switch network"
+          )
+        );
+      }
+    },
+    [connect, dispatch]
+  );
 
   /**
    * Get current network
    */
   const getCurrentNetwork = useCallback(async () => {
     try {
-      return await web3Utils.getNetwork()
+      return await web3Utils.getNetwork();
     } catch (error) {
-      console.error('Failed to get network:', error)
-      return null
+      logger.error("Failed to get network", error, {
+        component: "useWallet",
+        action: "getNetwork",
+      });
+      return null;
     }
-  }, [])
+  }, []);
 
   /**
    * Check if wallet is connected on component mount
@@ -90,52 +114,58 @@ export const useWallet = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        if (typeof window !== 'undefined' && window.ethereum) {
-          const provider = web3Utils.getProvider()
+        if (typeof window !== "undefined" && window.ethereum) {
+          const provider = web3Utils.getProvider();
           if (provider) {
-            const account = await web3Utils.getAccount()
+            const account = await web3Utils.getAccount();
             if (account) {
-              const balance = await web3Utils.getBalance(account)
-              dispatch(setConnected({ account, balance }))
+              const balance = await web3Utils.getBalance(account);
+              dispatch(setConnected({ account, balance }));
             }
           }
         }
       } catch (error) {
-        console.error('Error checking wallet connection:', error)
+        logger.error("Error checking wallet connection", error, {
+          component: "useWallet",
+          action: "checkConnection",
+        });
       }
-    }
+    };
 
-    checkConnection()
-  }, [dispatch])
+    checkConnection();
+  }, [dispatch]);
 
   /**
    * Listen to account and network changes
    */
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum) {
+    if (typeof window !== "undefined" && window.ethereum) {
       const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length === 0) {
-          disconnect()
+          disconnect();
         } else {
           // Account changed, reconnect
-          connect()
+          connect();
         }
-      }
+      };
 
       const handleChainChanged = () => {
         // Network changed, reconnect
-        connect()
-      }
+        connect();
+      };
 
-      window.ethereum.on('accountsChanged', handleAccountsChanged)
-      window.ethereum.on('chainChanged', handleChainChanged)
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", handleChainChanged);
 
       return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged)
-        window.ethereum.removeListener('chainChanged', handleChainChanged)
-      }
+        window.ethereum.removeListener(
+          "accountsChanged",
+          handleAccountsChanged
+        );
+        window.ethereum.removeListener("chainChanged", handleChainChanged);
+      };
     }
-  }, [connect, disconnect])
+  }, [connect, disconnect]);
 
   return {
     ...wallet,
@@ -145,5 +175,5 @@ export const useWallet = () => {
     switchNetwork,
     getCurrentNetwork,
     web3Utils,
-  }
-}
+  };
+};

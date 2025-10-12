@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
 import { CollectionCard } from "./CollectionCard";
 
 interface Collection {
@@ -33,11 +34,11 @@ interface UserCollectionsProps {
 
 export function UserCollections({ collections }: UserCollectionsProps) {
   const handleFollow = (collectionAddress: string) => {
-    console.log("Follow collection:", collectionAddress);
+    logger.info("Follow collection", { collectionAddress }, { component: "UserCollections", action: "followCollection" });
   };
 
   const handleView = (collectionAddress: string) => {
-    console.log("View collection:", collectionAddress);
+    logger.info("View collection", { collectionAddress }, { component: "UserCollections", action: "viewCollection" });
   };
 
   return (

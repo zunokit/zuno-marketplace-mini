@@ -5,6 +5,7 @@
 
 import { ethers } from "ethers";
 import { marketplaceHubService } from "./MarketplaceHubService";
+import { logger } from "@/lib/utils/logger";
 import { listingHistoryTrackerService } from "./ListingHistoryTrackerService";
 import { exchangeService } from "./ExchangeService";
 import {
@@ -43,7 +44,10 @@ export class CollectionQueryService {
    */
   async initialize(provider: ethers.Provider): Promise<void> {
     this.provider = provider;
-    console.log("✅ CollectionQueryService initialized");
+    logger.success("CollectionQueryService initialized", null, {
+      component: "CollectionQueryService",
+      action: "initialize",
+    });
   }
 
   /**
@@ -59,17 +63,27 @@ export class CollectionQueryService {
       const erc721Factory = marketplaceHubService.getERC721Factory();
       const erc1155Factory = marketplaceHubService.getERC1155Factory();
 
-      console.log("🔍 Querying collections from factories:", {
-        erc721Factory,
-        erc1155Factory,
-      });
+      logger.info(
+        "Querying collections from factories",
+        {
+          erc721Factory,
+          erc1155Factory,
+        },
+        { component: "CollectionQueryService", action: "getAllCollections" }
+      );
 
       // Check if factories are deployed
       if (!erc721Factory || erc721Factory === ZERO_ADDRESS) {
-        console.log("⚠️ ERC721 Factory not deployed");
+        logger.warn("ERC721 Factory not deployed", null, {
+          component: "CollectionQueryService",
+          action: "getAllCollections",
+        });
       }
       if (!erc1155Factory || erc1155Factory === ZERO_ADDRESS) {
-        console.log("⚠️ ERC1155 Factory not deployed");
+        logger.warn("ERC1155 Factory not deployed", null, {
+          component: "CollectionQueryService",
+          action: "getAllCollections",
+        });
       }
 
       const collections: CollectionData[] = [];
@@ -95,16 +109,18 @@ export class CollectionQueryService {
       // Sort by creation date (newest first)
       collections.sort((a, b) => b.createdAt - a.createdAt);
 
-      console.log(`✅ Found ${collections.length} collections`);
-      console.log(
-        "🔍 Collections details:",
-        collections.map((c) => ({
-          address: c.address,
-          name: c.name,
-          symbol: c.symbol,
-          totalSupply: c.totalSupply,
-          hasValidData: !!(c.address && c.name),
-        }))
+      logger.success(
+        `Found ${collections.length} collections`,
+        {
+          collections: collections.map((c) => ({
+            address: c.address,
+            name: c.name,
+            symbol: c.symbol,
+            totalSupply: c.totalSupply,
+            hasValidData: !!(c.address && c.name),
+          })),
+        },
+        { component: "CollectionQueryService", action: "getAllCollections" }
       );
 
       // Filter out invalid collections (but allow empty names - we'll fix them)
@@ -112,10 +128,20 @@ export class CollectionQueryService {
         (c) => c && c.address && c.address !== ZERO_ADDRESS
       );
 
-      console.log(`✅ Valid collections: ${validCollections.length}`);
+      logger.info(
+        `Valid collections: ${validCollections.length}`,
+        {
+          validCount: validCollections.length,
+          totalCount: collections.length,
+        },
+        { component: "CollectionQueryService", action: "getAllCollections" }
+      );
       return validCollections;
     } catch (error) {
-      console.error("❌ Error fetching collections:", error);
+      logger.error("Error fetching collections", error, {
+        component: "CollectionQueryService",
+        action: "getAllCollections",
+      });
       throw error;
     }
   }
@@ -136,9 +162,13 @@ export class CollectionQueryService {
     try {
       // Query factory events to find created collections
       // Note: This is a simplified approach - in production you'd want to use event filters
-      console.log(
-        `🔍 Querying ${tokenType} collections from factory:`,
-        factoryAddress
+      logger.info(
+        `Querying ${tokenType} collections from factory: ${factoryAddress}`,
+        {
+          tokenType,
+          factoryAddress,
+        },
+        { component: "CollectionQueryService", action: "queryFactoryLogs" }
       );
 
       // Get recent blocks to search for collection creation events
@@ -153,7 +183,14 @@ export class CollectionQueryService {
       };
 
       const logs = await this.provider.getLogs(filter);
-      console.log(`📋 Found ${logs.length} logs from ${tokenType} factory`);
+      logger.info(
+        `Found ${logs.length} logs from ${tokenType} factory`,
+        {
+          logCount: logs.length,
+          tokenType,
+        },
+        { component: "CollectionQueryService", action: "queryFactoryLogs" }
+      );
 
       // Parse logs to extract collection addresses
       for (const log of logs) {
@@ -164,10 +201,7 @@ export class CollectionQueryService {
               log.topics[1]
             );
 
-            if (
-              collectionAddress &&
-              collectionAddress !== ZERO_ADDRESS
-            ) {
+            if (collectionAddress && collectionAddress !== ZERO_ADDRESS) {
               // Get block timestamp for creation time
               let createdAt = Date.now();
               try {
@@ -178,7 +212,10 @@ export class CollectionQueryService {
                   }
                 }
               } catch (e) {
-                console.log("⚠️ Could not get block timestamp:", e);
+                logger.warn("Could not get block timestamp", e, {
+                  component: "CollectionQueryService",
+                  action: "queryFactoryLogs",
+                });
               }
 
               try {
@@ -191,9 +228,14 @@ export class CollectionQueryService {
                   collections.push(collectionInfo);
                 }
               } catch (infoError: any) {
-                console.error(
-                  `Failed to get info for collection ${collectionAddress}:`,
-                  infoError.message
+                logger.error(
+                  `Failed to get info for collection ${collectionAddress}`,
+                  infoError,
+                  {
+                    component: "CollectionQueryService",
+                    action: "queryFactoryLogs",
+                    collectionAddress,
+                  }
                 );
                 // Continue to next collection instead of stopping completely
                 continue;
@@ -201,12 +243,19 @@ export class CollectionQueryService {
             }
           }
         } catch (error) {
-          console.log("⚠️ Error parsing log:", error);
+          logger.warn("Error parsing log", error, {
+            component: "CollectionQueryService",
+            action: "queryFactoryLogs",
+          });
           continue;
         }
       }
     } catch (error) {
-      console.error(`❌ Error querying ${tokenType} factory:`, error);
+      logger.error(`Error querying ${tokenType} factory`, error, {
+        component: "CollectionQueryService",
+        action: "queryFactoryLogs",
+        tokenType,
+      });
     }
 
     return collections;
@@ -233,7 +282,11 @@ export class CollectionQueryService {
       // First, try to determine if this is actually a valid contract
       const code = await this.provider.getCode(address);
       if (code === "0x") {
-        console.log(`⚠️ No contract found at address ${address}`);
+        logger.warn(`No contract found at address ${address}`, null, {
+          component: "CollectionQueryService",
+          action: "getCollectionInfo",
+          address,
+        });
         return null;
       }
 
@@ -244,7 +297,14 @@ export class CollectionQueryService {
       const contract = new ethers.Contract(address, contractABI, this.provider);
 
       // Get basic collection info with better error handling
-      console.log(`🔍 Getting info for ${tokenType} collection at ${address}`);
+      logger.info(
+        `Getting info for ${tokenType} collection at ${address}`,
+        {
+          tokenType,
+          address,
+        },
+        { component: "CollectionQueryService", action: "getCollectionInfo" }
+      );
 
       let name = "Unknown Collection";
       let symbol = "UNKNOWN";
@@ -263,14 +323,29 @@ export class CollectionQueryService {
           name.toLowerCase() === "implementation" ||
           name.toLowerCase().includes("impl")
         ) {
-          console.warn(
-            `⚠️ Skipping implementation contract at ${address} with name: ${name}`
+          logger.warn(
+            `Skipping implementation contract at ${address} with name: ${name}`,
+            null,
+            {
+              component: "CollectionQueryService",
+              action: "getCollectionInfo",
+              address,
+              name,
+            }
           );
           return null;
         }
-        console.log(`✅ Name: ${name}`);
+        logger.info(
+          `Name: ${name}`,
+          { name },
+          { component: "CollectionQueryService", action: "getCollectionInfo" }
+        );
       } catch (e) {
-        console.error(`❌ Failed to get collection name for ${address}:`, e);
+        logger.error(`Failed to get collection name for ${address}`, e, {
+          component: "CollectionQueryService",
+          action: "getCollectionInfo",
+          address,
+        });
         throw e; // Re-throw to see the actual error
       }
 
@@ -280,24 +355,43 @@ export class CollectionQueryService {
         if (!symbol || symbol.trim() === "") {
           throw new Error(`Collection at ${address} has empty symbol`);
         }
-        console.log(`✅ Symbol: ${symbol}`);
+        logger.info(
+          `Symbol: ${symbol}`,
+          { symbol },
+          { component: "CollectionQueryService", action: "getCollectionInfo" }
+        );
       } catch (e) {
-        console.error(`❌ Failed to get collection symbol for ${address}:`, e);
+        logger.error(`Failed to get collection symbol for ${address}`, e, {
+          component: "CollectionQueryService",
+          action: "getCollectionInfo",
+          address,
+        });
         throw e; // Re-throw to see the actual error
       }
 
       // Try to get description
       try {
         description = await contract.getDescription();
-        console.log(`✅ Description: ${description}`);
+        logger.info(
+          `Description: ${description}`,
+          { description },
+          { component: "CollectionQueryService", action: "getCollectionInfo" }
+        );
       } catch (e) {
-        console.log(`⚠️ Could not get description:`, e);
+        logger.warn(`Could not get description`, e, {
+          component: "CollectionQueryService",
+          action: "getCollectionInfo",
+        });
       }
 
       // Try to get owner (might be different method names)
       try {
         owner = await contract.owner();
-        console.log(`✅ Owner: ${owner}`);
+        logger.info(
+          `Owner: ${owner}`,
+          { owner },
+          { component: "CollectionQueryService", action: "getCollectionInfo" }
+        );
         // Filter out contracts with dead address as owner (typically implementation contracts)
         if (owner.toLowerCase() === DEAD_ADDRESS.toLowerCase()) {
           throw new Error(
@@ -309,9 +403,20 @@ export class CollectionQueryService {
         if (e.message && !e.message.includes("dead address")) {
           try {
             owner = await contract.creator();
-            console.log(`✅ Creator: ${owner}`);
+            logger.info(
+              `Creator: ${owner}`,
+              { owner },
+              {
+                component: "CollectionQueryService",
+                action: "getCollectionInfo",
+              }
+            );
           } catch (e2) {
-            console.error(`❌ Could not get owner/creator for ${address}:`, e2);
+            logger.error(`Could not get owner/creator for ${address}`, e2, {
+              component: "CollectionQueryService",
+              action: "getCollectionInfo",
+              address,
+            });
             throw new Error(
               `Failed to get owner/creator for collection at ${address}`
             );
@@ -324,19 +429,29 @@ export class CollectionQueryService {
       // Get total supply using the correct function name
       try {
         totalSupply = await contract.getTotalMinted();
-        console.log(
-          `✅ Total Supply (getTotalMinted): ${totalSupply.toString()}`
+        logger.info(
+          `Total Supply (getTotalMinted): ${totalSupply.toString()}`,
+          { totalSupply: totalSupply.toString() },
+          { component: "CollectionQueryService", action: "getCollectionInfo" }
         );
       } catch (e) {
-        console.log(`⚠️ getTotalMinted() failed:`, e);
+        logger.warn(`getTotalMinted() failed`, e, {
+          component: "CollectionQueryService",
+          action: "getCollectionInfo",
+        });
         // Fallback to other methods if needed
         try {
           totalSupply = await contract.totalSupply();
-          console.log(
-            `✅ Total Supply (totalSupply): ${totalSupply.toString()}`
+          logger.info(
+            `Total Supply (totalSupply): ${totalSupply.toString()}`,
+            { totalSupply: totalSupply.toString() },
+            { component: "CollectionQueryService", action: "getCollectionInfo" }
           );
         } catch (e2) {
-          console.log(`⚠️ Could not get total supply:`, e2);
+          logger.warn(`Could not get total supply`, e2, {
+            component: "CollectionQueryService",
+            action: "getCollectionInfo",
+          });
           totalSupply = BigInt(0);
         }
       }
@@ -352,13 +467,20 @@ export class CollectionQueryService {
           maxSupply = (await contract.maxSupply()).toString();
         } catch (e2) {
           // Method might not exist
-          console.log(`⚠️ Could not get max supply:`, e2);
+          logger.warn(`Could not get max supply`, e2, {
+            component: "CollectionQueryService",
+            action: "getCollectionInfo",
+          });
         }
       }
 
       try {
         royaltyFee = (await contract.getRoyaltyFee()).toString();
-        console.log(`✅ Royalty Fee: ${royaltyFee}`);
+        logger.info(
+          `Royalty Fee: ${royaltyFee}`,
+          { royaltyFee },
+          { component: "CollectionQueryService", action: "getCollectionInfo" }
+        );
       } catch (e) {
         try {
           const royaltyInfo = await contract.royaltyInfo(
@@ -366,10 +488,17 @@ export class CollectionQueryService {
             ethers.parseEther("1")
           );
           royaltyFee = ((Number(royaltyInfo[1]) / 10000) * 100).toString(); // Convert basis points to percentage
-          console.log(`✅ Royalty Fee (royaltyInfo): ${royaltyFee}`);
+          logger.info(
+            `Royalty Fee (royaltyInfo): ${royaltyFee}`,
+            { royaltyFee },
+            { component: "CollectionQueryService", action: "getCollectionInfo" }
+          );
         } catch (e2) {
           // Method might not exist
-          console.log(`⚠️ Could not get royalty fee:`, e2);
+          logger.warn(`Could not get royalty fee`, e2, {
+            component: "CollectionQueryService",
+            action: "getCollectionInfo",
+          });
         }
       }
 
@@ -406,18 +535,22 @@ export class CollectionQueryService {
       // Cache the result
       this.collectionCache.set(address, collectionInfo);
 
-      console.log(`✅ Collection info loaded:`, {
-        address,
-        name,
-        symbol,
-        totalSupply: totalSupply.toString(),
-      });
+      logger.success(
+        `Collection info loaded`,
+        {
+          address,
+          name,
+          symbol,
+          totalSupply: totalSupply.toString(),
+        },
+        { component: "CollectionQueryService", action: "getCollectionInfo" }
+      );
 
       return collectionInfo;
     } catch (error: any) {
-      console.error(`❌ Error getting collection info for ${address}:`, error);
-      // Log specific error details for debugging
-      console.error("Error details:", {
+      logger.error(`Error getting collection info for ${address}`, error, {
+        component: "CollectionQueryService",
+        action: "getCollectionInfo",
         address,
         tokenType,
         errorMessage: error.message || "Unknown error",
@@ -466,7 +599,11 @@ export class CollectionQueryService {
       collectionInfo = await this.getCollectionInfo(address, "ERC1155");
       return collectionInfo;
     } catch (error) {
-      console.error(`❌ Error getting collection ${address}:`, error);
+      logger.error(`Error getting collection ${address}`, error, {
+        component: "CollectionQueryService",
+        action: "getCollection",
+        address,
+      });
       return null;
     }
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
+
 /**
  * User Management Admin Page
  * Manage user roles and permissions
@@ -79,9 +81,9 @@ export default function UserManagementPage() {
       // TODO: Implement loading users from AccessControl contract
       // This would require querying role grant events from the blockchain
       // For now, users are managed through direct contract interaction
-      console.log("Loading users from contract...");
+      logger.info("Loading users from contract", null, { component: "AdminUsersPage", action: "loadUsers" });
     } catch (error) {
-      console.error("Failed to load users:", error);
+      logger.error("Failed to load users", error, { component: "AdminUsersPage", action: "loadUsers" });
     }
   };
 

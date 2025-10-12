@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { logger } from "@/lib/utils/logger";
 import {
   addListing,
   updateListing,
@@ -29,7 +30,10 @@ export const useMarketplace = () => {
       if (provider) {
       }
     } catch (error) {
-      console.error("Failed to initialize marketplace service:", error);
+      logger.error("Failed to initialize marketplace service", error, {
+        component: "useMarketplace",
+        action: "initialize",
+      });
       dispatch(
         setError(
           error instanceof Error
@@ -88,7 +92,10 @@ export const useMarketplace = () => {
 
         return receipt;
       } catch (error) {
-        console.error("Failed to create listing:", error);
+        logger.error("Failed to create listing", error, {
+          component: "useMarketplace",
+          action: "createListing",
+        });
         dispatch(
           setError(
             error instanceof Error ? error.message : "Failed to create listing"
@@ -157,7 +164,10 @@ export const useMarketplace = () => {
 
         return receipt;
       } catch (error) {
-        console.error("Failed to buy listing:", error);
+        logger.error("Failed to buy listing", error, {
+          component: "useMarketplace",
+          action: "buyListing",
+        });
         dispatch(
           setError(
             error instanceof Error ? error.message : "Failed to buy listing"
@@ -222,7 +232,10 @@ export const useMarketplace = () => {
 
         return receipt;
       } catch (error) {
-        console.error("Failed to cancel listing:", error);
+        logger.error("Failed to cancel listing", error, {
+          component: "useMarketplace",
+          action: "cancelListing",
+        });
         dispatch(
           setError(
             error instanceof Error ? error.message : "Failed to cancel listing"
@@ -286,7 +299,10 @@ export const useMarketplace = () => {
 
         return receipt;
       } catch (error) {
-        console.error("Failed to update listing price:", error);
+        logger.error("Failed to update listing price", error, {
+          component: "useMarketplace",
+          action: "updateListingPrice",
+        });
         dispatch(
           setError(
             error instanceof Error ? error.message : "Failed to update price"
@@ -322,7 +338,10 @@ export const useMarketplace = () => {
 
         return listings;
       } catch (error) {
-        console.error("Failed to get user listings:", error);
+        logger.error("Failed to get user listings", error, {
+          component: "useMarketplace",
+          action: "getUserListings",
+        });
         return [];
       }
     },

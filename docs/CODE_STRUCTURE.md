@@ -12,6 +12,7 @@ Complete guide to the architecture and code organization of Zuno Marketplace.
 - [State Management](#state-management)
 - [Type System](#type-system)
 - [Utilities](#utilities)
+- [Logging System](#logging-system)
 - [Best Practices](#best-practices)
 
 ## Project Overview
@@ -22,6 +23,7 @@ Zuno Marketplace follows a **feature-based architecture** with clear separation 
 - **Business Logic Layer**: Services and hooks
 - **Data Layer**: Redux store and contract integration
 - **Type Layer**: TypeScript definitions
+- **Logging Layer**: Production-ready structured logging
 
 ### Technology Stack
 
@@ -45,6 +47,11 @@ UI Components
 ├── Radix UI
 ├── shadcn/ui
 └── Lucide Icons
+
+Logging & Monitoring
+├── Custom Logger Utility
+├── ESLint no-console enforcement
+└── Sentry Integration (ready)
 ```
 
 ## Directory Structure
@@ -77,7 +84,8 @@ zuno-marketplace-mini/
 │   │   │   ├── nft/
 │   │   │   │   ├── NFTCard.tsx
 │   │   │   │   ├── NFTGrid.tsx
-│   │   │   │   └── NFTDetail.tsx
+│   │   │   │   ├── NFTDetail.tsx
+│   │   │   │   └── NFTFilters.tsx
 │   │   │   ├── marketplace/
 │   │   │   │   ├── ListingForm.tsx
 │   │   │   │   ├── BuyModal.tsx
@@ -115,6 +123,7 @@ zuno-marketplace-mini/
 │   │   ├── utils/             # Utility functions
 │   │   │   ├── index.ts       # Main utilities
 │   │   │   ├── web3.ts        # Web3 utilities
+│   │   │   ├── logger.ts      # Production-ready logger
 │   │   │   └── ...
 │   │   ├── constants/         # App constants
 │   │   │   └── index.ts
@@ -128,7 +137,9 @@ zuno-marketplace-mini/
 │   │   └── config/            # Configuration
 │   │       └── web3.ts
 │   ├── types/                 # TypeScript types
-│   │   └── index.ts
+│   │   ├── index.ts           # Main type exports
+│   │   ├── env-config.ts      # Environment configuration types
+│   │   └── events.ts          # Event-related types
 │   └── styles/                # Global styles
 │       └── globals.css
 ├── .env.example               # Environment template
@@ -136,6 +147,7 @@ zuno-marketplace-mini/
 ├── next.config.js             # Next.js configuration
 ├── tailwind.config.ts         # Tailwind configuration
 ├── tsconfig.json              # TypeScript configuration
+├── eslint.config.mjs          # ESLint configuration (with no-console rule)
 └── package.json               # Dependencies
 ```
 
@@ -205,12 +217,20 @@ export { exchangeService } from "./ExchangeService";
 export { auctionService } from "./AuctionService";
 // ... more exports
 
-export async function initializeServices(provider: any, signer?: any) {
+export async function initializeServices(
+  provider: any,
+  signer?: any
+): Promise<void> {
+  // 1. Initialize Hub first (provides addresses)
   await marketplaceHubService.initialize(provider, signer);
+
+  // 2. Initialize all other services in parallel
   await Promise.all([
     exchangeService.initialize(provider, signer),
     auctionService.initialize(provider, signer),
-    // ...
+    bundleService.initialize(provider, signer),
+    offerService.initialize(provider, signer),
+    collectionService.initialize(provider, signer),
   ]);
 }
 ```
@@ -258,6 +278,30 @@ export interface Listing {
   seller: string;
   price: string;
   status: ListingStatus;
+}
+
+// types/events.ts
+export interface ParsedEvent {
+  name: string;
+  address: string;
+  blockNumber: number;
+  transactionHash: string;
+  args: any;
+  timestamp: number;
+}
+
+export interface ActivityEvent {
+  id: string;
+  type: "mint" | "transfer" | "sale" | "list" | "approval";
+  from: string;
+  to: string;
+  tokenId?: string;
+  amount?: string;
+  price?: string;
+  transactionHash: string;
+  blockNumber: number;
+  timestamp: number;
+  description: string;
 }
 ```
 
@@ -531,7 +575,10 @@ async function createListing() {
 
     await tx.wait();
   } catch (error) {
-    console.error("Failed to create listing:", error);
+    logger.error("Failed to create listing:", error, {
+      component: "ListingForm",
+      action: "createListing",
+    });
   }
 }
 ```
@@ -776,6 +823,103 @@ export const ERROR_MESSAGES = {
 } as const;
 ```
 
+## Logging System
+
+### Production-Ready Logger
+
+The project uses a custom logger utility instead of `console.log` statements:
+
+```typescript
+// lib/utils/logger.ts
+import { logger } from "@/lib/utils/logger";
+
+// Basic logging with context
+logger.info(
+  "User action completed",
+  { userId: "0x123..." },
+  {
+    component: "UserProfile",
+    action: "updateProfile",
+  }
+);
+
+// Performance tracking
+logger.startTimer("api-call");
+// ... API call
+logger.endTimer("api-call", "API call completed");
+
+// Error logging with context
+logger.error("Failed to create listing", error, {
+  component: "ListingForm",
+  action: "createListing",
+});
+
+// Context management
+logger.setGlobalContext({ userId: "0x123...", sessionId: "abc..." });
+```
+
+### Logger Features
+
+- ✅ **Structured Logging**: Context-aware logging with component and action tracking
+- ✅ **Performance Tracking**: Built-in timer functionality
+- ✅ **Production Ready**: Automatic error monitoring integration (Sentry ready)
+- ✅ **Development/Production Modes**: Different logging behavior per environment
+- ✅ **ESLint Enforcement**: `no-console: "error"` rule prevents direct console usage
+- ✅ **Log History**: Maintains log history for debugging
+- ✅ **Error Monitoring**: Automatic error reporting to monitoring services
+
+### ESLint Configuration
+
+```javascript
+// eslint.config.mjs
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      "no-console": "error", // Prevents console.log usage
+      "no-debugger": "error", // Prevents debugger statements
+      // ... other rules
+    },
+  },
+];
+```
+
+### Logging Standards
+
+```typescript
+// ❌ Don't use console.log
+console.log("Debug info");
+console.error("Error occurred");
+
+// ✅ Use logger instead
+import { logger } from "@/lib/utils/logger";
+logger.info("Debug info", data, {
+  component: "ComponentName",
+  action: "actionName",
+});
+logger.error("Error occurred", error, {
+  component: "ComponentName",
+  action: "actionName",
+});
+
+// ✅ Include context in all log calls
+logger.info(
+  "User action",
+  { userId, action },
+  {
+    component: "UserProfile",
+    action: "updateProfile",
+  }
+);
+
+// ✅ Use appropriate log levels
+logger.debug("Development debugging"); // Development only
+logger.info("General information"); // Always logged
+logger.warn("Warnings"); // Always logged
+logger.error("Errors"); // Always logged + monitoring
+logger.success("Success operations"); // Always logged
+```
+
 ## Best Practices
 
 ### 1. File Naming
@@ -837,7 +981,7 @@ export function NFTCard({
 ### 4. Error Handling
 
 ```typescript
-// ✅ Good: Specific error handling
+// ✅ Good: Specific error handling with logger
 try {
   const tx = await exchangeService.createListing(params);
   await tx.wait();
@@ -848,7 +992,10 @@ try {
     toast.error("Insufficient balance");
   } else {
     toast.error("Transaction failed");
-    console.error(error);
+    logger.error("Failed to create listing", error, {
+      component: "ListingForm",
+      action: "createListing",
+    });
   }
 }
 
@@ -868,7 +1015,14 @@ try {
 async function buyNFT(listingId: string) {
   const tx = await exchangeService.buyListing(listingId, "ERC721", "1.0");
   await tx.wait();
-  console.log("Purchase complete");
+  logger.info(
+    "Purchase complete",
+    { listingId },
+    {
+      component: "BuyModal",
+      action: "buyNFT",
+    }
+  );
 }
 
 // ❌ Bad: Promise chains
@@ -892,6 +1046,25 @@ const nfts: any = await fetchNFTs();
 const listing = await getListingById(id);
 ```
 
+### 7. Logging Standards
+
+```typescript
+// ✅ Good: Use logger with context
+import { logger } from "@/lib/utils/logger";
+
+logger.info(
+  "User action completed",
+  { userId, action },
+  {
+    component: "UserProfile",
+    action: "updateProfile",
+  }
+);
+
+// ❌ Bad: Use console.log
+console.log("User action completed", { userId, action });
+```
+
 ## Summary
 
 The code structure follows these principles:
@@ -901,7 +1074,9 @@ The code structure follows these principles:
 3. **Type Safety**: Full TypeScript coverage
 4. **Singleton Services**: Initialize once, use everywhere
 5. **Centralized Configuration**: Single source of truth
-6. **Clean Architecture**: Easy to test and maintain
+6. **Production Logging**: Structured logging with context
+7. **Clean Architecture**: Easy to test and maintain
+8. **ESLint Enforcement**: No console.log statements allowed
 
 For contract integration details, see [Contract Integration Guide](./CONTRACT_INTEGRATION.md).
 

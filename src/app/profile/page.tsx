@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { logger } from "@/lib/utils/logger";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { NFTCard } from "@/components/features/nft/NFTCard";
 import { UserCollections } from "@/components/features/collection/UserCollections";
@@ -338,9 +339,27 @@ export default function ProfilePage() {
               <NFTCard
                 key={nft.id}
                 nft={nft}
-                onLike={() => console.log("Like NFT:", nft.id)}
-                onBuy={() => console.log("Buy NFT:", nft.id)}
-                onMakeOffer={() => console.log("Make offer:", nft.id)}
+                onLike={() =>
+                  logger.info(
+                    "Like NFT",
+                    { nftId: nft.id },
+                    { component: "ProfilePage", action: "likeNFT" }
+                  )
+                }
+                onBuy={() =>
+                  logger.info(
+                    "Buy NFT",
+                    { nftId: nft.id },
+                    { component: "ProfilePage", action: "buyNFT" }
+                  )
+                }
+                onMakeOffer={() =>
+                  logger.info(
+                    "Make offer",
+                    { nftId: nft.id },
+                    { component: "ProfilePage", action: "makeOffer" }
+                  )
+                }
               />
             ))}
           </div>

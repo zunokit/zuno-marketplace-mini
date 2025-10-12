@@ -54,10 +54,12 @@ export type CollectionInfo = {
   address: string;
   name: string;
   symbol: string;
+  description?: string;
   totalSupply: string;
   tokenType: NFTType;
   maxSupply?: string;
   mintPrice?: string;
+  royaltyFee?: string;
   baseURI?: string;
 };
 

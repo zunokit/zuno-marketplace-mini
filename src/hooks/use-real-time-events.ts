@@ -8,6 +8,7 @@
 import { useEffect, useCallback, useRef } from "react";
 import { useAppSelector } from "@/lib/store/hooks";
 import { web3Utils } from "@/lib/utils/web3";
+import { logger } from "@/lib/utils/logger";
 import {
   realTimeEventsService,
   EventHandler,
@@ -45,7 +46,10 @@ export function useRealTimeEvents(
     try {
       const provider = web3Utils.getProvider();
       if (!provider) {
-        console.warn("Provider not available for real-time events");
+        logger.warn("Provider not available for real-time events", null, {
+          component: "useRealTimeEvents",
+          action: "initialize",
+        });
         return;
       }
 
@@ -82,9 +86,15 @@ export function useRealTimeEvents(
       await Promise.all(subscriptionPromises);
       isInitialized.current = true;
 
-      console.log("✅ Real-time events initialized");
+      logger.success("Real-time events initialized", null, {
+        component: "useRealTimeEvents",
+        action: "initialize",
+      });
     } catch (error) {
-      console.error("Failed to initialize real-time events:", error);
+      logger.error("Failed to initialize real-time events", error, {
+        component: "useRealTimeEvents",
+        action: "initialize",
+      });
     }
   }, [
     enabled,
@@ -103,7 +113,10 @@ export function useRealTimeEvents(
     if (isInitialized.current) {
       realTimeEventsService.unsubscribeAll();
       isInitialized.current = false;
-      console.log("🔇 Real-time events cleaned up");
+      logger.info("Real-time events cleaned up", null, {
+        component: "useRealTimeEvents",
+        action: "cleanup",
+      });
     }
   }, []);
 

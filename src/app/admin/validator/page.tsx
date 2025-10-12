@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/utils/logger";
+
 /**
  * Listing Validator Settings Admin Page
  * Configure validation rules for marketplace listings
@@ -73,7 +75,10 @@ export default function ValidatorSettingsPage() {
       const total = await listingValidatorService.getTotalValidatedListings();
       setTotalValidated(total);
     } catch (error) {
-      console.error("Failed to load settings:", error);
+      logger.error("Failed to load settings", error, {
+        component: "AdminValidatorPage",
+        action: "loadSettings",
+      });
     }
   };
 

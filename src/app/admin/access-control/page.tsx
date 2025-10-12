@@ -1,46 +1,48 @@
-'use client';
+"use client";
+
+import { logger } from "@/lib/utils/logger";
 
 /**
  * Access Control Admin Page
  * Manage roles and permissions for marketplace access control
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from '@/components/ui/dialog';
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { useAppSelector } from '@/lib/store/hooks';
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useAppSelector } from "@/lib/store/hooks";
 import {
   accessControlService,
   AccessControlService,
-  RolePermissions
-} from '@/lib/services/contracts/AccessControlService';
-import { Shield, UserPlus, UserMinus, Users, Key } from 'lucide-react';
+  RolePermissions,
+} from "@/lib/services/contracts/AccessControlService";
+import { Shield, UserPlus, UserMinus, Users, Key } from "lucide-react";
 
 interface RoleMember {
   address: string;
@@ -55,34 +57,34 @@ export default function AccessControlPage() {
   const [roleMembers, setRoleMembers] = useState<RoleMember[]>([]);
   const [grantDialogOpen, setGrantDialogOpen] = useState(false);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('');
-  const [selectedAccount, setSelectedAccount] = useState('');
-  const [reason, setReason] = useState('');
+  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedAccount, setSelectedAccount] = useState("");
+  const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
   const roles = [
     {
-      id: 'ADMIN_ROLE',
-      name: 'Admin',
-      description: 'Full administrative access'
+      id: "ADMIN_ROLE",
+      name: "Admin",
+      description: "Full administrative access",
     },
     {
-      id: 'MODERATOR_ROLE',
-      name: 'Moderator',
-      description: 'Content moderation'
+      id: "MODERATOR_ROLE",
+      name: "Moderator",
+      description: "Content moderation",
     },
-    { id: 'OPERATOR_ROLE', name: 'Operator', description: 'Operational tasks' },
+    { id: "OPERATOR_ROLE", name: "Operator", description: "Operational tasks" },
     {
-      id: 'VERIFIER_ROLE',
-      name: 'Verifier',
-      description: 'Collection verification'
+      id: "VERIFIER_ROLE",
+      name: "Verifier",
+      description: "Collection verification",
     },
     {
-      id: 'EMERGENCY_ROLE',
-      name: 'Emergency',
-      description: 'Emergency controls'
+      id: "EMERGENCY_ROLE",
+      name: "Emergency",
+      description: "Emergency controls",
     },
-    { id: 'PAUSER_ROLE', name: 'Pauser', description: 'System pause controls' }
+    { id: "PAUSER_ROLE", name: "Pauser", description: "System pause controls" },
   ];
 
   /**
@@ -110,14 +112,17 @@ export default function AccessControlPage() {
           members.push({
             address: memberAddress,
             role: roleHash,
-            roleName: role.name
+            roleName: role.name,
           });
         }
       }
 
       setRoleMembers(members);
     } catch (error) {
-      console.error('Failed to load role members:', error);
+      logger.error("Failed to load role members", error, {
+        component: "AdminAccessControlPage",
+        action: "loadRoleMembers",
+      });
     }
   };
 
@@ -127,9 +132,9 @@ export default function AccessControlPage() {
   const handleGrantRole = async () => {
     if (!selectedRole || !selectedAccount || !reason) {
       toast({
-        title: 'Validation Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive'
+        title: "Validation Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
       });
       return;
     }
@@ -141,21 +146,21 @@ export default function AccessControlPage() {
       await accessControlService.grantRole(roleHash, selectedAccount, reason);
 
       toast({
-        title: 'Role Granted',
-        description: `Successfully granted ${selectedRole} role`
+        title: "Role Granted",
+        description: `Successfully granted ${selectedRole} role`,
       });
 
       setGrantDialogOpen(false);
-      setSelectedRole('');
-      setSelectedAccount('');
-      setReason('');
+      setSelectedRole("");
+      setSelectedAccount("");
+      setReason("");
       await loadRoleMembers();
     } catch (error) {
       toast({
-        title: 'Grant Failed',
+        title: "Grant Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to grant role',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to grant role",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -168,9 +173,9 @@ export default function AccessControlPage() {
   const handleRevokeRole = async () => {
     if (!selectedRole || !selectedAccount || !reason) {
       toast({
-        title: 'Validation Error',
-        description: 'Please fill in all fields',
-        variant: 'destructive'
+        title: "Validation Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
       });
       return;
     }
@@ -182,21 +187,21 @@ export default function AccessControlPage() {
       await accessControlService.revokeRole(roleHash, selectedAccount, reason);
 
       toast({
-        title: 'Role Revoked',
-        description: `Successfully revoked ${selectedRole} role`
+        title: "Role Revoked",
+        description: `Successfully revoked ${selectedRole} role`,
       });
 
       setRevokeDialogOpen(false);
-      setSelectedRole('');
-      setSelectedAccount('');
-      setReason('');
+      setSelectedRole("");
+      setSelectedAccount("");
+      setReason("");
       await loadRoleMembers();
     } catch (error) {
       toast({
-        title: 'Revoke Failed',
+        title: "Revoke Failed",
         description:
-          error instanceof Error ? error.message : 'Failed to revoke role',
-        variant: 'destructive'
+          error instanceof Error ? error.message : "Failed to revoke role",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -341,7 +346,7 @@ export default function AccessControlPage() {
               Cancel
             </Button>
             <Button onClick={handleGrantRole} disabled={loading}>
-              {loading ? 'Granting...' : 'Grant Role'}
+              {loading ? "Granting..." : "Grant Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -408,7 +413,7 @@ export default function AccessControlPage() {
               disabled={loading}
               variant="destructive"
             >
-              {loading ? 'Revoking...' : 'Revoke Role'}
+              {loading ? "Revoking..." : "Revoke Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
