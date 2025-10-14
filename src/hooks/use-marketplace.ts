@@ -331,10 +331,7 @@ export const useMarketplace = () => {
         const address = userAddress || wallet.account;
         if (!address) return [];
 
-        const listings = await exchangeService.getUserListings(
-          address,
-          "ERC721"
-        );
+        const listings = await exchangeService.getUserListings(address);
 
         return listings;
       } catch (error) {

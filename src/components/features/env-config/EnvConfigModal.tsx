@@ -265,7 +265,7 @@ export function EnvConfigModal({ open, onOpenChange }: EnvConfigModalProps) {
               <textarea
                 value={pasteText}
                 onChange={(e) => setPasteText(e.target.value)}
-                placeholder={`# Comments are supported\nNEXT_PUBLIC_DEFAULT_CHAIN_ID=31337\nNEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...\nNEXT_PUBLIC_RPC_URL_LOCAL=http://127.0.0.1:8545`}
+                placeholder={`# Comments are supported\nNEXT_PUBLIC_DEFAULT_CHAIN_ID=31337\nNEXT_PUBLIC_USER_HUB_LOCAL=0x...\nNEXT_PUBLIC_RPC_URL_LOCAL=http://127.0.0.1:8545`}
                 className="w-full h-32 px-3 py-2 text-xs sm:text-sm font-mono border rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-transparent resize-none"
               />
               <Button

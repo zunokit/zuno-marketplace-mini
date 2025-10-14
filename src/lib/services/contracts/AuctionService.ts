@@ -1,11 +1,11 @@
 /**
  * Auction Service
  * Handles auction creation, bidding, and settlement operations
- * Now uses MarketplaceHub for address discovery
+ * Now uses UserHub for address discovery
  */
 
 import { ethers } from "ethers";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { EnglishAuction_ABI, DutchAuction_ABI } from "@/lib/contracts/abis";
 
@@ -67,24 +67,24 @@ export class AuctionService {
   /**
    * Get English auction contract
    */
-  private getEnglishAuctionContract(): ethers.Contract {
+  async getEnglishAuctionContract(): Promise<ethers.Contract> {
     if (!this.signer) {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    const address = marketplaceHubService.getEnglishAuction();
+    const address = userHubService.getEnglishAuction();
     return new ethers.Contract(address, EnglishAuction_ABI, this.signer);
   }
 
   /**
    * Get Dutch auction contract
    */
-  private getDutchAuctionContract(): ethers.Contract {
+  async getDutchAuctionContract(): Promise<ethers.Contract> {
     if (!this.signer) {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    const address = marketplaceHubService.getDutchAuction();
+    const address = userHubService.getDutchAuction();
     return new ethers.Contract(address, DutchAuction_ABI, this.signer);
   }
 
@@ -95,7 +95,7 @@ export class AuctionService {
     params: EnglishAuctionParams
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const auction = this.getEnglishAuctionContract();
+      const auction = await this.getEnglishAuctionContract();
       const durationInSeconds = params.duration * 60 * 60;
 
       const tx = await auction.createAuction(
@@ -124,7 +124,7 @@ export class AuctionService {
     params: DutchAuctionParams
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const auction = this.getDutchAuctionContract();
+      const auction = await this.getDutchAuctionContract();
       const durationInSeconds = params.duration * 60 * 60;
 
       const tx = await auction.createAuction(
@@ -155,7 +155,7 @@ export class AuctionService {
     bidAmount: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const auction = this.getEnglishAuctionContract();
+      const auction = await this.getEnglishAuctionContract();
 
       const tx = await auction.placeBid(auctionId, {
         value: ethers.parseEther(bidAmount),
@@ -179,7 +179,7 @@ export class AuctionService {
     price: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const auction = this.getDutchAuctionContract();
+      const auction = await this.getDutchAuctionContract();
 
       const tx = await auction.buy(auctionId, {
         value: ethers.parseEther(price),
@@ -202,7 +202,7 @@ export class AuctionService {
     auctionId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const auction = this.getEnglishAuctionContract();
+      const auction = await this.getEnglishAuctionContract();
       const tx = await auction.cancelAuction(auctionId);
       return tx;
     } catch (error) {
@@ -221,7 +221,7 @@ export class AuctionService {
     auctionId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const auction = this.getDutchAuctionContract();
+      const auction = await this.getDutchAuctionContract();
       const tx = await auction.cancelAuction(auctionId);
       return tx;
     } catch (error) {
@@ -240,7 +240,7 @@ export class AuctionService {
     auctionId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const auction = this.getEnglishAuctionContract();
+      const auction = await this.getEnglishAuctionContract();
       const tx = await auction.endAuction(auctionId);
       return tx;
     } catch (error) {
@@ -257,7 +257,7 @@ export class AuctionService {
    */
   async getEnglishAuctionInfo(auctionId: string): Promise<any> {
     try {
-      const auction = this.getEnglishAuctionContract();
+      const auction = await this.getEnglishAuctionContract();
       const auctionInfo = await auction.getAuction(auctionId);
       return auctionInfo;
     } catch (error) {
@@ -274,7 +274,7 @@ export class AuctionService {
    */
   async getDutchAuctionInfo(auctionId: string): Promise<any> {
     try {
-      const auction = this.getDutchAuctionContract();
+      const auction = await this.getDutchAuctionContract();
       const auctionInfo = await auction.getAuction(auctionId);
       return auctionInfo;
     } catch (error) {
@@ -291,7 +291,7 @@ export class AuctionService {
    */
   async getCurrentDutchPrice(auctionId: string): Promise<bigint> {
     try {
-      const auction = this.getDutchAuctionContract();
+      const auction = await this.getDutchAuctionContract();
       return await auction.getCurrentPrice(auctionId);
     } catch (error) {
       logger.error("Error getting current Dutch price", error, {
@@ -299,6 +299,242 @@ export class AuctionService {
         action: "getCurrentDutchPrice",
       });
       throw error;
+    }
+  }
+
+  /**
+   * Withdraw bid from an auction (for non-winners)
+   */
+  async withdrawBid(auctionId: string): Promise<void> {
+    try {
+      const auction = await this.getEnglishAuctionContract();
+      const tx = await auction.withdrawBid(auctionId);
+      await tx.wait();
+
+      logger.success("Bid withdrawn successfully", { auctionId }, {
+        component: "AuctionService",
+        action: "withdrawBid",
+      });
+    } catch (error) {
+      logger.error("Failed to withdraw bid", error, {
+        component: "AuctionService",
+        action: "withdrawBid",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Get bid history for an auction
+   */
+  async getBidHistory(auctionId: string): Promise<Array<{
+    bidder: string;
+    amount: bigint;
+    timestamp: bigint;
+  }>> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const auction = new ethers.Contract(
+        userHubService.getEnglishAuction(),
+        EnglishAuction_ABI,
+        this.provider
+      );
+
+      const history = await auction.getBidHistory(auctionId);
+      
+      return history.map((bid: any) => ({
+        bidder: bid.bidder,
+        amount: bid.amount,
+        timestamp: bid.timestamp,
+      }));
+    } catch (error) {
+      logger.error("Failed to get bid history", error, {
+        component: "AuctionService",
+        action: "getBidHistory",
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Check if user can bid on auction
+   */
+  async canBid(auctionId: string, bidAmount: string): Promise<boolean> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const auction = new ethers.Contract(
+        userHubService.getEnglishAuction(),
+        EnglishAuction_ABI,
+        this.provider
+      );
+
+      return await auction.canBid(auctionId, ethers.parseEther(bidAmount));
+    } catch (error) {
+      logger.error("Failed to check if can bid", error, {
+        component: "AuctionService",
+        action: "canBid",
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Get time remaining for auction
+   */
+  async getTimeRemaining(auctionId: string): Promise<bigint> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const auction = new ethers.Contract(
+        userHubService.getEnglishAuction(),
+        EnglishAuction_ABI,
+        this.provider
+      );
+
+      return await auction.getTimeRemaining(auctionId);
+    } catch (error) {
+      logger.error("Failed to get time remaining", error, {
+        component: "AuctionService",
+        action: "getTimeRemaining",
+      });
+      return 0n;
+    }
+  }
+
+  /**
+   * Get price at specific time for Dutch auction
+   */
+  async getPriceAt(auctionId: string, timestamp: bigint): Promise<bigint> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const auction = new ethers.Contract(
+        userHubService.getDutchAuction(),
+        DutchAuction_ABI,
+        this.provider
+      );
+
+      return await auction.getPriceAt(auctionId, timestamp);
+    } catch (error) {
+      logger.error("Failed to get price at timestamp", error, {
+        component: "AuctionService",
+        action: "getPriceAt",
+      });
+      return 0n;
+    }
+  }
+
+  /**
+   * Calculate price decay for Dutch auction
+   */
+  async calculatePriceDecay(auctionId: string): Promise<{
+    currentPrice: bigint;
+    priceDropPerHour: bigint;
+    timeElapsed: bigint;
+  }> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const auction = new ethers.Contract(
+        userHubService.getDutchAuction(),
+        DutchAuction_ABI,
+        this.provider
+      );
+
+      const decay = await auction.calculatePriceDecay(auctionId);
+      
+      return {
+        currentPrice: decay.currentPrice,
+        priceDropPerHour: decay.priceDropPerHour,
+        timeElapsed: decay.timeElapsed,
+      };
+    } catch (error) {
+      logger.error("Failed to calculate price decay", error, {
+        component: "AuctionService",
+        action: "calculatePriceDecay",
+      });
+      return {
+        currentPrice: 0n,
+        priceDropPerHour: 0n,
+        timeElapsed: 0n,
+      };
+    }
+  }
+
+  /**
+   * Check if auction is active
+   */
+  async isAuctionActive(auctionId: string, auctionType: "English" | "Dutch" = "English"): Promise<boolean> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const contractAddress = auctionType === "English" 
+        ? userHubService.getEnglishAuction()
+        : userHubService.getDutchAuction();
+      
+      const abi = auctionType === "English" 
+        ? EnglishAuction_ABI 
+        : DutchAuction_ABI;
+
+      const auction = new ethers.Contract(contractAddress, abi, this.provider);
+
+      return await auction.isAuctionActive(auctionId);
+    } catch (error) {
+      logger.error("Failed to check if auction is active", error, {
+        component: "AuctionService",
+        action: "isAuctionActive",
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Get highest bid for English auction
+   */
+  async getHighestBid(auctionId: string): Promise<{
+    bidder: string;
+    amount: bigint;
+  }> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const auction = new ethers.Contract(
+        userHubService.getEnglishAuction(),
+        EnglishAuction_ABI,
+        this.provider
+      );
+
+      const bid = await auction.getHighestBid(auctionId);
+      
+      return {
+        bidder: bid.bidder,
+        amount: bid.amount,
+      };
+    } catch (error) {
+      logger.error("Failed to get highest bid", error, {
+        component: "AuctionService",
+        action: "getHighestBid",
+      });
+      return {
+        bidder: ethers.ZeroAddress,
+        amount: 0n,
+      };
     }
   }
 

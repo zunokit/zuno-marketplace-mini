@@ -3,7 +3,7 @@
  * Generated from contract artifacts
  */
 
-import MarketplaceHub_ABI from './MarketplaceHub.json';
+import UserHub_ABI from './UserHub.json';
 import ERC721NFTExchange_ABI from './ERC721NFTExchange.json';
 import ERC1155NFTExchange_ABI from './ERC1155NFTExchange.json';
 import EnglishAuction_ABI from './EnglishAuction.json';
@@ -28,7 +28,7 @@ import ListingHistoryTracker_ABI from './ListingHistoryTracker.json';
 import CollectionVerifier_ABI from './CollectionVerifier.json';
 
 export {
-  MarketplaceHub_ABI,
+  UserHub_ABI,
   ERC721NFTExchange_ABI,
   ERC1155NFTExchange_ABI,
   EnglishAuction_ABI,
@@ -55,7 +55,7 @@ export {
 
 // Type-safe ABI access
 export const ABIS = {
-  MarketplaceHub: MarketplaceHub_ABI,
+  UserHub: UserHub_ABI,
   ERC721NFTExchange: ERC721NFTExchange_ABI,
   ERC1155NFTExchange: ERC1155NFTExchange_ABI,
   EnglishAuction: EnglishAuction_ABI,

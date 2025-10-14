@@ -1,724 +1,926 @@
 "use client";
 
-/**
- * Bundles Page
- * Migrated from frontend-foundry/src/components/BundleManager.jsx
- * Create, buy, and manage NFT bundles
- */
-
 import { useState, useEffect } from "react";
+import { useAccount } from "wagmi";
+import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import Image from "next/image";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  bundleService,
+  nftMetadataService,
+  userNFTService,
+  userHubService
+} from "@/lib/services/contracts";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useAppSelector } from "@/lib/store/hooks";
-import { useToast } from "@/hooks/use-toast";
-import { bundleService } from "@/lib/services/contracts/BundleService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import {
-  AlertCircle,
-  Loader2,
-  Clock,
   Package,
-  TrendingDown,
-  Check,
-  X,
+  Plus,
+  ShoppingCart,
+  Clock,
+  DollarSign,
+  Percent,
+  User,
+  Loader2,
+  Info,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  Grid,
+  List,
+  Search,
+  Filter,
+  Zap
 } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
+import { formatEther, parseEther } from "ethers";
 
-// Bundle status enum
-enum BundleStatus {
-  ACTIVE = "ACTIVE",
-  SOLD = "SOLD",
-  CANCELLED = "CANCELLED",
-  EXPIRED = "EXPIRED",
+interface BundleItem {
+  nftContract: string;
+  tokenId: string;
+  amount: string;
+  tokenType: "ERC721" | "ERC1155";
+  metadata?: {
+    name: string;
+    image: string;
+  };
 }
 
 interface Bundle {
-  id: string;
-  status: BundleStatus;
+  bundleId: string;
   creator: string;
-  name: string;
-  description: string;
-  items: any[];
-  bundlePrice: string;
-  totalValue: string;
+  items: BundleItem[];
+  totalPrice: bigint;
   discountPercentage: number;
-  createdAt: number;
-  expiresAt: number;
+  expirationTime: bigint;
+  status: "ACTIVE" | "SOLD" | "CANCELLED" | "EXPIRED";
+  description?: string;
+  imageUrl?: string;
+}
+
+interface NFTAsset {
+  contractAddress: string;
+  tokenId: string;
+  tokenType: "ERC721" | "ERC1155";
+  amount?: string;
+  metadata?: {
+    name: string;
+    image: string;
+  };
 }
 
 export default function BundlesPage() {
-  const { toast } = useToast();
+  const { address, isConnected } = useAccount();
+  const [bundles, setBundles] = useState<Bundle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "expired">("active");
+  
+  // Create bundle dialog
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [userNFTs, setUserNFTs] = useState<NFTAsset[]>([]);
+  const [loadingNFTs, setLoadingNFTs] = useState(false);
+  const [selectedNFTs, setSelectedNFTs] = useState<NFTAsset[]>([]);
+  const [bundleDescription, setBundleDescription] = useState("");
+  const [bundlePrice, setBundlePrice] = useState("");
+  const [bundleDiscount, setBundleDiscount] = useState("10");
+  const [bundleDuration, setBundleDuration] = useState("7");
+  const [creating, setCreating] = useState(false);
+  
+  // Purchase dialog
+  const [selectedBundle, setSelectedBundle] = useState<Bundle | null>(null);
+  const [purchasing, setPurchasing] = useState(false);
 
-  // Redux state
-  const { account, isConnected } = useAppSelector((state) => state.wallet);
-  const nfts = useAppSelector((state) => state.nfts.items);
-
-  // Local state
-  const [activeBundles, setActiveBundles] = useState<Bundle[]>([]);
-  const [userBundles, setUserBundles] = useState<Bundle[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Create bundle form state
-  const [selectedNFTs, setSelectedNFTs] = useState<string[]>([]);
-  const [bundleForm, setBundleForm] = useState({
-    name: "",
-    description: "",
-    bundlePrice: "",
-    duration: "7", // days
-  });
-
-  /**
-   * Load bundles and subscribe to events
-   */
   useEffect(() => {
-    if (account) {
-      loadBundles();
+    fetchBundles();
+  }, [filterStatus]);
+
+  useEffect(() => {
+    if (createDialogOpen && isConnected && address) {
+      fetchUserNFTs();
     }
-  }, [account]);
+  }, [createDialogOpen, isConnected, address]);
 
-  /**
-   * Load bundles from service
-   */
-  const loadBundles = async () => {
-    if (!account) return;
-
-    setLoading(true);
+  const fetchBundles = async () => {
     try {
-      // Real blockchain data
-      const [active, user] = await Promise.all([
-        bundleService.getActiveBundles(),
-        bundleService.getUserBundles(account),
-      ]);
-
-      // Convert BundleInfo to Bundle format for compatibility
-      const convertBundleInfo = (bundleInfo: any) => ({
-        id: bundleInfo.id,
-        status: bundleInfo.status,
-        creator: bundleInfo.seller,
-        name: `Bundle ${bundleInfo.id}`,
-        description: bundleInfo.description,
-        items: bundleInfo.items,
-        bundlePrice: bundleInfo.totalPrice,
-        totalValue: bundleInfo.totalPrice,
-        discountPercentage: bundleInfo.discountPercentage,
-        createdAt: bundleInfo.createdAt,
-        expiresAt: bundleInfo.endTime,
-      });
-
-      setActiveBundles(active.map(convertBundleInfo));
-      setUserBundles(user.map(convertBundleInfo));
-    } catch (error) {
-      logger.error("Error loading bundles", error, {
+      setLoading(true);
+      logger.info("Fetching bundles from blockchain", null, {
         component: "BundlesPage",
-        action: "loadBundles",
+        action: "fetchBundles"
       });
-      toast({
-        title: "Error Loading Bundles",
-        description:
-          error instanceof Error ? error.message : "Failed to load bundles",
-        variant: "destructive",
+
+      const bundleManager = await bundleService.getBundleManagerContract();
+      
+      // Get bundle events
+      const filter = bundleManager.filters.BundleCreated();
+      const events = await bundleManager.queryFilter(filter);
+      
+      const bundlePromises = events.map(async (event) => {
+        try {
+          const bundleId = (event as any).args?.[0];
+          if (!bundleId) return null;
+
+          // Get bundle details
+          const bundle = await bundleManager.getBundle(bundleId);
+          
+          // Check status
+          const now = BigInt(Math.floor(Date.now() / 1000));
+          const isExpired = bundle.expirationTime <= now;
+          const status = bundle.status === 0 ? (isExpired ? "EXPIRED" : "ACTIVE") :
+                        bundle.status === 1 ? "SOLD" : "CANCELLED";
+          
+          // Apply filters
+          if (filterStatus === "active" && status !== "ACTIVE") return null;
+          if (filterStatus === "expired" && (status !== "EXPIRED" && status !== "SOLD")) return null;
+
+          // Get items with metadata
+          const itemsWithMetadata = await Promise.all(
+            bundle.items.map(async (item: any) => {
+              try {
+                const metadata = await nftMetadataService.getNFTMetadata(
+                  item.nftContract,
+                  item.tokenId.toString()
+                );
+                
+                return {
+                  nftContract: item.nftContract,
+                  tokenId: item.tokenId.toString(),
+                  amount: item.amount.toString(),
+                  tokenType: item.tokenType === 0 ? "ERC721" : "ERC1155",
+                  metadata: metadata ? {
+                    name: metadata.name,
+                    image: metadata.image
+                  } : undefined
+                };
+              } catch (error) {
+                logger.warn("Failed to fetch item metadata", error, {
+                  component: "BundlesPage",
+                  action: "fetchBundles"
+                });
+                return {
+                  nftContract: item.nftContract,
+                  tokenId: item.tokenId.toString(),
+                  amount: item.amount.toString(),
+                  tokenType: item.tokenType === 0 ? "ERC721" : "ERC1155"
+                };
+              }
+            })
+          );
+
+          return {
+            bundleId,
+            creator: bundle.creator,
+            items: itemsWithMetadata,
+            totalPrice: bundle.totalPrice,
+            discountPercentage: Number(bundle.discountPercentage || 0),
+            expirationTime: bundle.expirationTime,
+            status,
+            description: bundle.description || "",
+            imageUrl: bundle.imageUrl || ""
+          } as Bundle;
+        } catch (error) {
+          logger.warn("Failed to fetch bundle data", error, {
+            component: "BundlesPage",
+            action: "fetchBundles"
+          });
+          return null;
+        }
       });
+
+      const bundleData = (await Promise.all(bundlePromises))
+        .filter(b => b !== null) as Bundle[];
+
+      setBundles(bundleData);
+      logger.success(`Fetched ${bundleData.length} bundles`, null, {
+        component: "BundlesPage",
+        action: "fetchBundles"
+      });
+    } catch (error) {
+      logger.error("Failed to fetch bundles", error, {
+        component: "BundlesPage",
+        action: "fetchBundles"
+      });
+      setBundles([]);
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Handle NFT selection for bundle
-   */
-  const toggleNFTSelection = (nftId: string) => {
-    setSelectedNFTs((prev) => {
-      if (prev.includes(nftId)) {
-        return prev.filter((id) => id !== nftId);
-      } else {
-        if (prev.length >= 10) {
-          toast({
-            title: "Maximum Limit",
-            description: "A bundle can contain maximum 10 NFTs",
-            variant: "destructive",
-          });
-          return prev;
-        }
-        return [...prev, nftId];
-      }
-    });
-  };
-
-  /**
-   * Calculate suggested bundle price (with 10% discount)
-   */
-  const getSuggestedPrice = (): string => {
-    if (selectedNFTs.length === 0) return "0";
-
-    // Calculate average price
-    const avgPrice = 1.5;
-    const totalValue = selectedNFTs.length * avgPrice;
-    const discountedPrice = totalValue * 0.9; // 10% discount
-
-    return discountedPrice.toFixed(2);
-  };
-
-  /**
-   * Handle create bundle
-   */
-  const handleCreateBundle = async () => {
-    if (selectedNFTs.length < 2) {
-      toast({
-        title: "Invalid Bundle",
-        description: "Please select at least 2 NFTs",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!bundleForm.name || !bundleForm.bundlePrice) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
+  const fetchUserNFTs = async () => {
+    if (!address) return;
+    
     try {
-      // Real contract interaction
-
-      // Convert selected NFTs to bundle items
-      const items = selectedNFTs.map((nftId) => {
-        const nft = nfts.find((n) => n.id === nftId);
-        return {
-          collection:
-            nft?.contractAddress ||
-            "0x0000000000000000000000000000000000000000",
-          tokenId: nftId,
-          amount: "1",
-          tokenType: "ERC721" as const,
-        };
+      setLoadingNFTs(true);
+      logger.info("Fetching user NFTs for bundle creation", { address }, {
+        component: "BundlesPage",
+        action: "fetchUserNFTs"
       });
 
-      await bundleService.createBundle({
-        items,
-        totalPrice: bundleForm.bundlePrice,
-        discountPercentage: 0,
-        duration: parseInt(bundleForm.duration) * 24 * 60 * 60, // Convert days to seconds
-        description: bundleForm.description,
-        imageUrl: "",
+      const userNFTsData = await userNFTService.getUserNFTs(address);
+      
+      const nftsWithMetadata = await Promise.all(
+        userNFTsData.map(async (nft) => {
+          try {
+            const metadata = await nftMetadataService.getNFTMetadata(
+              nft.contractAddress,
+              nft.tokenId
+            );
+            
+            return {
+              contractAddress: nft.contractAddress,
+              tokenId: nft.tokenId,
+              tokenType: nft.tokenType,
+              amount: nft.balance.toString(),
+              metadata: metadata ? {
+                name: metadata.name,
+                image: metadata.image
+              } : {
+                name: `Token #${nft.tokenId}`,
+                image: ""
+              }
+            };
+          } catch (error) {
+            return {
+              contractAddress: nft.contractAddress,
+              tokenId: nft.tokenId,
+              tokenType: nft.tokenType,
+              amount: nft.balance.toString(),
+              metadata: {
+                name: `Token #${nft.tokenId}`,
+                image: ""
+              }
+            };
+          }
+        })
+      );
+
+      setUserNFTs(nftsWithMetadata);
+    } catch (error) {
+      logger.error("Failed to fetch user NFTs", error, {
+        component: "BundlesPage",
+        action: "fetchUserNFTs"
+      });
+      setUserNFTs([]);
+    } finally {
+      setLoadingNFTs(false);
+    }
+  };
+
+  const handleCreateBundle = async () => {
+    if (!isConnected || !address || selectedNFTs.length < 2) {
+      toast.error("Please select at least 2 NFTs for the bundle");
+      return;
+    }
+
+    try {
+      setCreating(true);
+      logger.info("Creating bundle", {
+        items: selectedNFTs.length,
+        price: bundlePrice,
+        discount: bundleDiscount
+      }, {
+        component: "BundlesPage",
+        action: "handleCreateBundle"
       });
 
-      toast({
-        title: "Bundle Created!",
-        description: `Successfully created bundle "${bundleForm.name}"`,
+      // Approve all NFTs
+      const bundleManagerAddress = await userHubService.getBundleManager();
+      
+      for (const nft of selectedNFTs) {
+        const isApproved = await userNFTService.getApprovalStatus(
+          address,
+          nft.contractAddress,
+          bundleManagerAddress,
+          nft.tokenId
+        );
+        
+        if (!isApproved) {
+          const nftContract = new ethers.Contract(
+            nft.contractAddress,
+            nft.tokenType === "ERC721"
+              ? ["function approve(address to, uint256 tokenId)"]
+              : ["function setApprovalForAll(address operator, bool approved)"],
+            await bundleService.getSigner()
+          );
+          
+          if (nft.tokenType === "ERC721") {
+            await nftContract.approve(bundleManagerAddress, nft.tokenId);
+          } else {
+            await nftContract.setApprovalForAll(bundleManagerAddress, true);
+          }
+        }
+      }
+
+      // Create bundle
+      const tx = await bundleService.createBundle({
+        items: selectedNFTs.map(nft => ({
+          collection: nft.contractAddress,
+          tokenId: nft.tokenId,
+          amount: nft.amount || "1",
+          tokenType: nft.tokenType
+        })),
+        totalPrice: bundlePrice,
+        discountPercentage: parseInt(bundleDiscount),
+        duration: parseInt(bundleDuration) * 86400,
+        description: bundleDescription,
+        imageUrl: ""
       });
 
+      toast.success("Bundle created successfully!");
+      setCreateDialogOpen(false);
+      
       // Reset form
       setSelectedNFTs([]);
-      setBundleForm({
-        name: "",
-        description: "",
-        bundlePrice: "",
-        duration: "7",
+      setBundleDescription("");
+      setBundlePrice("");
+      setBundleDiscount("10");
+      setBundleDuration("7");
+      
+      // Refresh bundles
+      await fetchBundles();
+    } catch (error: any) {
+      logger.error("Failed to create bundle", error, {
+        component: "BundlesPage",
+        action: "handleCreateBundle"
       });
-
-      loadBundles();
-    } catch (error) {
-      toast({
-        title: "Create Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to create bundle",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to create bundle");
     } finally {
-      setLoading(false);
+      setCreating(false);
     }
   };
 
-  /**
-   * Handle buy bundle
-   */
-  const handleBuyBundle = async (bundleId: string, price: string) => {
-    setLoading(true);
+  const handlePurchaseBundle = async () => {
+    if (!selectedBundle || !isConnected) return;
+
     try {
-      // Real contract interaction
-      await bundleService.purchaseBundle(bundleId, price);
-
-      toast({
-        title: "Bundle Purchased!",
-        description: `Successfully bought bundle for ${price} ETH`,
+      setPurchasing(true);
+      logger.info("Purchasing bundle", {
+        bundleId: selectedBundle.bundleId,
+        price: formatEther(selectedBundle.totalPrice)
+      }, {
+        component: "BundlesPage",
+        action: "handlePurchaseBundle"
       });
 
-      loadBundles();
+      const tx = await bundleService.purchaseBundle(
+        selectedBundle.bundleId,
+        formatEther(selectedBundle.totalPrice)
+      );
+
+      await tx.wait();
+      toast.success("Bundle purchased successfully!");
+      setSelectedBundle(null);
+      await fetchBundles();
     } catch (error) {
-      toast({
-        title: "Purchase Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to buy bundle",
-        variant: "destructive",
+      logger.error("Failed to purchase bundle", error, {
+        component: "BundlesPage",
+        action: "handlePurchaseBundle"
       });
+      toast.error("Failed to purchase bundle");
     } finally {
-      setLoading(false);
+      setPurchasing(false);
     }
   };
 
-  /**
-   * Handle cancel bundle
-   */
   const handleCancelBundle = async (bundleId: string) => {
-    setLoading(true);
     try {
-      // Real contract interaction
-      await bundleService.cancelBundle(bundleId);
-
-      toast({
-        title: "Bundle Cancelled",
-        description: "Your bundle has been cancelled",
+      logger.info("Cancelling bundle", { bundleId }, {
+        component: "BundlesPage",
+        action: "handleCancelBundle"
       });
 
-      loadBundles();
+      const tx = await bundleService.cancelBundle(bundleId);
+      await tx.wait();
+      
+      toast.success("Bundle cancelled successfully!");
+      await fetchBundles();
     } catch (error) {
-      toast({
-        title: "Cancel Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to cancel bundle",
-        variant: "destructive",
+      logger.error("Failed to cancel bundle", error, {
+        component: "BundlesPage",
+        action: "handleCancelBundle"
       });
-    } finally {
-      setLoading(false);
+      toast.error("Failed to cancel bundle");
     }
   };
 
-  /**
-   * Format time remaining
-   */
-  const formatTimeRemaining = (expiresAt: number): string => {
-    const now = Date.now();
-    const remaining = expiresAt - now;
-
-    if (remaining <= 0) return "Expired";
-
-    const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-    if (days > 0) return `${days} days`;
-
-    const hours = Math.floor(remaining / (1000 * 60 * 60));
-    return `${hours} hours`;
+  const calculateSavings = (bundle: Bundle) => {
+    const itemsValue = bundle.items.length * parseFloat(formatEther(bundle.totalPrice)) * 1.2; // Estimate
+    const bundleValue = parseFloat(formatEther(bundle.totalPrice));
+    return ((itemsValue - bundleValue) / itemsValue * 100).toFixed(0);
   };
 
-  /**
-   * Get status badge
-   */
-  const getStatusBadge = (status: BundleStatus) => {
-    switch (status) {
-      case BundleStatus.ACTIVE:
-        return <Badge variant="default">Active</Badge>;
-      case BundleStatus.SOLD:
-        return (
-          <Badge variant="default" className="bg-green-500">
-            <Check className="h-3 w-3 mr-1" />
-            Sold
-          </Badge>
-        );
-      case BundleStatus.CANCELLED:
-        return (
-          <Badge variant="destructive">
-            <X className="h-3 w-3 mr-1" />
-            Cancelled
-          </Badge>
-        );
-      case BundleStatus.EXPIRED:
-        return <Badge variant="secondary">Expired</Badge>;
-    }
+  const formatTimeLeft = (expiration: bigint) => {
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const diff = Number(expiration - now);
+    
+    if (diff <= 0) return "Expired";
+    
+    const days = Math.floor(diff / 86400);
+    const hours = Math.floor((diff % 86400) / 3600);
+    
+    if (days > 0) return `${days}d ${hours}h`;
+    return `${hours}h`;
   };
 
-  // Check if wallet is connected
-  if (!isConnected || !account) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Wallet Not Connected</AlertTitle>
-          <AlertDescription>
-            Please connect your wallet to view and manage bundles.
-          </AlertDescription>
-        </Alert>
+  const filteredBundles = bundles.filter(bundle => {
+    const matchesSearch = bundle.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         bundle.bundleId.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  const BundleCard = ({ bundle }: { bundle: Bundle }) => (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="relative">
+        <div className="grid grid-cols-2 gap-1 p-2 bg-gray-100 aspect-square">
+          {bundle.items.slice(0, 4).map((item, idx) => (
+            <div key={idx} className="bg-white rounded overflow-hidden">
+              {item.metadata?.image ? (
+                <img
+                  src={item.metadata.image}
+                  alt={item.metadata.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                  <Package className="w-6 h-6 text-gray-400" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        
+        <div className="absolute top-2 left-2 flex gap-2">
+          <Badge variant="secondary">
+            {bundle.items.length} Items
+          </Badge>
+          {bundle.discountPercentage > 0 && (
+            <Badge variant="default" className="bg-green-500">
+              -{bundle.discountPercentage}%
+            </Badge>
+          )}
+        </div>
+        
+        {bundle.status === "ACTIVE" && (
+          <Badge className="absolute top-2 right-2 bg-blue-500">
+            <Clock className="w-3 h-3 mr-1" />
+            {formatTimeLeft(bundle.expirationTime)}
+          </Badge>
+        )}
       </div>
-    );
-  }
+
+      <CardContent className="p-4">
+        <h3 className="font-semibold text-lg mb-2">
+          {bundle.description || `Bundle #${bundle.bundleId.slice(0, 8)}`}
+        </h3>
+        
+        <div className="space-y-2 mb-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">Bundle Price</span>
+            <span className="font-bold text-lg">
+              {formatEther(bundle.totalPrice)} ETH
+            </span>
+          </div>
+          
+          {bundle.discountPercentage > 0 && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">You Save</span>
+              <span className="text-green-600 font-medium">
+                ~{calculateSavings(bundle)}%
+              </span>
+            </div>
+          )}
+          
+          <div className="flex items-center text-xs text-gray-500">
+            <User className="w-3 h-3 mr-1" />
+            {bundle.creator.slice(0, 6)}...{bundle.creator.slice(-4)}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {bundle.status === "ACTIVE" && (
+            <>
+              {bundle.creator === address ? (
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleCancelBundle(bundle.bundleId)}
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+              ) : (
+                <Button
+                  className="flex-1"
+                  onClick={() => setSelectedBundle(bundle)}
+                >
+                  <ShoppingCart className="w-4 h-4 mr-2" />
+                  Buy Bundle
+                </Button>
+              )}
+            </>
+          )}
+          <Link href={`/bundles/${bundle.bundleId}`}>
+            <Button variant="outline">View Details</Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-      {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2">
-          📦 NFT Bundles
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          Create and buy discounted NFT packages
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="browse" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="browse">
-            Browse Bundles
-            {activeBundles.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {activeBundles.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="my-bundles">
-            My Bundles
-            {userBundles.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {userBundles.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="create">Create Bundle</TabsTrigger>
-        </TabsList>
-
-        {/* Browse Bundles */}
-        <TabsContent value="browse">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : activeBundles.length === 0 ? (
-            <Alert>
-              <Package className="h-4 w-4" />
-              <AlertTitle>No Active Bundles</AlertTitle>
-              <AlertDescription>
-                There are no active bundles at the moment. Check back later!
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeBundles.map((bundle) => (
-                <Card key={bundle.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle>{bundle.name}</CardTitle>
-                        <CardDescription>
-                          {bundle.items.length} NFTs
-                        </CardDescription>
-                      </div>
-                      <Badge variant="secondary" className="gap-1">
-                        <TrendingDown className="h-3 w-3" />
-                        {bundle.discountPercentage}% OFF
-                      </Badge>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-4">
-                    {/* Preview images */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {bundle.items.slice(0, 4).map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="relative aspect-square bg-muted rounded-md overflow-hidden"
-                        >
-                          <Image
-                            src={item.nftImage}
-                            alt={item.nftName}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                          />
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Pricing */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          Individual Value
-                        </span>
-                        <span className="line-through text-muted-foreground">
-                          {bundle.totalValue} ETH
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold">Bundle Price</span>
-                        <span className="text-xl font-bold text-primary">
-                          {bundle.bundlePrice} ETH
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Time remaining */}
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>
-                        Expires in {formatTimeRemaining(bundle.expiresAt)}
-                      </span>
-                    </div>
-                  </CardContent>
-
-                  <CardFooter>
-                    <Button
-                      className="w-full"
-                      onClick={() =>
-                        handleBuyBundle(bundle.id, bundle.bundlePrice)
-                      }
-                      disabled={loading}
-                    >
-                      Buy Bundle
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* My Bundles */}
-        <TabsContent value="my-bundles">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : userBundles.length === 0 ? (
-            <Alert>
-              <Package className="h-4 w-4" />
-              <AlertTitle>No Bundles Created</AlertTitle>
-              <AlertDescription>
-                You haven't created any bundles yet. Go to the Create Bundle
-                tab!
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-4">
-              {userBundles.map((bundle) => (
-                <Card key={bundle.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">
-                            {bundle.name}
-                          </h3>
-                          {getStatusBadge(bundle.status)}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {bundle.description}
-                        </p>
-                      </div>
-                      {bundle.status === BundleStatus.ACTIVE && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCancelBundle(bundle.id)}
-                          disabled={loading}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Items</p>
-                        <p className="font-semibold">
-                          {bundle.items.length} NFTs
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Price</p>
-                        <p className="font-semibold">
-                          {bundle.bundlePrice} ETH
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Discount</p>
-                        <p className="font-semibold">
-                          {bundle.discountPercentage}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Created</p>
-                        <p className="font-semibold">
-                          {new Date(bundle.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Create Bundle */}
-        <TabsContent value="create">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Form */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Bundle Details</CardTitle>
-                <CardDescription>
-                  Select NFTs and set bundle price (minimum 2 NFTs, max 10)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Bundle Name *</Label>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">NFT Bundles</h1>
+            <p className="text-gray-600">Buy multiple NFTs at discounted prices</p>
+          </div>
+          
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Bundle
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create NFT Bundle</DialogTitle>
+                <DialogDescription>
+                  Bundle multiple NFTs and offer them at a discounted price
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="description">Bundle Name</Label>
                   <Input
-                    id="name"
-                    placeholder="e.g., Starter Pack"
-                    value={bundleForm.name}
-                    onChange={(e) =>
-                      setBundleForm({ ...bundleForm, name: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
                     id="description"
-                    placeholder="Describe your bundle..."
-                    value={bundleForm.description}
-                    onChange={(e) =>
-                      setBundleForm({
-                        ...bundleForm,
-                        description: e.target.value,
-                      })
-                    }
+                    placeholder="e.g., Starter Pack"
+                    value={bundleDescription}
+                    onChange={(e) => setBundleDescription(e.target.value)}
                   />
                 </div>
-
+                
+                <div>
+                  <Label>Description</Label>
+                  <textarea
+                    className="w-full p-2 border rounded-md"
+                    rows={3}
+                    placeholder="Describe your bundle..."
+                    value={bundleDescription}
+                    onChange={(e) => setBundleDescription(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Select NFTs ({selectedNFTs.length} selected)</Label>
+                  {loadingNFTs ? (
+                    <div className="flex items-center justify-center h-32">
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2 max-h-60 overflow-y-auto p-2 border rounded">
+                      {userNFTs.map((nft) => {
+                        const isSelected = selectedNFTs.some(
+                          s => s.contractAddress === nft.contractAddress && s.tokenId === nft.tokenId
+                        );
+                        return (
+                          <div
+                            key={`${nft.contractAddress}-${nft.tokenId}`}
+                            className={`border rounded p-2 cursor-pointer transition-all ${
+                              isSelected ? "border-blue-500 bg-blue-50" : "hover:border-gray-400"
+                            }`}
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedNFTs(selectedNFTs.filter(
+                                  s => !(s.contractAddress === nft.contractAddress && s.tokenId === nft.tokenId)
+                                ));
+                              } else {
+                                setSelectedNFTs([...selectedNFTs, nft]);
+                              }
+                            }}
+                          >
+                            {nft.metadata?.image ? (
+                              <img src={nft.metadata.image} alt="" className="w-full aspect-square object-cover rounded" />
+                            ) : (
+                              <div className="w-full aspect-square bg-gray-100 rounded flex items-center justify-center">
+                                <Package className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
+                            <p className="text-xs mt-1 truncate">{nft.metadata?.name || `#${nft.tokenId}`}</p>
+                            {isSelected && (
+                              <CheckCircle className="w-4 h-4 text-blue-500 mt-1" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">
-                      Bundle Price (ETH) *
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="ml-2 h-auto p-0 text-xs"
-                        onClick={() =>
-                          setBundleForm({
-                            ...bundleForm,
-                            bundlePrice: getSuggestedPrice(),
-                          })
-                        }
-                      >
-                        Suggest: {getSuggestedPrice()} ETH
-                      </Button>
-                    </Label>
+                  <div>
+                    <Label htmlFor="price">Total Price (ETH)</Label>
                     <Input
                       id="price"
                       type="number"
-                      step="0.01"
                       placeholder="0.00"
-                      value={bundleForm.bundlePrice}
-                      onChange={(e) =>
-                        setBundleForm({
-                          ...bundleForm,
-                          bundlePrice: e.target.value,
-                        })
-                      }
+                      value={bundlePrice}
+                      onChange={(e) => setBundlePrice(e.target.value)}
+                      step="0.01"
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (days)</Label>
+                  
+                  <div>
+                    <Label htmlFor="discount">Discount (%)</Label>
                     <Input
-                      id="duration"
+                      id="discount"
                       type="number"
-                      min="1"
-                      max="30"
-                      value={bundleForm.duration}
-                      onChange={(e) =>
-                        setBundleForm({
-                          ...bundleForm,
-                          duration: e.target.value,
-                        })
-                      }
+                      placeholder="10"
+                      value={bundleDiscount}
+                      onChange={(e) => setBundleDiscount(e.target.value)}
+                      min="0"
+                      max="100"
                     />
                   </div>
                 </div>
-
-                {/* NFT Selection */}
-                <div className="space-y-2">
-                  <Label>Select NFTs ({selectedNFTs.length}/10)</Label>
+                
+                <div>
+                  <Label htmlFor="duration">Duration (days)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    placeholder="7"
+                    value={bundleDuration}
+                    onChange={(e) => setBundleDuration(e.target.value)}
+                  />
+                </div>
+                
+                {selectedNFTs.length > 0 && bundlePrice && (
                   <Alert>
-                    <AlertCircle className="h-4 w-4" />
+                    <Info className="h-4 w-4" />
                     <AlertDescription>
-                      NFT selection UI will be enhanced in next iteration.
-                      Connect your wallet to see your NFTs.
+                      Bundle contains {selectedNFTs.length} NFTs for {bundlePrice} ETH
+                      {bundleDiscount && ` with ${bundleDiscount}% discount advertised`}
                     </AlertDescription>
                   </Alert>
-                </div>
-
+                )}
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  Cancel
+                </Button>
                 <Button
-                  className="w-full"
                   onClick={handleCreateBundle}
-                  disabled={loading || selectedNFTs.length < 2}
+                  disabled={creating || selectedNFTs.length < 2 || !bundlePrice}
                 >
-                  {loading ? (
+                  {creating ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Creating...
                     </>
                   ) : (
-                    "Create Bundle"
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Bundle
+                    </>
                   )}
                 </Button>
-              </CardContent>
-            </Card>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-            {/* Summary */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Bundle Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">NFTs Selected</span>
-                    <span className="font-semibold">{selectedNFTs.length}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Estimated Value
-                    </span>
-                    <span className="font-semibold">
-                      {(selectedNFTs.length * 1.5).toFixed(2)} ETH
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Bundle Price</span>
-                    <span className="font-semibold">
-                      {bundleForm.bundlePrice || "0.00"} ETH
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Discount</span>
-                    <span className="font-semibold text-green-600">10%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        {/* Filters */}
+        <div className="flex gap-4 items-center">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search bundles..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
-        </TabsContent>
-      </Tabs>
+          
+          <select
+            className="px-4 py-2 border rounded-md"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+          >
+            <option value="all">All Bundles</option>
+            <option value="active">Active Only</option>
+            <option value="expired">Sold/Expired</option>
+          </select>
+          
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin" />
+        </div>
+      ) : filteredBundles.length > 0 ? (
+        viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredBundles.map(bundle => (
+              <BundleCard key={bundle.bundleId} bundle={bundle} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredBundles.map(bundle => (
+              <Card key={bundle.bundleId}>
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-6">
+                    <div className="grid grid-cols-2 gap-1 w-32 h-32 flex-shrink-0">
+                      {bundle.items.slice(0, 4).map((item, idx) => (
+                        <div key={idx} className="bg-gray-100 rounded overflow-hidden">
+                          {item.metadata?.image ? (
+                            <img src={item.metadata.image} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Package className="w-4 h-4 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-lg">
+                          {bundle.description || `Bundle #${bundle.bundleId.slice(0, 8)}`}
+                        </h3>
+                        <Badge variant="secondary">{bundle.items.length} Items</Badge>
+                        {bundle.discountPercentage > 0 && (
+                          <Badge variant="default" className="bg-green-500">
+                            -{bundle.discountPercentage}%
+                          </Badge>
+                        )}
+                        {bundle.status === "ACTIVE" && (
+                          <Badge className="bg-blue-500">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {formatTimeLeft(bundle.expirationTime)}
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-3">
+                        Bundle by {bundle.creator.slice(0, 6)}...{bundle.creator.slice(-4)}
+                      </p>
+                      
+                      <div className="flex items-center gap-6 mb-3">
+                        <div>
+                          <p className="text-sm text-gray-500">Price</p>
+                          <p className="font-bold text-lg">{formatEther(bundle.totalPrice)} ETH</p>
+                        </div>
+                        {bundle.discountPercentage > 0 && (
+                          <div>
+                            <p className="text-sm text-gray-500">You Save</p>
+                            <p className="text-green-600 font-medium">~{calculateSavings(bundle)}%</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {bundle.status === "ACTIVE" && (
+                        <>
+                          {bundle.creator === address ? (
+                            <Button
+                              variant="outline"
+                              onClick={() => handleCancelBundle(bundle.bundleId)}
+                            >
+                              Cancel
+                            </Button>
+                          ) : (
+                            <Button onClick={() => setSelectedBundle(bundle)}>
+                              <ShoppingCart className="w-4 h-4 mr-2" />
+                              Buy
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      <Link href={`/bundles/${bundle.bundleId}`}>
+                        <Button variant="outline">Details</Button>
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : (
+        <Card className="p-8 text-center">
+          <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-500">No bundles found</p>
+        </Card>
+      )}
+
+      {/* Purchase Dialog */}
+      {selectedBundle && (
+        <Dialog open={!!selectedBundle} onOpenChange={() => setSelectedBundle(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Purchase Bundle</DialogTitle>
+              <DialogDescription>
+                Review and confirm your bundle purchase
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="p-4 border rounded">
+                <h4 className="font-medium mb-2">Bundle Items ({selectedBundle.items.length})</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedBundle.items.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      {item.metadata?.image && (
+                        <img src={item.metadata.image} alt="" className="w-8 h-8 rounded" />
+                      )}
+                      <span className="text-sm">
+                        {item.metadata?.name || `Token #${item.tokenId}`}
+                      </span>
+                      {item.tokenType === "ERC1155" && item.amount !== "1" && (
+                        <Badge variant="outline" className="ml-auto">x{item.amount}</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Bundle Price</span>
+                  <span className="font-bold">{formatEther(selectedBundle.totalPrice)} ETH</span>
+                </div>
+                {selectedBundle.discountPercentage > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span>Discount</span>
+                    <span>{selectedBundle.discountPercentage}% OFF</span>
+                  </div>
+                )}
+              </div>
+              
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  You will receive all {selectedBundle.items.length} NFTs in this bundle
+                </AlertDescription>
+              </Alert>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelectedBundle(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handlePurchaseBundle} disabled={purchasing || !isConnected}>
+                {purchasing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Purchasing...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    Purchase for {formatEther(selectedBundle.totalPrice)} ETH
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

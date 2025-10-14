@@ -1,11 +1,11 @@
 /**
  * Exchange Service
  * Handles NFT listing, buying, and cancellation operations
- * Now uses MarketplaceHub for address discovery
+ * Now uses UserHub for address discovery
  */
 
 import { ethers } from "ethers";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
 import {
   ERC721NFTExchange_ABI,
@@ -30,9 +30,32 @@ export interface BatchListingParams {
   tokenType: "ERC721" | "ERC1155";
 }
 
+export interface Listing {
+  listingId: string;
+  seller: string;
+  contractAddress: string;
+  tokenId: bigint;
+  amount: bigint;
+  price: bigint;
+  paymentToken: string;
+  expirationTime: bigint;
+  isActive: boolean;
+  tokenType: "ERC721" | "ERC1155";
+}
+
 export class ExchangeService {
-  private provider: ethers.Provider | null = null;
+  public provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
+  
+  /**
+   * Get signer for direct contract interaction
+   */
+  getSigner(): ethers.Signer {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+    return this.signer;
+  }
 
   /**
    * Initialize exchange service
@@ -62,8 +85,8 @@ export class ExchangeService {
 
     const address =
       tokenType === "ERC721"
-        ? marketplaceHubService.getERC721Exchange()
-        : marketplaceHubService.getERC1155Exchange();
+        ? userHubService.getERC721Exchange()
+        : userHubService.getERC1155Exchange();
 
     const abi =
       tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
@@ -72,10 +95,100 @@ export class ExchangeService {
   }
 
   /**
+   * Get exchange contract for read-only operations
+   */
+  private getExchangeContractReadOnly(
+    tokenType: "ERC721" | "ERC1155"
+  ): ethers.Contract {
+    if (!this.provider) {
+      throw new Error("Provider not available");
+    }
+
+    const address =
+      tokenType === "ERC721"
+        ? userHubService.getERC721Exchange()
+        : userHubService.getERC1155Exchange();
+
+    const abi =
+      tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+
+    return new ethers.Contract(address, abi, this.provider);
+  }
+
+  /**
    * Auto-detect exchange for an NFT contract
    */
   async getExchangeForNFT(nftContract: string): Promise<string> {
-    return await marketplaceHubService.getExchangeFor(nftContract);
+    return await userHubService.getExchangeFor(nftContract);
+  }
+
+  /**
+   * Get all active listings onchain
+   */
+  async getAllActiveListings(
+    tokenType: "ERC721" | "ERC1155" = "ERC721",
+    limit: number = 100,
+    offset: number = 0
+  ): Promise<Listing[]> {
+    try {
+      const exchange = this.getExchangeContractReadOnly(tokenType);
+      
+      // TODO: Implement based on your contract's actual methods
+      // This is a placeholder structure
+      const listings: Listing[] = [];
+      
+      logger.info(`Fetching active ${tokenType} listings`, { limit, offset }, {
+        component: "ExchangeService",
+        action: "getAllActiveListings"
+      });
+      
+      return listings;
+    } catch (error) {
+      logger.error("Failed to get active listings", error, {
+        component: "ExchangeService",
+        action: "getAllActiveListings"
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Get listing by NFT
+   */
+  async getListingByNFT(
+    contractAddress: string,
+    tokenId: string,
+    tokenType: "ERC721" | "ERC1155" = "ERC721"
+  ): Promise<Listing | null> {
+    try {
+      const exchange = this.getExchangeContractReadOnly(tokenType);
+      
+      // Check if NFT is listed
+      const isListed = await exchange.isNFTListed(contractAddress, tokenId);
+      if (!isListed) return null;
+      
+      // Get listing details - adapt to your contract's actual method
+      const listing = await exchange.getListingByNFT(contractAddress, tokenId);
+      
+      return {
+        listingId: listing.listingId,
+        seller: listing.seller,
+        contractAddress: listing.contractAddress,
+        tokenId: listing.tokenId,
+        amount: listing.amount || 1n,
+        price: listing.price,
+        paymentToken: listing.paymentToken || ethers.ZeroAddress,
+        expirationTime: listing.expirationTime,
+        isActive: listing.isActive,
+        tokenType
+      };
+    } catch (error) {
+      logger.error("Failed to get listing by NFT", error, {
+        component: "ExchangeService",
+        action: "getListingByNFT"
+      });
+      return null;
+    }
   }
 
   /**
@@ -146,6 +259,18 @@ export class ExchangeService {
       });
       throw this.formatTransactionError(error);
     }
+  }
+
+  /**
+   * Buy an NFT listing (alias for buyNFT)
+   */
+  async buyListing(
+    contractAddress: string,
+    tokenId: string,
+    amount: string = "1",
+    tokenType: "ERC721" | "ERC1155"
+  ): Promise<ethers.ContractTransactionResponse> {
+    return this.buyNFT(contractAddress, tokenId, amount, tokenType);
   }
 
   /**
@@ -235,8 +360,8 @@ export class ExchangeService {
 
       const address =
         tokenType === "ERC721"
-          ? marketplaceHubService.getERC721Exchange()
-          : marketplaceHubService.getERC1155Exchange();
+          ? userHubService.getERC721Exchange()
+          : userHubService.getERC1155Exchange();
 
       const abi =
         tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
@@ -253,37 +378,7 @@ export class ExchangeService {
     }
   }
 
-  /**
-   * Get user's listings
-   */
-  async getUserListings(
-    userAddress: string,
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<any[]> {
-    try {
-      if (!this.provider) {
-        throw new Error("Provider not available");
-      }
 
-      const address =
-        tokenType === "ERC721"
-          ? marketplaceHubService.getERC721Exchange()
-          : marketplaceHubService.getERC1155Exchange();
-
-      const abi =
-        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
-
-      const exchange = new ethers.Contract(address, abi, this.provider);
-      const listings = await exchange.getUserListings(userAddress);
-      return listings;
-    } catch (error) {
-      logger.error("Error getting user listings", error, {
-        component: "ExchangeService",
-        action: "getUserListings",
-      });
-      throw error;
-    }
-  }
 
   /**
    * Update listing price
@@ -310,15 +405,40 @@ export class ExchangeService {
   }
 
   /**
-   * Calculate fees for a listing using Hub
+   * Calculate fees for a listing
+   * @notice Fees are now calculated via FeeRegistry/AdvancedFeeManager  
    */
-  async calculateFees(nftContract: string, tokenId: string, salePrice: string) {
+  async calculateFees(nftContract: string, tokenId: string, salePrice: string, userAddress?: string) {
     const salePriceBigInt = ethers.parseEther(salePrice);
-    return await marketplaceHubService.calculateFees(
+    
+    // Get fee registry from UserHub
+    const feeRegistryAddress = userHubService.getFeeRegistry();
+    
+    // TODO: Implement fee calculation via FeeRegistry
+    logger.info("Fee calculation via FeeRegistry", { 
+      feeRegistryAddress,
       nftContract,
-      tokenId,
-      salePriceBigInt
-    );
+      salePrice 
+    }, {
+      component: "ExchangeService",
+      action: "calculateFees"
+    });
+    
+    // For now, return placeholder values
+    const platformFeeRate = 250n; // 2.5% in basis points
+    const royaltyRate = 500n; // 5% in basis points
+    
+    const platformFee = (salePriceBigInt * platformFeeRate) / 10000n;
+    const royaltyAmount = (salePriceBigInt * royaltyRate) / 10000n;
+    const sellerProceeds = salePriceBigInt - platformFee - royaltyAmount;
+    
+    return {
+      platformFee,
+      royaltyAmount,
+      royaltyRecipient: ethers.ZeroAddress, // TODO: Get from royalty registry
+      sellerProceeds,
+      totalPrice: salePriceBigInt
+    };
   }
 
   /**
@@ -333,11 +453,11 @@ export class ExchangeService {
       // Get recent listings from both ERC721 and ERC1155 exchanges
       const [erc721Listings, erc1155Listings] = await Promise.all([
         this.getCollectionListings(
-          marketplaceHubService.getERC721Exchange(),
+          userHubService.getERC721Exchange(),
           "ERC721"
         ).catch(() => []),
         this.getCollectionListings(
-          marketplaceHubService.getERC1155Exchange(),
+          userHubService.getERC1155Exchange(),
           "ERC1155"
         ).catch(() => []),
       ]);
@@ -366,13 +486,13 @@ export class ExchangeService {
       // Get active listings count from both exchanges
       const [erc721Count, erc1155Count] = await Promise.all([
         this.getCollectionListings(
-          marketplaceHubService.getERC721Exchange(),
+          userHubService.getERC721Exchange(),
           "ERC721"
         )
           .then((listings) => listings.length)
           .catch(() => 0),
         this.getCollectionListings(
-          marketplaceHubService.getERC1155Exchange(),
+          userHubService.getERC1155Exchange(),
           "ERC1155"
         )
           .then((listings) => listings.length)
@@ -386,6 +506,356 @@ export class ExchangeService {
         action: "getActiveListingsCount",
       });
       return 0;
+    }
+  }
+
+  /**
+   * List NFT for sale
+   */
+  async listNFT(params: ListingParams): Promise<string> {
+    try {
+      const contract = this.getExchangeContract(params.tokenType);
+      
+      const tx = await contract.listNFT(
+        params.contractAddress,
+        params.tokenId,
+        params.tokenType === "ERC1155" ? params.amount || "1" : undefined,
+        ethers.parseEther(params.price),
+        params.duration
+      );
+      
+      const receipt = await tx.wait();
+      const event = receipt.logs.find((log: any) => 
+        log.eventName === "NFTListed"
+      );
+      
+      logger.success("NFT listed successfully", {
+        listingId: event?.args?.listingId,
+        contractAddress: params.contractAddress,
+        tokenId: params.tokenId,
+        price: params.price,
+      }, {
+        component: "ExchangeService",
+        action: "listNFT",
+      });
+
+      return event?.args?.listingId || "";
+    } catch (error) {
+      logger.error("Failed to list NFT", error, {
+        component: "ExchangeService",
+        action: "listNFT",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Batch list multiple NFTs
+   */
+  async batchListNFT(params: BatchListingParams): Promise<string[]> {
+    try {
+      const contract = this.getExchangeContract(params.tokenType);
+      
+      const prices = params.prices.map(p => ethers.parseEther(p));
+      
+      const tx = await contract.batchListNFT(
+        params.contractAddress,
+        params.tokenIds,
+        params.tokenType === "ERC1155" ? params.amounts : undefined,
+        prices,
+        params.duration
+      );
+      
+      const receipt = await tx.wait();
+      const listingIds = receipt.logs
+        .filter((log: any) => log.eventName === "NFTListed")
+        .map((log: any) => log.args?.listingId);
+      
+      logger.success("Batch NFT listing successful", {
+        count: listingIds.length,
+        contractAddress: params.contractAddress,
+      }, {
+        component: "ExchangeService",
+        action: "batchListNFT",
+      });
+
+      return listingIds;
+    } catch (error) {
+      logger.error("Failed to batch list NFTs", error, {
+        component: "ExchangeService",
+        action: "batchListNFT",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Batch buy multiple NFTs
+   */
+  async batchBuyNFT(listingIds: string[], totalPrice: string): Promise<void> {
+    try {
+      // Determine which exchange to use based on first listing
+      const firstListing = await this.getListing(listingIds[0]);
+      const tokenType = await this.detectTokenType(firstListing.contractAddress);
+      const contract = this.getExchangeContract(tokenType);
+      
+      const tx = await contract.batchBuyNFT(listingIds, {
+        value: ethers.parseEther(totalPrice)
+      });
+      
+      await tx.wait();
+      
+      logger.success("Batch purchase successful", {
+        count: listingIds.length,
+        totalPrice,
+      }, {
+        component: "ExchangeService",
+        action: "batchBuyNFT",
+      });
+    } catch (error) {
+      logger.error("Failed to batch buy NFTs", error, {
+        component: "ExchangeService",
+        action: "batchBuyNFT",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Get listing details by listing ID
+   */
+  async getListing(listingId: string): Promise<Listing> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      // Try both exchanges to find the listing
+      const erc721Contract = this.getExchangeContractReadOnly("ERC721");
+      const erc1155Contract = this.getExchangeContractReadOnly("ERC1155");
+
+      let listing;
+      let tokenType: "ERC721" | "ERC1155" = "ERC721";
+
+      try {
+        listing = await erc721Contract.getListing(listingId);
+        if (!listing.seller || listing.seller === ethers.ZeroAddress) {
+          throw new Error("Not found in ERC721");
+        }
+      } catch {
+        listing = await erc1155Contract.getListing(listingId);
+        tokenType = "ERC1155";
+      }
+
+      return {
+        listingId,
+        seller: listing.seller,
+        contractAddress: listing.contractAddress,
+        tokenId: listing.tokenId,
+        amount: listing.amount || 1n,
+        price: listing.price,
+        paymentToken: listing.paymentToken || ethers.ZeroAddress,
+        expirationTime: listing.expirationTime,
+        isActive: listing.isActive,
+        tokenType,
+      };
+    } catch (error) {
+      logger.error("Failed to get listing", error, {
+        component: "ExchangeService",
+        action: "getListing",
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's active listings
+   */
+  async getUserListings(userAddress: string): Promise<Listing[]> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const erc721Contract = this.getExchangeContractReadOnly("ERC721");
+      const erc1155Contract = this.getExchangeContractReadOnly("ERC1155");
+
+      // Get user listings from both exchanges
+      const [erc721Listings, erc1155Listings] = await Promise.all([
+        erc721Contract.getUserListings(userAddress).catch(() => []),
+        erc1155Contract.getUserListings(userAddress).catch(() => []),
+      ]);
+
+      // Format and combine listings
+      const formattedERC721 = erc721Listings.map((l: any) => ({
+        ...l,
+        tokenType: "ERC721" as const,
+        amount: 1n,
+      }));
+
+      const formattedERC1155 = erc1155Listings.map((l: any) => ({
+        ...l,
+        tokenType: "ERC1155" as const,
+      }));
+
+      return [...formattedERC721, ...formattedERC1155];
+    } catch (error) {
+      logger.error("Failed to get user listings", error, {
+        component: "ExchangeService",
+        action: "getUserListings",
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Check if NFT is listed
+   */
+  async isNFTListed(contractAddress: string, tokenId: string): Promise<boolean> {
+    try {
+      if (!this.provider) {
+        throw new Error("Provider not available");
+      }
+
+      const tokenType = await this.detectTokenType(contractAddress);
+      const contract = this.getExchangeContractReadOnly(tokenType);
+
+      return await contract.isNFTListed(contractAddress, tokenId);
+    } catch (error) {
+      logger.error("Failed to check if NFT is listed", error, {
+        component: "ExchangeService",
+        action: "isNFTListed",
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Extend listing duration
+   */
+  async extendListing(listingId: string, additionalDuration: string): Promise<void> {
+    try {
+      // Get listing to determine token type
+      const listing = await this.getListing(listingId);
+      const contract = this.getExchangeContract(listing.tokenType);
+
+      const tx = await contract.extendListing(listingId, additionalDuration);
+      await tx.wait();
+
+      logger.success("Listing extended successfully", {
+        listingId,
+        additionalDuration,
+      }, {
+        component: "ExchangeService",
+        action: "extendListing",
+      });
+    } catch (error) {
+      logger.error("Failed to extend listing", error, {
+        component: "ExchangeService",
+        action: "extendListing",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Pause listing
+   */
+  async pauseListing(listingId: string): Promise<void> {
+    try {
+      const listing = await this.getListing(listingId);
+      const contract = this.getExchangeContract(listing.tokenType);
+
+      const tx = await contract.pauseListing(listingId);
+      await tx.wait();
+
+      logger.success("Listing paused successfully", {
+        listingId,
+      }, {
+        component: "ExchangeService",
+        action: "pauseListing",
+      });
+    } catch (error) {
+      logger.error("Failed to pause listing", error, {
+        component: "ExchangeService",
+        action: "pauseListing",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Resume paused listing
+   */
+  async resumeListing(listingId: string): Promise<void> {
+    try {
+      const listing = await this.getListing(listingId);
+      const contract = this.getExchangeContract(listing.tokenType);
+
+      const tx = await contract.resumeListing(listingId);
+      await tx.wait();
+
+      logger.success("Listing resumed successfully", {
+        listingId,
+      }, {
+        component: "ExchangeService",
+        action: "resumeListing",
+      });
+    } catch (error) {
+      logger.error("Failed to resume listing", error, {
+        component: "ExchangeService",
+        action: "resumeListing",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Batch cancel listings
+   */
+  async batchCancelListing(listingIds: string[]): Promise<void> {
+    try {
+      if (listingIds.length === 0) return;
+
+      // Get first listing to determine token type
+      const firstListing = await this.getListing(listingIds[0]);
+      const contract = this.getExchangeContract(firstListing.tokenType);
+
+      const tx = await contract.batchCancelListing(listingIds);
+      await tx.wait();
+
+      logger.success("Batch cancel successful", {
+        count: listingIds.length,
+      }, {
+        component: "ExchangeService",
+        action: "batchCancelListing",
+      });
+    } catch (error) {
+      logger.error("Failed to batch cancel listings", error, {
+        component: "ExchangeService",
+        action: "batchCancelListing",
+      });
+      throw this.formatTransactionError(error);
+    }
+  }
+
+  /**
+   * Detect token type for NFT contract
+   */
+  private async detectTokenType(contractAddress: string): Promise<"ERC721" | "ERC1155"> {
+    try {
+      const exchangeAddress = await userHubService.getExchangeFor(contractAddress);
+      const erc721Exchange = userHubService.getERC721Exchange();
+      
+      return exchangeAddress === erc721Exchange ? "ERC721" : "ERC1155";
+    } catch (error) {
+      logger.warn("Failed to detect token type, defaulting to ERC721", {
+        contractAddress,
+      }, {
+        component: "ExchangeService",
+        action: "detectTokenType",
+      });
+      return "ERC721";
     }
   }
 

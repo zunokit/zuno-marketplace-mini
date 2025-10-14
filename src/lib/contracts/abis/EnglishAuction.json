@@ -51,19 +51,6 @@
   },
   {
     "type": "function",
-    "name": "DEFAULT_MIN_BID_INCREMENT",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "DEFAULT_MIN_DURATION",
     "inputs": [],
     "outputs": [
@@ -224,12 +211,12 @@
       {
         "name": "status",
         "type": "uint8",
-        "internalType": "enum IAuction.AuctionStatus"
+        "internalType": "enum AuctionStatus"
       },
       {
         "name": "auctionType",
         "type": "uint8",
-        "internalType": "enum IAuction.AuctionType"
+        "internalType": "enum AuctionType"
       },
       {
         "name": "highestBidder",
@@ -278,7 +265,7 @@
     "name": "buyNow",
     "inputs": [
       {
-        "name": "auctionId",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -291,12 +278,12 @@
     "name": "buyNowFor",
     "inputs": [
       {
-        "name": "auctionId",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       },
       {
-        "name": "buyer",
+        "name": "",
         "type": "address",
         "internalType": "address"
       }
@@ -396,7 +383,7 @@
       {
         "name": "auctionType",
         "type": "uint8",
-        "internalType": "enum IAuction.AuctionType"
+        "internalType": "enum AuctionType"
       },
       {
         "name": "seller",
@@ -567,12 +554,12 @@
           {
             "name": "status",
             "type": "uint8",
-            "internalType": "enum IAuction.AuctionStatus"
+            "internalType": "enum AuctionStatus"
           },
           {
             "name": "auctionType",
             "type": "uint8",
-            "internalType": "enum IAuction.AuctionType"
+            "internalType": "enum AuctionType"
           },
           {
             "name": "highestBidder",

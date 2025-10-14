@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
-import { marketplaceHubService } from "@/lib/services/contracts/MarketplaceHubService";
+import { userHubService } from "@/lib/services/contracts/UserHubService";
 import { collectionService } from "@/lib/services/contracts/CollectionService";
 import { transactionService } from "@/lib/services/blockchain/TransactionService";
 import { eventService } from "@/lib/services/blockchain/EventService";
@@ -86,8 +86,8 @@ export function useCollection(): UseCollectionReturn {
       // Skip if already initialized with same provider/signer
       if (servicesInitialized) return;
 
-      // Initialize MarketplaceHub first (required for all other services)
-      await marketplaceHubService.initialize(provider, signer);
+      // Initialize UserHub first (required for all other services)
+      await userHubService.initialize(provider, signer);
 
       // Then initialize dependent services
       await collectionService.initialize(provider, signer);

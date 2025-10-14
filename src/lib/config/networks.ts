@@ -20,9 +20,9 @@ export interface NetworkConfig {
  */
 function getNetworkConfigMap(): Record<number, NetworkConfig> {
   // Get config from envConfigManager (handles localStorage > process.env priority)
-  const hubLocal = envConfigManager.getMarketplaceHubAddress(31337);
-  const hubSepolia = envConfigManager.getMarketplaceHubAddress(11155111);
-  const hubMainnet = envConfigManager.getMarketplaceHubAddress(1);
+  const hubLocal = envConfigManager.getUserHubAddress(31337);
+  const hubSepolia = envConfigManager.getUserHubAddress(11155111);
+  const hubMainnet = envConfigManager.getUserHubAddress(1);
 
   // Get RPC URLs from config manager (handles localStorage > process.env priority)
   const rpcLocal = envConfigManager.getRpcUrl(31337) || "http://127.0.0.1:8545";
@@ -72,7 +72,7 @@ export function getNetworkConfig(chainId: number): NetworkConfig | undefined {
 }
 
 export function getHubAddress(chainId: number): string | undefined {
-  return envConfigManager.getMarketplaceHubAddress(chainId);
+  return envConfigManager.getUserHubAddress(chainId);
 }
 
 export function isNetworkSupported(chainId: number): boolean {

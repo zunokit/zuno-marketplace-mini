@@ -271,7 +271,7 @@
       {
         "name": "tierConfigs",
         "type": "tuple[]",
-        "internalType": "struct AdvancedFeeManager.FeeTierConfig[]",
+        "internalType": "struct FeeTierConfig[]",
         "components": [
           {
             "name": "volumeThreshold",
@@ -306,7 +306,7 @@
       {
         "name": "config",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.FeeConfig",
+        "internalType": "struct FeeConfig",
         "components": [
           {
             "name": "makerFee",
@@ -357,7 +357,7 @@
       {
         "name": "feeOverride",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.CollectionFeeOverride",
+        "internalType": "struct CollectionFeeOverride",
         "components": [
           {
             "name": "makerFeeOverride",
@@ -437,7 +437,7 @@
       {
         "name": "tierConfig",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.FeeTierConfig",
+        "internalType": "struct FeeTierConfig",
         "components": [
           {
             "name": "volumeThreshold",
@@ -491,7 +491,7 @@
       {
         "name": "tier",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.FeeTier",
+        "internalType": "struct FeeTier",
         "components": [
           {
             "name": "tierId",
@@ -527,7 +527,7 @@
       {
         "name": "vipData",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.VIPStatus",
+        "internalType": "struct VIPStatus",
         "components": [
           {
             "name": "isVIP",
@@ -568,7 +568,7 @@
       {
         "name": "volumeData",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.UserVolumeData",
+        "internalType": "struct UserVolumeData",
         "components": [
           {
             "name": "totalVolume",
@@ -640,7 +640,7 @@
       {
         "name": "feeOverride",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.CollectionFeeOverride",
+        "internalType": "struct CollectionFeeOverride",
         "components": [
           {
             "name": "makerFeeOverride",
@@ -718,7 +718,7 @@
       {
         "name": "newConfig",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.FeeConfig",
+        "internalType": "struct FeeConfig",
         "components": [
           {
             "name": "makerFee",
@@ -781,7 +781,7 @@
       {
         "name": "tierConfig",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.FeeTierConfig",
+        "internalType": "struct FeeTierConfig",
         "components": [
           {
             "name": "volumeThreshold",
@@ -839,7 +839,7 @@
       {
         "name": "vipData",
         "type": "tuple",
-        "internalType": "struct AdvancedFeeManager.VIPStatus",
+        "internalType": "struct VIPStatus",
         "components": [
           {
             "name": "isVIP",

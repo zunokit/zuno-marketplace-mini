@@ -170,9 +170,9 @@ class EnvStorageService {
 
     // Validate contract addresses format (0x + 40 hex chars)
     const addressKeys = [
-      "NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL",
-      "NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA",
-      "NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET",
+      "NEXT_PUBLIC_USER_HUB_LOCAL",
+      "NEXT_PUBLIC_USER_HUB_SEPOLIA",
+      "NEXT_PUBLIC_USER_HUB_MAINNET",
     ];
 
     for (const key of addressKeys) {

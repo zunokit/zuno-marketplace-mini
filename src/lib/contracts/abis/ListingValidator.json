@@ -487,19 +487,14 @@
             "internalType": "bytes32"
           },
           {
-            "name": "listingType",
-            "type": "uint8",
-            "internalType": "enum ListingType"
-          },
-          {
-            "name": "status",
-            "type": "uint8",
-            "internalType": "enum ListingStatus"
-          },
-          {
             "name": "seller",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
           },
           {
             "name": "nftContract",
@@ -508,33 +503,38 @@
           },
           {
             "name": "tokenId",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "quantity",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "price",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint96",
+            "internalType": "uint96"
           },
           {
             "name": "startTime",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "endTime",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "minOfferPrice",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "quantity",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "listingType",
+            "type": "uint8",
+            "internalType": "enum ListingType"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ListingStatus"
           },
           {
             "name": "acceptOffers",
@@ -605,19 +605,14 @@
             "internalType": "bytes32"
           },
           {
-            "name": "listingType",
-            "type": "uint8",
-            "internalType": "enum ListingType"
-          },
-          {
-            "name": "status",
-            "type": "uint8",
-            "internalType": "enum ListingStatus"
-          },
-          {
             "name": "seller",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
           },
           {
             "name": "nftContract",
@@ -626,33 +621,38 @@
           },
           {
             "name": "tokenId",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "quantity",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "price",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint96",
+            "internalType": "uint96"
           },
           {
             "name": "startTime",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "endTime",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "minOfferPrice",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "quantity",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "listingType",
+            "type": "uint8",
+            "internalType": "enum ListingType"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ListingStatus"
           },
           {
             "name": "acceptOffers",
@@ -682,19 +682,14 @@
             "internalType": "bytes32"
           },
           {
-            "name": "listingType",
-            "type": "uint8",
-            "internalType": "enum ListingType"
-          },
-          {
-            "name": "status",
-            "type": "uint8",
-            "internalType": "enum ListingStatus"
-          },
-          {
             "name": "seller",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "price",
+            "type": "uint96",
+            "internalType": "uint96"
           },
           {
             "name": "nftContract",
@@ -703,33 +698,38 @@
           },
           {
             "name": "tokenId",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "quantity",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "price",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint96",
+            "internalType": "uint96"
           },
           {
             "name": "startTime",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "endTime",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "minOfferPrice",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "quantity",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "listingType",
+            "type": "uint8",
+            "internalType": "enum ListingType"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum ListingStatus"
           },
           {
             "name": "acceptOffers",

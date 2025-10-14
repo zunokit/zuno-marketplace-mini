@@ -6,7 +6,7 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { ListingHistoryTracker_ABI } from "@/lib/contracts/abis";
 
 // ============================================================================
@@ -92,6 +92,27 @@ export class ListingHistoryTrackerService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
   private trackerAddress: string | null = null;
+  private historyTrackerAddress: string | null = null;
+
+  /**
+   * Get the history tracker contract instance
+   */
+  async getHistoryTrackerContract(): Promise<ethers.Contract> {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+
+    const address = this.historyTrackerAddress || this.trackerAddress;
+    if (!address) {
+      throw new Error("HistoryTracker address not loaded from hub");
+    }
+
+    return new ethers.Contract(
+      address,
+      ListingHistoryTracker_ABI,
+      this.signer
+    );
+  }
 
   /**
    * Initialize history tracker service

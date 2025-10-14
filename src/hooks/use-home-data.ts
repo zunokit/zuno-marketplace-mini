@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAppSelector } from "@/lib/store/hooks";
 import { logger } from "@/lib/utils/logger";
 import {
-  marketplaceHubService,
+  userHubService,
   exchangeService,
   listingHistoryTrackerService,
   collectionQueryService,
@@ -316,7 +316,7 @@ export const useHomeData = () => {
       const signer = web3Utils.getSigner();
 
       if (provider) {
-        await marketplaceHubService.initialize(provider, signer || undefined);
+        await userHubService.initialize(provider, signer || undefined);
       }
 
       // Fetch all data in parallel

@@ -5,7 +5,7 @@
  */
 
 import { ethers } from "ethers";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
 import {
   ERC721NFTExchange_ABI,
@@ -75,7 +75,8 @@ export class RealTimeEventsService {
     try {
       if (!this.provider) throw new Error("Provider not initialized");
 
-      const exchangeAddress = marketplaceHubService.getERC721Exchange();
+      const addresses = await userHubService.getAddresses();
+      const exchangeAddress = addresses.erc721Exchange;
       const exchange = new ethers.Contract(
         exchangeAddress,
         ERC721NFTExchange_ABI,
@@ -154,7 +155,8 @@ export class RealTimeEventsService {
     try {
       if (!this.provider) throw new Error("Provider not initialized");
 
-      const offerAddress = marketplaceHubService.getOfferManager();
+      const offerAddresses = await userHubService.getAddresses();
+      const offerAddress = offerAddresses.offerManager;
       const offerManager = new ethers.Contract(
         offerAddress,
         OfferManager_ABI,
@@ -233,7 +235,8 @@ export class RealTimeEventsService {
     try {
       if (!this.provider) throw new Error("Provider not initialized");
 
-      const englishAuctionAddress = marketplaceHubService.getEnglishAuction();
+      const auctionAddresses = await userHubService.getAddresses();
+      const englishAuctionAddress = auctionAddresses.englishAuction;
       const englishAuction = new ethers.Contract(
         englishAuctionAddress,
         EnglishAuction_ABI,
@@ -312,7 +315,8 @@ export class RealTimeEventsService {
     try {
       if (!this.provider) throw new Error("Provider not initialized");
 
-      const bundleAddress = marketplaceHubService.getBundleManager();
+      const bundleAddresses = await userHubService.getAddresses();
+      const bundleAddress = bundleAddresses.bundleManager;
       const bundleManager = new ethers.Contract(
         bundleAddress,
         BundleManager_ABI,

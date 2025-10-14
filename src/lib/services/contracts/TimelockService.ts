@@ -6,7 +6,7 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { MarketplaceTimelock_ABI } from "@/lib/contracts/abis";
 
 // ============================================================================

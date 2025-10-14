@@ -12,10 +12,10 @@ export interface EnvVariable {
 
 export interface EnvConfig {
   NEXT_PUBLIC_DEFAULT_CHAIN_ID: string;
-  NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL?: string;
+  NEXT_PUBLIC_USER_HUB_LOCAL?: string;
   NEXT_PUBLIC_DEFAULT_ALLOWLIST?: string;
-  NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA?: string;
-  NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET?: string;
+  NEXT_PUBLIC_USER_HUB_SEPOLIA?: string;
+  NEXT_PUBLIC_USER_HUB_MAINNET?: string;
   NEXT_PUBLIC_RPC_URL_LOCAL?: string;
   NEXT_PUBLIC_RPC_URL_SEPOLIA?: string;
   NEXT_PUBLIC_RPC_URL_MAINNET?: string;
@@ -42,21 +42,21 @@ export const ENV_VARIABLE_DEFINITIONS: EnvVariable[] = [
     required: false,
   },
   {
-    key: "NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL",
+    key: "NEXT_PUBLIC_USER_HUB_LOCAL",
     value: "",
-    description: "MarketplaceHub contract address for local network",
+    description: "UserHub contract address for local network",
     required: false,
   },
   {
-    key: "NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA",
+    key: "NEXT_PUBLIC_USER_HUB_SEPOLIA",
     value: "",
-    description: "MarketplaceHub contract address for Sepolia testnet",
+    description: "UserHub contract address for Sepolia testnet",
     required: false,
   },
   {
-    key: "NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET",
+    key: "NEXT_PUBLIC_USER_HUB_MAINNET",
     value: "",
-    description: "MarketplaceHub contract address for Ethereum mainnet",
+    description: "UserHub contract address for Ethereum mainnet",
     required: false,
   },
   {

@@ -116,52 +116,6 @@
   },
   {
     "type": "function",
-    "name": "batchGrantRoles",
-    "inputs": [
-      {
-        "name": "roles",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
-      },
-      {
-        "name": "accounts",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "reasons",
-        "type": "string[]",
-        "internalType": "string[]"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "batchRevokeRoles",
-    "inputs": [
-      {
-        "name": "roles",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
-      },
-      {
-        "name": "accounts",
-        "type": "address[]",
-        "internalType": "address[]"
-      },
-      {
-        "name": "reasons",
-        "type": "string[]",
-        "internalType": "string[]"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "currentRoleMembers",
     "inputs": [
       {
@@ -219,57 +173,6 @@
   },
   {
     "type": "function",
-    "name": "getRoleHistory",
-    "inputs": [
-      {
-        "name": "role",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "assignments",
-        "type": "tuple[]",
-        "internalType": "struct MarketplaceAccessControl.RoleAssignment[]",
-        "components": [
-          {
-            "name": "assignedBy",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "assignedAt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "revokedAt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "isActive",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "reason",
-            "type": "string",
-            "internalType": "string"
-          }
-        ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "getRoleMemberInfo",
     "inputs": [
       {
@@ -312,7 +215,7 @@
   },
   {
     "type": "function",
-    "name": "grantRoleWithReason",
+    "name": "grantRoleSimple",
     "inputs": [
       {
         "name": "role",
@@ -323,11 +226,6 @@
         "name": "account",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -458,7 +356,7 @@
   },
   {
     "type": "function",
-    "name": "revokeRoleWithReason",
+    "name": "revokeRoleSimple",
     "inputs": [
       {
         "name": "role",
@@ -469,123 +367,10 @@
         "name": "account",
         "type": "address",
         "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "internalType": "string"
       }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "roleHistory",
-    "inputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "assignedBy",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "assignedAt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "revokedAt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "isActive",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "rolePermissions",
-    "inputs": [
-      {
-        "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "canManageRoles",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "canEmergencyAction",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "canUpdateFees",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "canVerifyCollections",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "canPauseContracts",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "canModerateContent",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "canAccessAnalytics",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "maxActions",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "cooldownPeriod",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -654,102 +439,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "updateRolePermissions",
-    "inputs": [
-      {
-        "name": "role",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "permissions",
-        "type": "tuple",
-        "internalType": "struct RolePermissions",
-        "components": [
-          {
-            "name": "canManageRoles",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canEmergencyAction",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canUpdateFees",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canVerifyCollections",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canPauseContracts",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canModerateContent",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canAccessAnalytics",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "maxActions",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "cooldownPeriod",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "event",
-    "name": "BatchRoleOperationCompleted",
-    "inputs": [
-      {
-        "name": "operationType",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "count",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "performedBy",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "timestamp",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
   },
   {
     "type": "event",
@@ -822,7 +511,7 @@
   },
   {
     "type": "event",
-    "name": "RoleGrantedWithReason",
+    "name": "RoleGrantedSimple",
     "inputs": [
       {
         "name": "role",
@@ -841,12 +530,6 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
       },
       {
         "name": "timestamp",
@@ -890,131 +573,6 @@
   },
   {
     "type": "event",
-    "name": "RolePermissionsUpdated",
-    "inputs": [
-      {
-        "name": "role",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "oldPermissions",
-        "type": "tuple",
-        "indexed": false,
-        "internalType": "struct RolePermissions",
-        "components": [
-          {
-            "name": "canManageRoles",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canEmergencyAction",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canUpdateFees",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canVerifyCollections",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canPauseContracts",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canModerateContent",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canAccessAnalytics",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "maxActions",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "cooldownPeriod",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "newPermissions",
-        "type": "tuple",
-        "indexed": false,
-        "internalType": "struct RolePermissions",
-        "components": [
-          {
-            "name": "canManageRoles",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canEmergencyAction",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canUpdateFees",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canVerifyCollections",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canPauseContracts",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canModerateContent",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "canAccessAnalytics",
-            "type": "bool",
-            "internalType": "bool"
-          },
-          {
-            "name": "maxActions",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "cooldownPeriod",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
-        "name": "updatedBy",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "RoleRevoked",
     "inputs": [
       {
@@ -1040,7 +598,7 @@
   },
   {
     "type": "event",
-    "name": "RoleRevokedWithReason",
+    "name": "RoleRevokedSimple",
     "inputs": [
       {
         "name": "role",
@@ -1059,12 +617,6 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
       },
       {
         "name": "timestamp",
@@ -1135,17 +687,7 @@
   },
   {
     "type": "error",
-    "name": "MarketplaceAccessControl__ArrayLengthMismatch",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "MarketplaceAccessControl__CannotDeactivateAdminRole",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "MarketplaceAccessControl__CannotModifyAdminPermissions",
     "inputs": []
   },
   {

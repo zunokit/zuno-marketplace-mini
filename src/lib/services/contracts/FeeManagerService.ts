@@ -6,7 +6,7 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { AdvancedFeeManager_ABI } from "@/lib/contracts/abis";
 
 // ============================================================================
@@ -98,8 +98,8 @@ export class FeeManagerService {
 
     try {
       // Try to get fee manager address from hub's fee registry
-      const hub = marketplaceHubService.getHub();
-      const feeRegistryAddress = await hub.getFeeRegistry();
+      const hub = userHubService.getHub();
+      const feeRegistryAddress = userHubService.getFeeRegistry();
       
       // Note: FeeRegistry should provide FeeManager address
       // For now, we'll need to get it from FeeRegistry contract

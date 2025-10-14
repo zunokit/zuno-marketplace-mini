@@ -1011,5 +1011,10 @@
     "type": "error",
     "name": "PaymentDistribution__ZeroAddress",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
   }
 ]

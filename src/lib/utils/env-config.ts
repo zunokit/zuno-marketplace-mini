@@ -50,12 +50,12 @@ class EnvConfigManager {
       NEXT_PUBLIC_DEFAULT_CHAIN_ID:
         process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337",
       NEXT_PUBLIC_DEFAULT_ALLOWLIST: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST,
-      NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL:
-        process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL,
-      NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA:
-        process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA,
-      NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET:
-        process.env.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET,
+      NEXT_PUBLIC_USER_HUB_LOCAL:
+        process.env.NEXT_PUBLIC_USER_HUB_LOCAL,
+      NEXT_PUBLIC_USER_HUB_SEPOLIA:
+        process.env.NEXT_PUBLIC_USER_HUB_SEPOLIA,
+      NEXT_PUBLIC_USER_HUB_MAINNET:
+        process.env.NEXT_PUBLIC_USER_HUB_MAINNET,
       NEXT_PUBLIC_RPC_URL_LOCAL: process.env.NEXT_PUBLIC_RPC_URL_LOCAL,
       NEXT_PUBLIC_RPC_URL_SEPOLIA: process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA,
       NEXT_PUBLIC_RPC_URL_MAINNET: process.env.NEXT_PUBLIC_RPC_URL_MAINNET,
@@ -117,40 +117,47 @@ class EnvConfigManager {
   }
 
   /**
-   * Get chain-specific MarketplaceHub address
+   * Get chain-specific UserHub address
    */
-  getMarketplaceHubAddress(chainId: number): string | undefined {
+  getUserHubAddress(chainId: number): string | undefined {
     const config = this.getConfig();
     const isUsingStored = this.isUsingStoredConfig();
 
     let address: string | undefined;
     switch (chainId) {
       case 31337:
-        address = config.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL;
+        address = config.NEXT_PUBLIC_USER_HUB_LOCAL;
         break;
       case 11155111:
-        address = config.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA;
+        address = config.NEXT_PUBLIC_USER_HUB_SEPOLIA;
         break;
       case 1:
-        address = config.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET;
+        address = config.NEXT_PUBLIC_USER_HUB_MAINNET;
         break;
       default:
         address = undefined;
     }
 
     logger.debug(
-      `🔧 [EnvConfig] getMarketplaceHubAddress(${chainId})`,
+      `🔧 [EnvConfig] getUserHubAddress(${chainId})`,
       {
         address,
         source: isUsingStored ? "localStorage" : "process.env",
       },
       {
         component: "EnvConfig",
-        action: "getMarketplaceHubAddress",
+        action: "getUserHubAddress",
       }
     );
 
     return address;
+  }
+
+  /**
+   * @deprecated Use getUserHubAddress() instead
+   */
+  getMarketplaceHubAddress(chainId: number): string | undefined {
+    return this.getUserHubAddress(chainId);
   }
 
   /**
@@ -165,7 +172,7 @@ class EnvConfigManager {
    * Check if configuration is complete for a specific chain
    */
   isConfiguredForChain(chainId: number): boolean {
-    const hubAddress = this.getMarketplaceHubAddress(chainId);
+    const hubAddress = this.getUserHubAddress(chainId);
     return !!hubAddress && hubAddress.length > 0;
   }
 

@@ -238,12 +238,12 @@ export default function MintNFTPage() {
           parseFloat(state.mintInfo.currentMintPrice) * state.mintAmount
         ).toString();
 
-        tx = await collectionService.batchMint(
-          state.selectedCollection,
-          state.recipient,
-          amounts,
-          totalPrice
-        );
+        tx = await collectionService.batchMint({
+          collection: state.selectedCollection,
+          to: state.recipient,
+          quantity: amounts.length,
+          tokenType: "ERC1155"
+        });
       } else if (isBatch && tokenType === "ERC721") {
         // Multiple single mints for ERC721
         const promises = [];
@@ -280,7 +280,8 @@ export default function MintNFTPage() {
           description: "Waiting for confirmation...",
         });
 
-        const receipt = await tx.wait();
+        // Handle both string and ContractTransactionResponse types
+        const receipt = typeof tx === 'string' ? null : await tx.wait();
         
         toast({
           title: "Success! 🎉",

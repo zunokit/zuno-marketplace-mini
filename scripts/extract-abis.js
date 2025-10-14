@@ -66,8 +66,8 @@ const OUTPUT_DIR =
 
 // Contract artifacts to extract
 const CONTRACTS_TO_EXTRACT = [
-  // Core contracts
-  { name: "MarketplaceHub", path: "MarketplaceHub.sol/MarketplaceHub.json" },
+  // Core contracts (UserHub replaces MarketplaceHub)
+  { name: "UserHub", path: "UserHub.sol/UserHub.json" },
 
   // Exchange contracts
   {

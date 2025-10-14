@@ -38,19 +38,6 @@
   },
   {
     "type": "function",
-    "name": "DEFAULT_MIN_BID_INCREMENT",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "DEFAULT_MIN_DURATION",
     "inputs": [],
     "outputs": [
@@ -224,12 +211,12 @@
       {
         "name": "status",
         "type": "uint8",
-        "internalType": "enum IAuction.AuctionStatus"
+        "internalType": "enum AuctionStatus"
       },
       {
         "name": "auctionType",
         "type": "uint8",
-        "internalType": "enum IAuction.AuctionType"
+        "internalType": "enum AuctionType"
       },
       {
         "name": "highestBidder",
@@ -396,7 +383,7 @@
       {
         "name": "auctionType",
         "type": "uint8",
-        "internalType": "enum IAuction.AuctionType"
+        "internalType": "enum AuctionType"
       },
       {
         "name": "seller",
@@ -621,12 +608,12 @@
           {
             "name": "status",
             "type": "uint8",
-            "internalType": "enum IAuction.AuctionStatus"
+            "internalType": "enum AuctionStatus"
           },
           {
             "name": "auctionType",
             "type": "uint8",
-            "internalType": "enum IAuction.AuctionType"
+            "internalType": "enum AuctionType"
           },
           {
             "name": "highestBidder",
@@ -756,19 +743,19 @@
     "name": "getPendingRefund",
     "inputs": [
       {
-        "name": "auctionId",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       },
       {
-        "name": "bidder",
+        "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "refundAmount",
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -965,7 +952,7 @@
     "name": "placeBid",
     "inputs": [
       {
-        "name": "auctionId",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -978,12 +965,12 @@
     "name": "placeBidFor",
     "inputs": [
       {
-        "name": "auctionId",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       },
       {
-        "name": "bidder",
+        "name": "",
         "type": "address",
         "internalType": "address"
       }
@@ -1163,7 +1150,7 @@
     "name": "withdrawBid",
     "inputs": [
       {
-        "name": "auctionId",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -1176,12 +1163,12 @@
     "name": "withdrawBidFor",
     "inputs": [
       {
-        "name": "auctionId",
+        "name": "",
         "type": "bytes32",
         "internalType": "bytes32"
       },
       {
-        "name": "bidder",
+        "name": "",
         "type": "address",
         "internalType": "address"
       }

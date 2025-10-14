@@ -4,7 +4,7 @@
  */
 
 import { ethers } from "ethers";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { listingHistoryTrackerService } from "./ListingHistoryTrackerService";
 import { exchangeService } from "./ExchangeService";
@@ -59,9 +59,10 @@ export class CollectionQueryService {
     }
 
     try {
-      // Get factory addresses
-      const erc721Factory = marketplaceHubService.getERC721Factory();
-      const erc1155Factory = marketplaceHubService.getERC1155Factory();
+      // Get factory addresses from userHubService
+      const addresses = await userHubService.getAddresses();
+      const erc721Factory = addresses.erc721Factory;
+      const erc1155Factory = addresses.erc1155Factory;
 
       logger.info(
         "Querying collections from factories",

@@ -66,6 +66,7 @@ export interface CollectionMetadata {
   banner?: string;
   website?: string;
   twitter?: string;
+  twitter_username?: string;
   discord?: string;
   category?: string;
 }
