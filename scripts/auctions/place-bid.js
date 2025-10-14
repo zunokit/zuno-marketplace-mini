@@ -33,11 +33,12 @@ async function placeBid() {
     console.log(`📋 Auction ID: ${auctionId}\n`);
 
     // Initialize MarketplaceHub
-    const hub = await getMarketplaceHub(signer);
+    const hub = await getMarketplaceHub();
+    const { addresses } = hub;
     
     // Get auction contracts
-    const englishAuctionAddress = await hub.getEnglishAuction();
-    const dutchAuctionAddress = await hub.getDutchAuction();
+    const englishAuctionAddress = addresses.englishAuction;
+    const dutchAuctionAddress = addresses.dutchAuction;
 
     // Try to get auction details from English auction first
     let auctionContract;

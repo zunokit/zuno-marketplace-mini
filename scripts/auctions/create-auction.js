@@ -141,10 +141,11 @@ async function createAuction() {
     console.log(`   Duration: ${durationDays} days\n`);
 
     // Initialize MarketplaceHub
-    const hub = await getMarketplaceHub(signer);
+    const hub = await getMarketplaceHub();
+    const { addresses } = hub;
     
     // Get auction factory address
-    const auctionFactoryAddress = await hub.getAuctionFactory();
+    const auctionFactoryAddress = addresses.auctionFactory;
     console.log(`   Auction Factory: ${auctionFactoryAddress}\n`);
 
     // Check approval for auction factory

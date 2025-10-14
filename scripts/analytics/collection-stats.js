@@ -79,10 +79,11 @@ async function getCollectionStats() {
     console.log('');
 
     // Initialize MarketplaceHub
-    const hub = await getMarketplaceHub(signer);
+    const hub = await getMarketplaceHub();
+    const { addresses } = hub;
     
     // Get History Tracker for analytics
-    const historyTrackerAddress = await hub.getListingHistoryTracker();
+    const historyTrackerAddress = addresses.listingHistoryTracker;
     const historyTracker = new ethers.Contract(
       historyTrackerAddress,
       [

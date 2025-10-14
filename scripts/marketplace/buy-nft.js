@@ -38,7 +38,8 @@ async function buyNFT() {
     }
 
     // Initialize MarketplaceHub
-    const hub = await getMarketplaceHub(signer);
+    const hub = await getMarketplaceHub();
+    const { addresses } = hub;
     
     // Determine exchange address
     let exchangeAddress;
@@ -58,8 +59,8 @@ async function buyNFT() {
       }
 
       exchangeAddress = isERC721 
-        ? await hub.getERC721Exchange()
-        : await hub.getERC1155Exchange();
+        ? addresses.erc721Exchange
+        : addresses.erc1155Exchange;
 
       // Get listing ID from NFT details
       const exchange = new ethers.Contract(

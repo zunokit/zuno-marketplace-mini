@@ -32,8 +32,9 @@ async function createOffer() {
     const offerType = await prompt('Enter choice (1, 2, or 3): ');
 
     // Initialize MarketplaceHub
-    const hub = await getMarketplaceHub(signer);
-    const offerManagerAddress = await hub.getOfferManager();
+    const hub = await getMarketplaceHub();
+    const { addresses } = hub;
+    const offerManagerAddress = addresses.offerManager;
     
     const offerManager = new ethers.Contract(
       offerManagerAddress,
