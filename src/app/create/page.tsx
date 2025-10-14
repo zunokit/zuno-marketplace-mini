@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/providers/WalletProvider";
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { 
@@ -61,7 +61,7 @@ interface BundleItem extends NFTAsset {
 
 export default function CreateListingPage() {
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { account: address, isConnected } = useWallet();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"listing" | "auction" | "bundle">("listing");
   

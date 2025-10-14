@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/providers/WalletProvider";
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import {
@@ -15,8 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Grid,
@@ -66,23 +65,13 @@ interface Collection {
 }
 
 export default function CollectionsPage() {
-  const { address, isConnected } = useAccount();
+  const { account: address, isConnected } = useWallet();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterVerified, setFilterVerified] = useState(false);
   const [sortBy, setSortBy] = useState<"volume" | "floor" | "sales">("volume");
-  
-  // Create collection dialog
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [collectionName, setCollectionName] = useState("");
-  const [collectionSymbol, setCollectionSymbol] = useState("");
-  const [collectionType, setCollectionType] = useState<"ERC721" | "ERC1155">("ERC721");
-  const [maxSupply, setMaxSupply] = useState("10000");
-  const [royaltyBps, setRoyaltyBps] = useState("250"); // 2.5%
-  const [baseUri, setBaseUri] = useState("");
-  const [creating, setCreating] = useState(false);
   
   // Verification dialog
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
@@ -254,68 +243,6 @@ export default function CollectionsPage() {
     });
   };
 
-  const handleCreateCollection = async () => {
-    if (!isConnected || !address) {
-      toast.error("Please connect your wallet");
-      return;
-    }
-
-    try {
-      setCreating(true);
-      logger.info("Creating new collection", {
-        name: collectionName,
-        symbol: collectionSymbol,
-        type: collectionType
-      }, {
-        component: "CollectionsPage",
-        action: "handleCreateCollection"
-      });
-
-      let tx;
-      let txHash: string;
-      if (collectionType === "ERC721") {
-        txHash = await collectionService.createERC721Collection({
-          name: collectionName,
-          symbol: collectionSymbol,
-          baseURI: baseUri || "ipfs://",
-          maxSupply: maxSupply.toString(),
-          owner: address,
-          royaltyFee: royaltyBps.toString()
-        });
-      } else {
-        txHash = await collectionService.createERC1155Collection({
-          name: collectionName,
-          symbol: collectionSymbol,
-          baseURI: baseUri || "ipfs://",
-          owner: address
-        });
-      }
-
-      // Wait for transaction confirmation
-      // Note: txHash is a string, not a transaction object
-      toast.success("Collection created successfully!");
-      setCreateDialogOpen(false);
-      
-      // Reset form
-      setCollectionName("");
-      setCollectionSymbol("");
-      setBaseUri("");
-      setMaxSupply("10000");
-      setRoyaltyBps("250");
-      
-      // Refresh collections
-      await fetchCollections();
-    } catch (error: any) {
-      logger.error("Failed to create collection", error, {
-        component: "CollectionsPage",
-        action: "handleCreateCollection"
-      });
-      toast.error(error.message || "Failed to create collection");
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleRequestVerification = async () => {
     if (!selectedCollection || !isConnected) return;
 
@@ -461,110 +388,12 @@ export default function CollectionsPage() {
             <p className="text-gray-600">Explore and create NFT collections</p>
           </div>
           
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Collection
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Collection</DialogTitle>
-                <DialogDescription>
-                  Deploy your own NFT collection on the blockchain
-                </DialogDescription>
-              </DialogHeader>
-              
-              <div className="space-y-4">
-                <div>
-                  <Label>Collection Type</Label>
-                  <Tabs value={collectionType} onValueChange={(v) => setCollectionType(v as any)}>
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="ERC721">ERC721</TabsTrigger>
-                      <TabsTrigger value="ERC1155">ERC1155</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-                
-                <div>
-                  <Label htmlFor="name">Collection Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="My NFT Collection"
-                    value={collectionName}
-                    onChange={(e) => setCollectionName(e.target.value)}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="symbol">Symbol</Label>
-                  <Input
-                    id="symbol"
-                    placeholder="MNC"
-                    value={collectionSymbol}
-                    onChange={(e) => setCollectionSymbol(e.target.value)}
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="baseUri">Base URI (Metadata)</Label>
-                  <Input
-                    id="baseUri"
-                    placeholder="ipfs://..."
-                    value={baseUri}
-                    onChange={(e) => setBaseUri(e.target.value)}
-                  />
-                </div>
-                
-                {collectionType === "ERC721" && (
-                  <>
-                    <div>
-                      <Label htmlFor="maxSupply">Max Supply</Label>
-                      <Input
-                        id="maxSupply"
-                        type="number"
-                        placeholder="10000"
-                        value={maxSupply}
-                        onChange={(e) => setMaxSupply(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="royalty">Royalty (%)</Label>
-                      <Input
-                        id="royalty"
-                        type="number"
-                        placeholder="2.5"
-                        value={(parseInt(royaltyBps) / 100).toString()}
-                        onChange={(e) => setRoyaltyBps((parseFloat(e.target.value) * 100).toString())}
-                        step="0.1"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateCollection} disabled={creating || !collectionName || !collectionSymbol}>
-                  {creating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Link href="/collections/create">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Collection
+            </Button>
+          </Link>
         </div>
         
         {/* Filters */}

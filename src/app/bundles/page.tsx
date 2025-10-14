@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/providers/WalletProvider";
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import {
@@ -78,7 +78,7 @@ interface NFTAsset {
 }
 
 export default function BundlesPage() {
-  const { address, isConnected } = useAccount();
+  const { account: address, isConnected } = useWallet();
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");

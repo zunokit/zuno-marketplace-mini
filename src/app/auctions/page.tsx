@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/providers/WalletProvider";
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import {
@@ -69,7 +69,7 @@ interface BidHistory {
 }
 
 export default function AuctionsPage() {
-  const { address, isConnected } = useAccount();
+  const { account: address, isConnected } = useWallet();
   const [auctions, setAuctions] = useState<AuctionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"english" | "dutch">("english");

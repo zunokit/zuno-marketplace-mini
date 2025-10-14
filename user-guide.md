@@ -18,6 +18,7 @@
   - [Listing Validation](#listing-validation)
   - [Collection Verification](#collection-verification)
   - [History & Analytics](#history--analytics)
+- [Scripts & Automation](#-scripts--automation)
 - [Events](#-events)
 - [Error Handling](#-error-handling)
 - [TypeScript Integration](#typescript-integration)
@@ -25,18 +26,32 @@
 
 ## 🚀 Quick Start
 
-### 1. Initialize with UserHub (Frontend)
+### 1. Initialize with MarketplaceHub
 
 Frontend only needs **ONE** contract address:
 
 ```javascript
-// This is the ONLY address you need to store for users
-const USER_HUB = '0x...'; // Get from deployment output
+// This is the ONLY address you need to store
+const USER_HUB = '0x...'; // From .env: NEXT_PUBLIC_USER_HUB_LOCAL (acts as MarketplaceHub)
 
-// Initialize user hub (for frontend/user operations)
-const userHub = new ethers.Contract(USER_HUB, UserHubABI, provider);
+// Method 1: Using the Service Layer (Recommended for Frontend)
+import { initializeServices, marketplaceHubService } from '@/lib/services/contracts';
+import { BrowserProvider } from 'ethers';
 
-// Get all core contract addresses from UserHub
+const provider = new BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+
+// Initialize all services at once
+await initializeServices(provider, signer);
+
+// Now all services are ready to use
+const addresses = await marketplaceHubService.getAllAddresses();
+
+// Method 2: Direct Contract Interaction (For Scripts)
+import { UserHub_ABI } from '@/lib/contracts/abis';
+const userHub = new ethers.Contract(USER_HUB, UserHub_ABI, provider);
+
+// Get all core contract addresses
 const [
   erc721Exchange,
   erc1155Exchange,
@@ -50,97 +65,90 @@ const [
   offerManager
 ] = await userHub.getAllAddresses();
 
-// ⚠️ Additional contracts (not in getAllAddresses yet)
-// Now you can get them via dedicated getter functions:
+// Get additional contracts via dedicated functions
 const listingValidator = await userHub.getListingValidator();
 const emergencyManager = await userHub.getEmergencyManager();
 const accessControl = await userHub.getAccessControl();
-const historyTracker = await userHub.getHistoryTracker();
-
-// OR get all additional addresses at once
-const [
-  listingValidatorAddr,
-  emergencyManagerAddr,
-  accessControlAddr,
-  historyTrackerAddr
-] = await userHub.getAdditionalAddresses();
+const historyTracker = await userHub.getListingHistoryTracker();
 
 // Helper functions from UserHub
-const feeRegistryAddr = await userHub.getFeeRegistry();
-const erc721FactoryAddr = await userHub.getFactoryFor('ERC721');
-const englishAuctionAddr = await userHub.getAuctionFor(0); // 0 = ENGLISH
-const dutchAuctionAddr = await userHub.getAuctionFor(1); // 1 = DUTCH
+const feeManager = await userHub.getFeeManager();
+const royaltyManager = await userHub.getRoyaltyManager();
+const collectionVerifier = await userHub.getCollectionVerifier();
 
-// Auto-detect exchange for any NFT
-const nftExchange = await userHub.getExchangeFor(nftContractAddress);
+// Get specific exchanges
+const erc721ExchangeAddr = await userHub.getERC721Exchange();
+const erc1155ExchangeAddr = await userHub.getERC1155Exchange();
+
+// Get specific factories
+const erc721FactoryAddr = await userHub.getERC721CollectionFactory();
+const erc1155FactoryAddr = await userHub.getERC1155CollectionFactory();
+
+// Get auction contracts
+const englishAuctionAddr = await userHub.getEnglishAuction();
+const dutchAuctionAddr = await userHub.getDutchAuction();
+const auctionFactoryAddr = await userHub.getAuctionFactory();
+```
+
+### 2. Environment Configuration
+
+**Required Environment Variables:**
+
+```bash
+# Chain Configuration
+NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337  # 31337 = Local, 11155111 = Sepolia, 1 = Mainnet
+
+# Hub Contract Addresses (UserHub acts as MarketplaceHub)
+NEXT_PUBLIC_USER_HUB_LOCAL=0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00
+NEXT_PUBLIC_ADMIN_HUB_LOCAL=0x172076E0166D1F9Cc711C77Adf8488051744980C  # For admin operations
+# NEXT_PUBLIC_USER_HUB_SEPOLIA=0x...
+# NEXT_PUBLIC_USER_HUB_MAINNET=0x...
+
+# RPC URLs
+NEXT_PUBLIC_RPC_URL_LOCAL=http://127.0.0.1:8545
+# NEXT_PUBLIC_RPC_URL_SEPOLIA=https://sepolia.infura.io/v3/YOUR-PROJECT-ID
+# NEXT_PUBLIC_RPC_URL_MAINNET=https://eth-mainnet.alchemyapi.io/v2/YOUR-API-KEY
+
+# Optional
+NEXT_PUBLIC_DEFAULT_ALLOWLIST=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+NEXT_PUBLIC_ROLE_MANAGER_LOCAL=0x18E317A7D70d8fBf8e6E893616b52390EbBdb629
+NEXT_PUBLIC_UPGRADE_MANAGER_LOCAL=0x4b6aB5F819A515382B0dEB6935D793817bB4af28
+NEXT_PUBLIC_CONFIG_MANAGER_LOCAL=0xCace1b78160AE76398F486c8a18044da0d66d86D
+```
+
+### 3. Service Layer Usage (Frontend)
+
+```javascript
+// Import all services
+import { 
+  marketplaceHubService,
+  exchangeService,
+  auctionService,
+  offerService,
+  bundleService,
+  collectionService,
+  feeManagerService,
+  royaltyManagerService,
+  accessControlService,
+  emergencyManagerService,
+  listingValidatorService,
+  historyTrackerService,
+  collectionVerifierService
+} from '@/lib/services/contracts';
+
+// Services are initialized automatically and provide typed methods
+await exchangeService.listNFT({
+  contractAddress: nftAddress,
+  tokenId: tokenId,
+  price: price,
+  duration: duration
+});
+
+// Get analytics data
+const stats = await historyTrackerService.getCollectionStats(collectionAddress);
 
 // Check system status
-const [isHealthy, activeContracts, timestamp] = await userHub.getSystemStatus();
-```
-
-**⚠️ Important Note:**
-UserHub provides two main functions for getting contract addresses:
-
-1. **`getAllAddresses()`** - Returns 10 core contracts:
-
-   - ERC721 Exchange
-   - ERC1155 Exchange
-   - ERC721 Factory
-   - ERC1155 Factory
-   - English Auction
-   - Dutch Auction
-   - Auction Factory
-   - Fee Registry
-   - Bundle Manager
-   - Offer Manager
-
-2. **`getAdditionalAddresses()`** - Returns 4 additional contracts:
-   - Listing Validator
-   - Emergency Manager
-   - Access Control
-   - History Tracker
-
-**Not available via UserHub:**
-
-- `advancedFeeManager` - ❌ Query FeeRegistry instead
-- `marketplaceValidator` - ❌ Deploy separately and store address
-
-### 2. AdminHub (Admin Operations Only)
-
-**⚠️ Admin-only operations** - requires admin role:
-
-```javascript
-// Admin operations require AdminHub address and admin role
-const ADMIN_HUB = '0x...'; // Get from deployment output
-
-// Initialize admin hub (requires admin wallet/signer)
-const adminHub = new ethers.Contract(ADMIN_HUB, AdminHubABI, adminSigner);
-
-// Register new exchange (admin only)
-await adminHub.registerExchange(
-  IExchangeRegistry.TokenStandard.ERC721,
-  newExchangeAddress
-);
-
-// Register new collection factory (admin only)
-await adminHub.registerCollectionFactory('ERC721', newFactoryAddress);
-
-// Register auction contracts (admin only)
-await adminHub.registerAuction(
-  IAuctionRegistry.AuctionType.ENGLISH,
-  englishAuctionAddress
-);
-
-// Emergency pause (admin only)
-await adminHub.emergencyPause();
-```
-
-### 3. Automatic Exchange Detection
-
-```javascript
-// UserHub automatically detects which exchange to use
-const exchangeAddress = await userHub.getExchangeFor(nftContract);
-const exchange = new ethers.Contract(exchangeAddress, ExchangeABI, signer);
+const isPaused = await emergencyManagerService.isPaused();
 ```
 
 ## 📍 Contract Addresses
@@ -165,17 +173,19 @@ const bundleManager = await hub.getBundleManager();
 
 ### 1. Listing NFTs
 
-**Step 1: Get Exchange Address from UserHub**
+**Step 1: Get Exchange Address from MarketplaceHub**
 
 ```javascript
-// Initialize UserHub first (ONE TIME ONLY)
-const userHub = new ethers.Contract(USER_HUB, UserHubABI, provider);
+// Initialize MarketplaceHub first (ONE TIME ONLY)
+const marketplaceHub = new ethers.Contract(MARKETPLACE_HUB, MarketplaceHub_ABI, provider);
 
-// Get exchange address for your NFT
-const exchangeAddress = await userHub.getExchangeFor(nftContract);
+// Get specific exchange addresses
+const erc721Exchange = await marketplaceHub.getERC721Exchange();
+const erc1155Exchange = await marketplaceHub.getERC1155Exchange();
 
-// OR get specific exchange
-const [erc721Exchange, erc1155Exchange] = await userHub.getAllAddresses();
+// OR use the service layer (recommended)
+import { exchangeService } from '@/lib/services/contracts';
+// Service is already initialized and ready to use
 ```
 
 **Step 2: List NFT**
@@ -1448,6 +1458,131 @@ const priceHistory = await historyTracker.getNFTPriceHistory(
   nftContract,
   tokenId
 );
+```
+
+## 🛠️ Scripts & Automation
+
+### Available Scripts
+
+The project includes comprehensive scripts for marketplace operations:
+
+#### Marketplace Trading
+
+```bash
+# List NFT for sale
+node scripts/marketplace/list-nft.js [nftAddress] [tokenId] [priceInETH] [durationInDays]
+
+# Buy NFT
+node scripts/marketplace/buy-nft.js [listingId or nftAddress] [tokenId]
+```
+
+#### Auction System
+
+```bash
+# Create auction (English or Dutch)
+node scripts/auctions/create-auction.js [nftAddress] [tokenId]
+
+# Place bid or buy from auction
+node scripts/auctions/place-bid.js [auctionId]
+```
+
+#### Offer Management
+
+```bash
+# Create offers (NFT/Collection/Trait)
+node scripts/offers/create-offer.js
+```
+
+#### Bundle Trading
+
+```bash
+# Create NFT bundles (2-20 NFTs)
+node scripts/bundles/create-bundle.js
+```
+
+#### Analytics
+
+```bash
+# Get collection statistics
+node scripts/analytics/collection-stats.js [collectionAddress]
+```
+
+#### Collection Management
+
+```bash
+# Create collections
+node scripts/collections/create-erc721.js
+node scripts/collections/create-erc1155.js
+
+# Manage mint stages
+npx tsx scripts/start-mint.ts [collectionAddress] [stage]
+
+# Manage allowlists
+npx tsx scripts/manage-allowlist.ts [collectionAddress] [add|remove|check] [addresses...]
+```
+
+#### NFT Minting
+
+```bash
+# Single mints
+node scripts/nfts/mint-erc721.js [collectionAddress] [quantity] [recipient]
+node scripts/nfts/mint-erc1155.js [collectionAddress] [tokenId] [amount] [recipient]
+
+# Batch mints
+node scripts/nfts/batch-mint-erc721.js [collectionAddress] [quantity] [recipients...]
+node scripts/nfts/batch-mint-erc1155.js [collectionAddress] [tokenIds] [amounts]
+```
+
+### Script Configuration
+
+All scripts use the same configuration from `scripts/utils/config.js`:
+
+```javascript
+// Scripts automatically detect the network and use appropriate settings
+const { getProvider, getSigner, getMarketplaceHub } = require('./utils/config');
+
+// Initialize in your script
+const provider = await getProvider();
+const signer = await getSigner();
+const hub = await getMarketplaceHub(signer);
+```
+
+### Interactive Mode
+
+Most scripts support interactive mode when run without parameters:
+
+```bash
+# Interactive listing
+node scripts/marketplace/list-nft.js
+# Prompts for: NFT address, token ID, price, duration
+
+# Interactive auction creation
+node scripts/auctions/create-auction.js
+# Prompts for: auction type, NFT details, prices, duration
+```
+
+### Automation Examples
+
+```javascript
+// Automated listing script
+const listMultipleNFTs = async () => {
+  const nfts = [
+    { address: '0x...', tokenId: 1, price: '0.1' },
+    { address: '0x...', tokenId: 2, price: '0.2' },
+  ];
+  
+  for (const nft of nfts) {
+    await exec(`node scripts/marketplace/list-nft.js ${nft.address} ${nft.tokenId} ${nft.price} 7`);
+  }
+};
+
+// Monitor and auto-buy floor listings
+const autoBuyFloor = async (collectionAddress, maxPrice) => {
+  const stats = await exec(`node scripts/analytics/collection-stats.js ${collectionAddress}`);
+  if (stats.floorPrice <= maxPrice) {
+    // Auto-buy logic
+  }
+};
 ```
 
 ## 🔔 Events

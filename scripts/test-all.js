@@ -1,6 +1,11 @@
 /**
- * Test all collection and NFT operations
- * Usage: node scripts/test-all.js
+ * Test all collection, NFT, and marketplace operations
+ * Usage: node scripts/test-all.js [basic|marketplace|full]
+ * 
+ * Options:
+ *   basic      - Test collections and minting only (default)
+ *   marketplace - Test marketplace features only
+ *   full       - Test everything
  */
 
 const { createERC721Collection } = require("./collections/create-erc721");
@@ -9,6 +14,7 @@ const { mintERC721 } = require("./nfts/mint-erc721");
 const { mintERC1155 } = require("./nfts/mint-erc1155");
 const { batchMintERC721 } = require("./nfts/batch-mint-erc721");
 const { batchMintERC1155 } = require("./nfts/batch-mint-erc1155");
+const { testMarketplace } = require("./test-marketplace");
 
 async function testAll() {
   console.log("🚀 Starting comprehensive test suite...\n");
@@ -95,9 +101,42 @@ async function testAll() {
   }
 }
 
+async function runTests() {
+  const testMode = process.argv[2] || 'basic';
+  
+  console.log(`\n🎯 Running test mode: ${testMode.toUpperCase()}\n`);
+  
+  switch(testMode.toLowerCase()) {
+    case 'basic':
+      await testAll();
+      break;
+      
+    case 'marketplace':
+      await testMarketplace();
+      break;
+      
+    case 'full':
+      console.log("=" .repeat(60));
+      console.log("PART 1: BASIC TESTS");
+      console.log("=" .repeat(60));
+      await testAll();
+      
+      console.log("\n" + "=" .repeat(60));
+      console.log("PART 2: MARKETPLACE TESTS");
+      console.log("=" .repeat(60));
+      await testMarketplace();
+      break;
+      
+    default:
+      console.error(`Unknown test mode: ${testMode}`);
+      console.log('Usage: node scripts/test-all.js [basic|marketplace|full]');
+      process.exit(1);
+  }
+}
+
 // Run if called directly
 if (require.main === module) {
-  testAll()
+  runTests()
     .then(() => {
       console.log("\n✨ Test suite completed successfully!");
       process.exit(0);

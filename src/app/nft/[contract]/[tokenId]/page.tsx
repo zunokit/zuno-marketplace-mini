@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/providers/WalletProvider";
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { 
@@ -96,7 +96,7 @@ interface PriceHistory {
 
 export default function NFTDetailPage() {
   const params = useParams();
-  const { address, isConnected } = useAccount();
+  const { account: address, isConnected } = useWallet();
   const [nftDetails, setNftDetails] = useState<NFTDetails | null>(null);
   const [listing, setListing] = useState<ListingInfo | null>(null);
   const [auction, setAuction] = useState<AuctionInfo | null>(null);
@@ -293,7 +293,7 @@ export default function NFTDetailPage() {
         nftDetails!.contractAddress,
         nftDetails!.tokenId,
         formatEther(listing.price),
-        address
+        address || undefined
       );
       
       const tx = await exchangeService.buyListing(

@@ -41,6 +41,18 @@ scripts/
 │   ├── mint-erc1155.js
 │   ├── batch-mint-erc721.js
 │   └── batch-mint-erc1155.js
+├── marketplace/        # NFT marketplace trading
+│   ├── list-nft.js     # List NFTs for sale
+│   └── buy-nft.js      # Purchase listed NFTs
+├── auctions/          # Auction management
+│   ├── create-auction.js # Create English/Dutch auctions
+│   └── place-bid.js    # Bid on auctions
+├── offers/            # Offer system
+│   └── create-offer.js # Create NFT/collection/trait offers
+├── bundles/           # Bundle trading
+│   └── create-bundle.js # Bundle multiple NFTs
+├── analytics/         # Analytics and stats
+│   └── collection-stats.js # Get collection analytics
 ├── utils/              # Shared utilities
 │   └── config.js
 ├── extract-abis.js     # Extract ABIs from contracts
@@ -184,6 +196,93 @@ node scripts/nfts/batch-mint-erc1155.js 0xCollectionAddress 1,2,3 100,200,300
 # - 100 units of token ID 1
 # - 200 units of token ID 2
 # - 300 units of token ID 3
+```
+
+### Marketplace Trading
+
+#### List NFT for Sale
+
+```bash
+# Interactive mode
+node scripts/marketplace/list-nft.js
+
+# With parameters
+node scripts/marketplace/list-nft.js 0xNFTAddress tokenId priceInETH durationInDays
+
+# Example: List token #5 for 0.1 ETH for 7 days
+node scripts/marketplace/list-nft.js 0x123... 5 0.1 7
+```
+
+#### Buy Listed NFT
+
+```bash
+# Buy by listing ID
+node scripts/marketplace/buy-nft.js 0xListingId
+
+# Buy by NFT address and token ID
+node scripts/marketplace/buy-nft.js 0xNFTAddress tokenId
+```
+
+### Auction System
+
+#### Create Auction
+
+```bash
+# Interactive mode (choose English or Dutch)
+node scripts/auctions/create-auction.js
+
+# With NFT address and token ID
+node scripts/auctions/create-auction.js 0xNFTAddress tokenId
+```
+
+#### Place Bid / Buy from Auction
+
+```bash
+# English auction - place bid
+# Dutch auction - buy at current price
+node scripts/auctions/place-bid.js 0xAuctionId
+```
+
+### Offer System
+
+#### Create Offer
+
+```bash
+# Interactive mode (choose offer type)
+node scripts/offers/create-offer.js
+
+# Supports:
+# - NFT Offer: Offer on specific token
+# - Collection Offer: Offer on any token in collection  
+# - Trait Offer: Offer on tokens with specific traits
+```
+
+### Bundle Trading
+
+#### Create Bundle
+
+```bash
+# Bundle multiple NFTs together
+node scripts/bundles/create-bundle.js
+
+# Bundles 2-20 NFTs with single price
+# Supports both ERC721 and ERC1155
+```
+
+### Analytics
+
+#### Get Collection Statistics
+
+```bash
+# View collection analytics
+node scripts/analytics/collection-stats.js 0xCollectionAddress
+
+# Shows:
+# - Trading volume and sales
+# - Floor price and average price
+# - 24h activity and volume change
+# - Recent sales history
+# - Active listings
 ```
 
 ### Run All Tests

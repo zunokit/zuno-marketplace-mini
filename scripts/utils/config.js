@@ -9,20 +9,21 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
 // Network configuration - all from environment
+// Using USER_HUB as the MarketplaceHub address
 const NETWORK_CONFIG = {
   local: {
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "http://127.0.0.1:8545",
-    hubAddress: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL,
+    hubAddress: process.env.NEXT_PUBLIC_USER_HUB_LOCAL, // USER_HUB acts as MarketplaceHub
     chainId: 31337
   },
   sepolia: {
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA,
-    hubAddress: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_SEPOLIA,
+    hubAddress: process.env.NEXT_PUBLIC_USER_HUB_SEPOLIA,
     chainId: 11155111
   },
   mainnet: {
     rpcUrl: process.env.NEXT_PUBLIC_RPC_URL_MAINNET,
-    hubAddress: process.env.NEXT_PUBLIC_MARKETPLACE_HUB_MAINNET,
+    hubAddress: process.env.NEXT_PUBLIC_USER_HUB_MAINNET,
     chainId: 1
   }
 };
@@ -34,7 +35,7 @@ function validateConfig(network) {
     throw new Error(`Unknown network: ${network}`);
   }
   if (!config.hubAddress) {
-    throw new Error(`Hub address not configured for ${network}. Please set NEXT_PUBLIC_MARKETPLACE_HUB_${network.toUpperCase()} in .env`);
+    throw new Error(`Hub address not configured for ${network}. Please set NEXT_PUBLIC_USER_HUB_${network.toUpperCase()} in .env`);
   }
   if (!config.rpcUrl) {
     throw new Error(`RPC URL not configured for ${network}. Please set NEXT_PUBLIC_RPC_URL_${network.toUpperCase()} in .env`);
