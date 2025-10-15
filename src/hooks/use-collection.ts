@@ -174,8 +174,7 @@ export function useCollection(): UseCollectionReturn {
           return null;
         }
 
-        // Ensure services are initialized
-        await initializeServices();
+        // Services are already initialized in useEffect, no need to call again
 
         const rawInfo = await collectionService.getCollectionInfo(
           address,

@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect, useMemo } from "react";
 import { logger } from "@/lib/utils/logger";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,8 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ListingCard } from "./ListingCard";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AuctionCard } from "./AuctionCard";
 import {
   Search,
   Filter,
@@ -29,16 +31,18 @@ import {
   Grid3X3,
   List,
   RefreshCw,
+  Gavel,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMarketplace } from "@/hooks/use-marketplace";
 import { useWallet } from "@/providers/WalletProvider";
+import { useAuction } from "@/hooks/use-auction";
 
 interface FilterOptions {
   priceMin: string;
   priceMax: string;
-  currency: string;
-  collection: string;
+  auctionType: "ALL" | "ENGLISH" | "DUTCH";
   status: string;
 }
 
@@ -51,80 +55,96 @@ interface SortOption {
 const sortOptions: SortOption[] = [
   { value: "price_asc", label: "Price: Low to High", icon: SortAsc },
   { value: "price_desc", label: "Price: High to Low", icon: SortDesc },
+  { value: "ending_soon", label: "Ending Soon" },
   { value: "newest", label: "Recently Listed" },
   { value: "oldest", label: "Oldest First" },
-  { value: "ending_soon", label: "Ending Soon" },
 ];
 
 const statusOptions = [
   { value: "all", label: "All Status" },
   { value: "ACTIVE", label: "Active" },
-  { value: "SOLD", label: "Sold" },
+  { value: "ENDED", label: "Ended" },
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
-export function MarketplaceBrowser() {
-  const {
-    items: listings,
-    loading,
-    error,
-    fetchActiveListings,
-    buyListing,
-    cancelListing,
-    updateListingPrice,
-  } = useMarketplace();
+export function AuctionBrowser() {
   const { account } = useWallet();
+  const { getActiveAuctions, placeBid, buyDutchAuction, cancelAuction } = useAuction();
+  const [auctions, setAuctions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // UI State
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
-  // Fetch listings on mount
-  useEffect(() => {
-    fetchActiveListings();
-  }, [fetchActiveListings]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
+  const [sortBy, setSortBy] = useState("ending_soon");
   const [filters, setFilters] = useState<FilterOptions>({
     priceMin: "",
     priceMax: "",
-    currency: "all",
-    collection: "all",
+    auctionType: "ALL",
     status: "ACTIVE",
   });
 
-  // Collections for filter
-  const collections = [
-    { value: "all", label: "All Collections" },
-    { value: "0x123...", label: "CryptoPunks" },
-    { value: "0x456...", label: "Bored Apes" },
-  ];
+  // Fetch auctions from blockchain
+  const fetchAuctions = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      logger.startTimer("fetch-auctions");
+      logger.info("Fetching auctions from blockchain", null, {
+        component: "AuctionBrowser",
+        action: "fetchAuctions",
+      });
 
-  // Filter and sort listings
-  const filteredAndSortedListings = useMemo(() => {
-    const filtered = listings.filter((listing) => {
+      const { english, dutch } = await getActiveAuctions();
+
+      // Combine English and Dutch auctions
+      const allAuctions = [
+        ...english.map((a: any) => ({ ...a, auctionType: "ENGLISH" as const })),
+        ...dutch.map((a: any) => ({ ...a, auctionType: "DUTCH" as const })),
+      ];
+
+      setAuctions(allAuctions);
+      logger.endTimer("fetch-auctions", `Fetched ${allAuctions.length} auctions`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to fetch auctions";
+      setError(errorMsg);
+      logger.error("Failed to fetch auctions", err, {
+        component: "AuctionBrowser",
+        action: "fetchAuctions",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAuctions();
+  }, []);
+
+  // Filter and sort auctions
+  const filteredAndSortedAuctions = useMemo(() => {
+    const filtered = auctions.filter((auction) => {
       // Status filter
-      if (filters.status !== "all" && listing.status !== filters.status) {
+      if (filters.status !== "all" && auction.status !== filters.status) {
+        return false;
+      }
+
+      // Auction type filter
+      if (filters.auctionType !== "ALL" && auction.auctionType !== filters.auctionType) {
         return false;
       }
 
       // Price range filter
       if (
         filters.priceMin &&
-        parseFloat(listing.price) < parseFloat(filters.priceMin)
+        parseFloat(auction.currentPrice) < parseFloat(filters.priceMin)
       ) {
         return false;
       }
       if (
         filters.priceMax &&
-        parseFloat(listing.price) > parseFloat(filters.priceMax)
-      ) {
-        return false;
-      }
-
-      // Collection filter
-      if (
-        filters.collection !== "all" &&
-        listing.tokenContract !== filters.collection
+        parseFloat(auction.currentPrice) > parseFloat(filters.priceMax)
       ) {
         return false;
       }
@@ -132,11 +152,11 @@ export function MarketplaceBrowser() {
       // Search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const matchesName = listing.nft?.name?.toLowerCase().includes(query);
-        const matchesCollection = listing.nft?.collection?.name
+        const matchesName = auction.nft?.name?.toLowerCase().includes(query);
+        const matchesCollection = auction.nft?.collection?.name
           ?.toLowerCase()
           .includes(query);
-        const matchesTokenId = listing.tokenId.includes(query);
+        const matchesTokenId = auction.tokenId.includes(query);
 
         if (!matchesName && !matchesCollection && !matchesTokenId) {
           return false;
@@ -146,33 +166,31 @@ export function MarketplaceBrowser() {
       return true;
     });
 
-    // Sort listings
+    // Sort auctions
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "price_asc":
-          return parseFloat(a.price) - parseFloat(b.price);
+          return parseFloat(a.currentPrice) - parseFloat(b.currentPrice);
         case "price_desc":
-          return parseFloat(b.price) - parseFloat(a.price);
-        case "newest":
-          return b.createdAt - a.createdAt;
-        case "oldest":
-          return a.createdAt - b.createdAt;
+          return parseFloat(b.currentPrice) - parseFloat(a.currentPrice);
         case "ending_soon":
-          // For auctions, sort by end time (not implemented in this example)
-          return 0;
+          return a.endTime - b.endTime;
+        case "newest":
+          return b.startTime - a.startTime;
+        case "oldest":
+          return a.startTime - b.startTime;
         default:
           return 0;
       }
     });
 
     return filtered;
-  }, [listings, filters, searchQuery, sortBy]);
+  }, [auctions, filters, searchQuery, sortBy]);
 
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (filters.priceMin || filters.priceMax) count++;
-    if (filters.currency !== "all") count++;
-    if (filters.collection !== "all") count++;
+    if (filters.auctionType !== "ALL") count++;
     if (filters.status !== "ACTIVE") count++;
     return count;
   }, [filters]);
@@ -181,20 +199,49 @@ export function MarketplaceBrowser() {
     setFilters({
       priceMin: "",
       priceMax: "",
-      currency: "all",
-      collection: "all",
+      auctionType: "ALL",
       status: "ACTIVE",
     });
     setSearchQuery("");
+  };
+
+  const handleBid = async (auctionId: string, amount: string, auctionType: "ENGLISH" | "DUTCH") => {
+    try {
+      if (auctionType === "ENGLISH") {
+        await placeBid(auctionId, amount);
+      } else {
+        await buyDutchAuction(auctionId);
+      }
+      // Refresh auctions after successful bid
+      await fetchAuctions();
+    } catch (error) {
+      logger.error("Failed to place bid", error, {
+        component: "AuctionBrowser",
+        action: "placeBid",
+      });
+    }
+  };
+
+  const handleCancel = async (auctionId: string, auctionType: "ENGLISH" | "DUTCH") => {
+    try {
+      await cancelAuction(auctionId, auctionType);
+      // Refresh auctions after successful cancellation
+      await fetchAuctions();
+    } catch (error) {
+      logger.error("Failed to cancel auction", error, {
+        component: "AuctionBrowser",
+        action: "cancelAuction",
+      });
+    }
   };
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <p className="text-lg text-muted-foreground mb-4">
-          Failed to load marketplace
+          Failed to load auctions
         </p>
-        <Button variant="outline">
+        <Button variant="outline" onClick={fetchAuctions}>
           <RefreshCw className="mr-2 h-4 w-4" />
           Try Again
         </Button>
@@ -207,9 +254,12 @@ export function MarketplaceBrowser() {
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Marketplace</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Gavel className="h-8 w-8" />
+            Auctions
+          </h1>
           <p className="text-muted-foreground">
-            Discover, buy, and sell extraordinary NFTs
+            Bid on exclusive NFTs or watch prices drop
           </p>
         </div>
 
@@ -230,6 +280,29 @@ export function MarketplaceBrowser() {
           </Button>
         </div>
       </div>
+
+      {/* Auction Type Tabs */}
+      <Tabs
+        value={filters.auctionType}
+        onValueChange={(value) =>
+          setFilters((prev) => ({ ...prev, auctionType: value as any }))
+        }
+      >
+        <TabsList className="grid w-full grid-cols-3 max-w-md">
+          <TabsTrigger value="ALL" className="flex items-center gap-2">
+            <Gavel className="h-4 w-4" />
+            All
+          </TabsTrigger>
+          <TabsTrigger value="ENGLISH" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            English
+          </TabsTrigger>
+          <TabsTrigger value="DUTCH" className="flex items-center gap-2">
+            <TrendingDown className="h-4 w-4" />
+            Dutch
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Search and Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -337,31 +410,6 @@ export function MarketplaceBrowser() {
                 </div>
               </div>
 
-              {/* Collection Filter */}
-              <div>
-                <label className="text-sm font-medium">Collection</label>
-                <Select
-                  value={filters.collection}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, collection: value }))
-                  }
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {collections.map((collection) => (
-                      <SelectItem
-                        key={collection.value}
-                        value={collection.value}
-                      >
-                        {collection.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* Clear Filters */}
               <Button
                 variant="outline"
@@ -378,7 +426,7 @@ export function MarketplaceBrowser() {
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {loading ? "Loading..." : `${filteredAndSortedListings.length} items`}
+          {loading ? "Loading..." : `${filteredAndSortedAuctions.length} auctions`}
         </p>
         {activeFiltersCount > 0 && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -388,7 +436,7 @@ export function MarketplaceBrowser() {
         )}
       </div>
 
-      {/* Listings Grid */}
+      {/* Auctions Grid */}
       {loading ? (
         <div
           className={cn(
@@ -406,7 +454,7 @@ export function MarketplaceBrowser() {
             </div>
           ))}
         </div>
-      ) : filteredAndSortedListings.length > 0 ? (
+      ) : filteredAndSortedAuctions.length > 0 ? (
         <div
           className={cn(
             "grid gap-6",
@@ -415,98 +463,20 @@ export function MarketplaceBrowser() {
               : "grid-cols-1 max-w-2xl mx-auto"
           )}
         >
-          {filteredAndSortedListings.map((listing) => (
-            <ListingCard
-              key={listing.id}
-              listing={listing}
-              isOwner={listing.seller === account}
-              onBuy={async () => {
-                try {
-                  logger.info(
-                    "Initiating NFT purchase",
-                    {
-                      listingId: listing.id,
-                      tokenContract: listing.tokenContract,
-                      tokenId: listing.tokenId,
-                      price: listing.price,
-                    },
-                    { component: "MarketplaceBrowser", action: "buyListing" }
-                  );
-
-                  await buyListing(
-                    listing.tokenContract,
-                    listing.tokenId,
-                    listing.amount || "1",
-                    listing.tokenType || "ERC721"
-                  );
-                } catch (error) {
-                  logger.error(
-                    "Failed to purchase NFT",
-                    error,
-                    { component: "MarketplaceBrowser", action: "buyListing" }
-                  );
-                }
-              }}
-              onEdit={async () => {
-                try {
-                  const newPrice = window.prompt(
-                    "Enter new price (in ETH):",
-                    listing.price
-                  );
-                  if (newPrice && newPrice !== listing.price) {
-                    logger.info(
-                      "Updating listing price",
-                      {
-                        listingId: listing.id,
-                        oldPrice: listing.price,
-                        newPrice,
-                      },
-                      { component: "MarketplaceBrowser", action: "editListing" }
-                    );
-
-                    await updateListingPrice(listing.id, newPrice);
-                  }
-                } catch (error) {
-                  logger.error(
-                    "Failed to update listing price",
-                    error,
-                    { component: "MarketplaceBrowser", action: "editListing" }
-                  );
-                }
-              }}
-              onCancel={async () => {
-                try {
-                  logger.info(
-                    "Cancelling listing",
-                    {
-                      listingId: listing.id,
-                      tokenContract: listing.tokenContract,
-                      tokenId: listing.tokenId,
-                    },
-                    { component: "MarketplaceBrowser", action: "cancelListing" }
-                  );
-
-                  await cancelListing(
-                    listing.tokenContract,
-                    listing.tokenId,
-                    listing.tokenType || "ERC721"
-                  );
-                } catch (error) {
-                  logger.error(
-                    "Failed to cancel listing",
-                    error,
-                    { component: "MarketplaceBrowser", action: "cancelListing" }
-                  );
-                }
-              }}
+          {filteredAndSortedAuctions.map((auction) => (
+            <AuctionCard
+              key={auction.id}
+              auction={auction}
+              isOwner={auction.seller === account}
+              onBid={(amount) => handleBid(auction.id, amount, auction.auctionType)}
+              onCancel={() => handleCancel(auction.id, auction.auctionType)}
               onView={() => {
                 logger.info(
-                  "View listing details",
-                  { listingId: listing.id },
-                  { component: "MarketplaceBrowser", action: "viewListing" }
+                  "View auction details",
+                  { auctionId: auction.id },
+                  { component: "AuctionBrowser", action: "viewAuction" }
                 );
-                // Navigate to NFT detail page
-                window.location.href = `/nft/${listing.tokenContract}/${listing.tokenId}`;
+                window.location.href = `/auctions/${auction.id}`;
               }}
             />
           ))}
@@ -514,7 +484,8 @@ export function MarketplaceBrowser() {
       ) : (
         <div className="flex flex-col items-center justify-center py-12">
           <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">No listings found</h3>
+            <Gavel className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No auctions found</h3>
             <p className="text-muted-foreground mb-4">
               Try adjusting your search or filter criteria
             </p>

@@ -345,6 +345,13 @@ export const useMarketplace = () => {
     [wallet.account]
   );
 
+  /**
+   * Fetch active listings
+   */
+  const fetchListings = useCallback(() => {
+    dispatch(fetchActiveListings());
+  }, [dispatch]);
+
   // Note: Event listeners are now handled by RealTimeEventsService
   // in the individual pages (offers, bundles, auctions)
 
@@ -355,5 +362,6 @@ export const useMarketplace = () => {
     cancelListing,
     updateListingPrice,
     getUserListings,
+    fetchActiveListings: fetchListings,
   };
 };

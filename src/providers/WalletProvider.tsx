@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { logger } from "@/lib/utils/logger";
 import { envConfigManager } from "@/lib/utils/env-config";
 import { ProviderFactory } from "@/lib/services/web3/provider-factory";
+import { initializeServices } from "@/lib/services/contracts";
 
 // ============================================================================
 // Types & Interfaces
@@ -408,9 +409,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       });
 
       WalletStorage.save(connectionData.account, connectionData.chainId);
-      
+
+      // Initialize all contract services
+      logger.startTimer("services-init");
+      await initializeServices(provider, connectionData.signer);
+      logger.endTimer("services-init", "Contract services initialized");
+
       toast.success(`Connected to ${connectionData.account.slice(0, 6)}...${connectionData.account.slice(-4)}`);
-      
+
       logger.info("Wallet connected", {
         account: connectionData.account,
         chainId: connectionData.chainId,
@@ -497,8 +503,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           type: ActionType.CONNECT_SUCCESS,
           payload: connectionData,
         });
-        
-        logger.info("Auto-reconnected to wallet");
+
+        // Initialize contract services on auto-reconnect
+        try {
+          await initializeServices(connectionData.provider, connectionData.signer);
+          logger.info("Auto-reconnected to wallet with services initialized");
+        } catch (error) {
+          logger.error("Failed to initialize services on auto-reconnect", error);
+        }
       }
     };
 
