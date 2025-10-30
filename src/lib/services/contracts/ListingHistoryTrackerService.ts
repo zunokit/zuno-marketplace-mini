@@ -7,7 +7,7 @@
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { userHubService } from "./UserHubService";
-import { ListingHistoryTracker_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -107,9 +107,10 @@ export class ListingHistoryTrackerService {
       throw new Error("HistoryTracker address not loaded from hub");
     }
 
+    const abi = await getContractABI("ListingHistoryTracker");
     return new ethers.Contract(
       address,
-      ListingHistoryTracker_ABI,
+      abi,
       this.signer
     );
   }
@@ -136,14 +137,16 @@ export class ListingHistoryTrackerService {
   /**
    * Get tracker contract instance
    */
-  private getTrackerContract(readOnly: boolean = false): ethers.Contract {
+  private async getTrackerContract(readOnly: boolean = false): Promise<ethers.Contract> {
+    const abi = await getContractABI("ListingHistoryTracker");
+
     if (readOnly && this.provider) {
       if (!this.trackerAddress) {
         throw new Error("ListingHistoryTracker address not configured");
       }
       return new ethers.Contract(
         this.trackerAddress,
-        ListingHistoryTracker_ABI,
+        abi,
         this.provider
       );
     }
@@ -158,7 +161,7 @@ export class ListingHistoryTrackerService {
 
     return new ethers.Contract(
       this.trackerAddress,
-      ListingHistoryTracker_ABI,
+      abi,
       this.signer
     );
   }
@@ -173,7 +176,7 @@ export class ListingHistoryTrackerService {
   async recordTransaction(
     record: TransactionRecord
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getTrackerContract();
+    const contract = await this.getTrackerContract();
 
     const tx = await contract.recordTransaction(record);
     await tx.wait();
@@ -193,7 +196,7 @@ export class ListingHistoryTrackerService {
     tokenId: bigint,
     limit: number = 50
   ): Promise<TransactionRecord[]> {
-    const contract = this.getTrackerContract(true);
+    const contract = await this.getTrackerContract(true);
 
     const records = await contract.getNFTHistory(collection, tokenId, limit);
 
@@ -232,7 +235,7 @@ export class ListingHistoryTrackerService {
    * Get collection statistics
    */
   async getCollectionStats(collection: string): Promise<CollectionStats> {
-    const contract = this.getTrackerContract(true);
+    const contract = await this.getTrackerContract(true);
     const stats = await contract.collectionStats(collection);
 
     return {
@@ -254,7 +257,7 @@ export class ListingHistoryTrackerService {
     collection: string,
     limit: number = 100
   ): Promise<PricePoint[]> {
-    const contract = this.getTrackerContract(true);
+    const contract = await this.getTrackerContract(true);
 
     const points = await contract.getCollectionPriceHistory(collection, limit);
 
@@ -305,7 +308,7 @@ export class ListingHistoryTrackerService {
    * Get user statistics
    */
   async getUserStats(user: string): Promise<UserStats> {
-    const contract = this.getTrackerContract(true);
+    const contract = await this.getTrackerContract(true);
     const stats = await contract.userStats(user);
 
     return {
@@ -368,7 +371,7 @@ export class ListingHistoryTrackerService {
    * Get global marketplace statistics
    */
   async getGlobalStats(): Promise<GlobalStats> {
-    const contract = this.getTrackerContract(true);
+    const contract = await this.getTrackerContract(true);
     const stats = await contract.globalStats();
 
     return {
@@ -386,7 +389,7 @@ export class ListingHistoryTrackerService {
    * Get daily volume
    */
   async getDailyVolume(date: bigint): Promise<DailyVolume> {
-    const contract = this.getTrackerContract(true);
+    const contract = await this.getTrackerContract(true);
     const volume = await contract.dailyVolumes(date);
 
     return {
@@ -546,9 +549,10 @@ export class ListingHistoryTrackerService {
         throw new Error("Service not initialized");
       }
 
+      const abi = await getContractABI("ListingHistoryTracker");
       const contract = new ethers.Contract(
         this.trackerAddress,
-        ListingHistoryTracker_ABI,
+        abi,
         this.provider
       );
 

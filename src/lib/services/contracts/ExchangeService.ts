@@ -7,10 +7,7 @@
 import { ethers } from "ethers";
 import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
-import {
-  ERC721NFTExchange_ABI,
-  ERC1155NFTExchange_ABI,
-} from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 export interface ListingParams {
   contractAddress: string;
@@ -76,9 +73,9 @@ export class ExchangeService {
   /**
    * Get exchange contract for specific token type
    */
-  private getExchangeContract(
+  private async getExchangeContract(
     tokenType: "ERC721" | "ERC1155"
-  ): ethers.Contract {
+  ): Promise<ethers.Contract> {
     if (!this.signer) {
       throw new Error("Signer not available - connect wallet first");
     }
@@ -88,8 +85,9 @@ export class ExchangeService {
         ? userHubService.getERC721Exchange()
         : userHubService.getERC1155Exchange();
 
-    const abi =
-      tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+    const abiName =
+      tokenType === "ERC721" ? "ERC721NFTExchange" : "ERC1155NFTExchange";
+    const abi = await getContractABI(abiName);
 
     return new ethers.Contract(address, abi, this.signer);
   }
@@ -97,9 +95,9 @@ export class ExchangeService {
   /**
    * Get exchange contract for read-only operations
    */
-  private getExchangeContractReadOnly(
+  private async getExchangeContractReadOnly(
     tokenType: "ERC721" | "ERC1155"
-  ): ethers.Contract {
+  ): Promise<ethers.Contract> {
     if (!this.provider) {
       throw new Error("Provider not available");
     }
@@ -109,8 +107,9 @@ export class ExchangeService {
         ? userHubService.getERC721Exchange()
         : userHubService.getERC1155Exchange();
 
-    const abi =
-      tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+    const abiName =
+      tokenType === "ERC721" ? "ERC721NFTExchange" : "ERC1155NFTExchange";
+    const abi = await getContractABI(abiName);
 
     return new ethers.Contract(address, abi, this.provider);
   }
@@ -131,7 +130,7 @@ export class ExchangeService {
     offset: number = 0
   ): Promise<Listing[]> {
     try {
-      const exchange = this.getExchangeContractReadOnly(tokenType);
+      const exchange = await this.getExchangeContractReadOnly(tokenType);
       
       // TODO: Implement based on your contract's actual methods
       // This is a placeholder structure
@@ -161,7 +160,7 @@ export class ExchangeService {
     tokenType: "ERC721" | "ERC1155" = "ERC721"
   ): Promise<Listing | null> {
     try {
-      const exchange = this.getExchangeContractReadOnly(tokenType);
+      const exchange = await this.getExchangeContractReadOnly(tokenType);
       
       // Check if NFT is listed
       const isListed = await exchange.isNFTListed(contractAddress, tokenId);
@@ -198,7 +197,7 @@ export class ExchangeService {
     params: ListingParams
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const exchange = this.getExchangeContract(params.tokenType);
+      const exchange = await this.getExchangeContract(params.tokenType);
       const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
       const amount =
         params.tokenType === "ERC1155" ? params.amount || "1" : "1";
@@ -240,7 +239,7 @@ export class ExchangeService {
         { component: "ExchangeService", action: "createBatchListing" }
       );
 
-      const exchange = this.getExchangeContract(params.tokenType);
+      const exchange = await this.getExchangeContract(params.tokenType);
       const durationInSeconds = parseInt(params.duration) * 24 * 60 * 60;
 
       const tx = await exchange.batchListNFTs(
@@ -283,7 +282,7 @@ export class ExchangeService {
     tokenType: "ERC721" | "ERC1155"
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const exchange = this.getExchangeContract(tokenType);
+      const exchange = await this.getExchangeContract(tokenType);
       const listingPrice = await this.getListingPrice(
         contractAddress,
         tokenId,
@@ -313,7 +312,7 @@ export class ExchangeService {
     tokenType: "ERC721" | "ERC1155"
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const exchange = this.getExchangeContract(tokenType);
+      const exchange = await this.getExchangeContract(tokenType);
       const tx = await exchange.cancelListing(contractAddress, tokenId);
       return tx;
     } catch (error) {
@@ -334,7 +333,7 @@ export class ExchangeService {
     tokenType: "ERC721" | "ERC1155"
   ): Promise<bigint> {
     try {
-      const exchange = this.getExchangeContract(tokenType);
+      const exchange = await this.getExchangeContract(tokenType);
       const listing = await exchange.getListing(contractAddress, tokenId);
       return listing.price;
     } catch (error) {
@@ -363,8 +362,9 @@ export class ExchangeService {
           ? userHubService.getERC721Exchange()
           : userHubService.getERC1155Exchange();
 
-      const abi =
-        tokenType === "ERC721" ? ERC721NFTExchange_ABI : ERC1155NFTExchange_ABI;
+      const abiName =
+        tokenType === "ERC721" ? "ERC721NFTExchange" : "ERC1155NFTExchange";
+      const abi = await getContractABI(abiName);
 
       const exchange = new ethers.Contract(address, abi, this.provider);
       const listings = await exchange.getCollectionListings(contractAddress);
@@ -389,7 +389,7 @@ export class ExchangeService {
     tokenType: "ERC721" | "ERC1155"
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const exchange = this.getExchangeContract(tokenType);
+      const exchange = await this.getExchangeContract(tokenType);
       const tx = await exchange.updateListingPrice(
         listingId,
         ethers.parseEther(newPrice)
@@ -514,7 +514,7 @@ export class ExchangeService {
    */
   async listNFT(params: ListingParams): Promise<string> {
     try {
-      const contract = this.getExchangeContract(params.tokenType);
+      const contract = await this.getExchangeContract(params.tokenType);
       
       const tx = await contract.listNFT(
         params.contractAddress,
@@ -554,7 +554,7 @@ export class ExchangeService {
    */
   async batchListNFT(params: BatchListingParams): Promise<string[]> {
     try {
-      const contract = this.getExchangeContract(params.tokenType);
+      const contract = await this.getExchangeContract(params.tokenType);
       
       const prices = params.prices.map(p => ethers.parseEther(p));
       
@@ -597,7 +597,7 @@ export class ExchangeService {
       // Determine which exchange to use based on first listing
       const firstListing = await this.getListing(listingIds[0]);
       const tokenType = await this.detectTokenType(firstListing.contractAddress);
-      const contract = this.getExchangeContract(tokenType);
+      const contract = await this.getExchangeContract(tokenType);
       
       const tx = await contract.batchBuyNFT(listingIds, {
         value: ethers.parseEther(totalPrice)
@@ -631,8 +631,8 @@ export class ExchangeService {
       }
 
       // Try both exchanges to find the listing
-      const erc721Contract = this.getExchangeContractReadOnly("ERC721");
-      const erc1155Contract = this.getExchangeContractReadOnly("ERC1155");
+      const erc721Contract = await this.getExchangeContractReadOnly("ERC721");
+      const erc1155Contract = await this.getExchangeContractReadOnly("ERC1155");
 
       let listing;
       let tokenType: "ERC721" | "ERC1155" = "ERC721";
@@ -677,8 +677,8 @@ export class ExchangeService {
         throw new Error("Provider not available");
       }
 
-      const erc721Contract = this.getExchangeContractReadOnly("ERC721");
-      const erc1155Contract = this.getExchangeContractReadOnly("ERC1155");
+      const erc721Contract = await this.getExchangeContractReadOnly("ERC721");
+      const erc1155Contract = await this.getExchangeContractReadOnly("ERC1155");
 
       // Get user listings from both exchanges
       const [erc721Listings, erc1155Listings] = await Promise.all([
@@ -718,7 +718,7 @@ export class ExchangeService {
       }
 
       const tokenType = await this.detectTokenType(contractAddress);
-      const contract = this.getExchangeContractReadOnly(tokenType);
+      const contract = await this.getExchangeContractReadOnly(tokenType);
 
       return await contract.isNFTListed(contractAddress, tokenId);
     } catch (error) {
@@ -737,7 +737,7 @@ export class ExchangeService {
     try {
       // Get listing to determine token type
       const listing = await this.getListing(listingId);
-      const contract = this.getExchangeContract(listing.tokenType);
+      const contract = await this.getExchangeContract(listing.tokenType);
 
       const tx = await contract.extendListing(listingId, additionalDuration);
       await tx.wait();
@@ -764,7 +764,7 @@ export class ExchangeService {
   async pauseListing(listingId: string): Promise<void> {
     try {
       const listing = await this.getListing(listingId);
-      const contract = this.getExchangeContract(listing.tokenType);
+      const contract = await this.getExchangeContract(listing.tokenType);
 
       const tx = await contract.pauseListing(listingId);
       await tx.wait();
@@ -790,7 +790,7 @@ export class ExchangeService {
   async resumeListing(listingId: string): Promise<void> {
     try {
       const listing = await this.getListing(listingId);
-      const contract = this.getExchangeContract(listing.tokenType);
+      const contract = await this.getExchangeContract(listing.tokenType);
 
       const tx = await contract.resumeListing(listingId);
       await tx.wait();
@@ -819,7 +819,7 @@ export class ExchangeService {
 
       // Get first listing to determine token type
       const firstListing = await this.getListing(listingIds[0]);
-      const contract = this.getExchangeContract(firstListing.tokenType);
+      const contract = await this.getExchangeContract(firstListing.tokenType);
 
       const tx = await contract.batchCancelListing(listingIds);
       await tx.wait();

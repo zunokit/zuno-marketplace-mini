@@ -43,11 +43,34 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 
 ### 3. Contract ABI Management
 
-- ABIs stored in `src/lib/contracts/abis/`
-- Auto-generated from Foundry artifacts
-- ABI exports follow pattern: `{ContractName}_ABI`
-- Import from: `import { MarketplaceHub_ABI } from '@/lib/contracts/abis'`
-- **Never manually edit ABI files** - always regenerate from contracts
+**Dynamic ABI Loading from API** (Production):
+
+- ABIs are fetched from Zuno Marketplace ABIs API at runtime
+- Managed by `ABIManager` in `src/lib/contracts/abi-manager.ts`
+- Automatic caching with TanStack React Query (1-hour stale time, 24-hour cache)
+- **Configuration**: Set `NEXT_PUBLIC_ZUNO_API_URL` and `NEXT_PUBLIC_ZUNO_API_KEY` in `.env`
+
+**Usage in Services**:
+```typescript
+import { getContractABI } from "@/lib/contracts/abi-manager";
+
+// Fetch ABI and create contract
+const abi = await getContractABI("UserHub");
+const contract = new ethers.Contract(address, abi, signer);
+```
+
+**Usage in React Components**:
+```typescript
+import { useContractABIByName } from "@/lib/hooks/useContractABI";
+
+const { data: contractABI, isLoading } = useContractABIByName("UserHub");
+```
+
+**Benefits**:
+- No hardcoded ABIs in bundle (smaller bundle size)
+- Automatic updates when contracts are upgraded
+- Single source of truth from API
+- Built-in versioning and rollback support
 
 ### 4. Development Modes
 
@@ -243,8 +266,16 @@ The project doesn't have formal tests yet. When testing manually:
 Required variables:
 
 ```bash
+# Chain Configuration
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337  # or 11155111 for Sepolia
-NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
+
+# Hub Contract Addresses
+NEXT_PUBLIC_USER_HUB_LOCAL=0x...  # From contract deployment
+NEXT_PUBLIC_ADMIN_HUB_LOCAL=0x...  # From contract deployment
+
+# Zuno Marketplace ABIs API (for dynamic ABI loading)
+NEXT_PUBLIC_ZUNO_API_URL=http://localhost:3000  # URL to Zuno ABIs API
+NEXT_PUBLIC_ZUNO_API_KEY=  # Optional API key for authenticated requests
 ```
 
 **Priority**: localStorage (Settings Modal) > process.env (.env.local)
@@ -256,9 +287,18 @@ NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
 
 ### Contract Naming Standards
 
-- Contracts: PascalCase (e.g., `MarketplaceHub`)
-- ABIs: `{ContractName}_ABI` (e.g., `MarketplaceHub_ABI`)
+- Contracts: PascalCase (e.g., `UserHub`, `ERC721NFTExchange`)
+- ABI Manager Names: Contract name without suffix (e.g., `"UserHub"`, `"ERC721NFTExchange"`)
 - Services: `{ContractName}Service` class, `{contractName}Service` instance
+
+**Example**:
+```typescript
+// Fetch ABI by contract name
+const abi = await getContractABI("UserHub");
+
+// Use in service
+import { userHubService } from "@/lib/services/contracts";
+```
 
 ### Security Notes
 

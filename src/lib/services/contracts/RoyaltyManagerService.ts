@@ -7,7 +7,7 @@
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { userHubService } from "./UserHubService";
-import { AdvancedRoyaltyManager_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -79,16 +79,18 @@ export class RoyaltyManagerService {
   /**
    * Get royalty manager contract instance
    */
-  private getRoyaltyManagerContract(
+  private async getRoyaltyManagerContract(
     readOnly: boolean = false
-  ): ethers.Contract {
+  ): Promise<ethers.Contract> {
+    const abi = await getContractABI("AdvancedRoyaltyManager");
+
     if (readOnly && this.provider) {
       if (!this.royaltyManagerAddress) {
         throw new Error("RoyaltyManager address not configured");
       }
       return new ethers.Contract(
         this.royaltyManagerAddress,
-        AdvancedRoyaltyManager_ABI,
+        abi,
         this.provider
       );
     }
@@ -103,7 +105,7 @@ export class RoyaltyManagerService {
 
     return new ethers.Contract(
       this.royaltyManagerAddress,
-      AdvancedRoyaltyManager_ABI,
+      abi,
       this.signer
     );
   }
@@ -123,7 +125,7 @@ export class RoyaltyManagerService {
     tokenId: bigint,
     salePrice: bigint
   ): Promise<RoyaltyInfo> {
-    const contract = this.getRoyaltyManagerContract(true);
+    const contract = await this.getRoyaltyManagerContract(true);
 
     const [receiver, royaltyAmount] = await contract.royaltyInfo(
       tokenId,
@@ -140,7 +142,7 @@ export class RoyaltyManagerService {
    * Get advanced royalty settings for a collection
    */
   async getAdvancedRoyalty(collection: string): Promise<AdvancedRoyaltyInfo> {
-    const contract = this.getRoyaltyManagerContract(true);
+    const contract = await this.getRoyaltyManagerContract(true);
     const info = await contract.advancedRoyalties(collection);
 
     return {
@@ -158,7 +160,7 @@ export class RoyaltyManagerService {
    * Get royalty recipients for a collection
    */
   async getRoyaltyRecipients(collection: string): Promise<RoyaltyRecipient[]> {
-    const contract = this.getRoyaltyManagerContract(true);
+    const contract = await this.getRoyaltyManagerContract(true);
     const recipients = await contract.royaltyRecipients(collection);
 
     return recipients.map((r: any) => ({
@@ -173,7 +175,7 @@ export class RoyaltyManagerService {
    * Get custom royalty contract for a collection
    */
   async getCustomRoyaltyContract(collection: string): Promise<string> {
-    const contract = this.getRoyaltyManagerContract(true);
+    const contract = await this.getRoyaltyManagerContract(true);
     return await contract.customRoyaltyContracts(collection);
   }
 
@@ -181,7 +183,7 @@ export class RoyaltyManagerService {
    * Get global royalty caps
    */
   async getGlobalCaps(): Promise<RoyaltyCaps> {
-    const contract = this.getRoyaltyManagerContract(true);
+    const contract = await this.getRoyaltyManagerContract(true);
     const caps = await contract.globalCaps();
 
     return {
@@ -196,7 +198,7 @@ export class RoyaltyManagerService {
    * Get total royalties distributed
    */
   async getTotalRoyaltiesDistributed(): Promise<bigint> {
-    const contract = this.getRoyaltyManagerContract(true);
+    const contract = await this.getRoyaltyManagerContract(true);
     return await contract.totalRoyaltiesDistributed();
   }
 
@@ -215,7 +217,7 @@ export class RoyaltyManagerService {
     recipients: RoyaltyRecipient[],
     useERC2981: boolean
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getRoyaltyManagerContract();
+    const contract = await this.getRoyaltyManagerContract();
 
     const tx = await contract.setAdvancedRoyalty(
       collection,
@@ -234,7 +236,7 @@ export class RoyaltyManagerService {
     collection: string,
     recipient: RoyaltyRecipient
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getRoyaltyManagerContract();
+    const contract = await this.getRoyaltyManagerContract();
 
     const tx = await contract.addRoyaltyRecipient(collection, recipient);
     await tx.wait();
@@ -249,7 +251,7 @@ export class RoyaltyManagerService {
     collection: string,
     recipientAddress: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getRoyaltyManagerContract();
+    const contract = await this.getRoyaltyManagerContract();
 
     const tx = await contract.removeRoyaltyRecipient(
       collection,
@@ -267,7 +269,7 @@ export class RoyaltyManagerService {
     collection: string,
     customContract: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getRoyaltyManagerContract();
+    const contract = await this.getRoyaltyManagerContract();
 
     const tx = await contract.setCustomRoyaltyContract(
       collection,
@@ -284,7 +286,7 @@ export class RoyaltyManagerService {
   async updateRoyaltyCaps(
     caps: RoyaltyCaps
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getRoyaltyManagerContract();
+    const contract = await this.getRoyaltyManagerContract();
 
     const tx = await contract.updateRoyaltyCaps(caps);
     await tx.wait();
@@ -310,7 +312,7 @@ export class RoyaltyManagerService {
     tx: ethers.ContractTransactionResponse;
     distributions: RoyaltyDistribution[];
   }> {
-    const contract = this.getRoyaltyManagerContract();
+    const contract = await this.getRoyaltyManagerContract();
 
     // Get recipients before distributing
     const recipients = await this.getRoyaltyRecipients(collection);

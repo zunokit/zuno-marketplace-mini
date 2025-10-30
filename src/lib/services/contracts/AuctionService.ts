@@ -7,7 +7,7 @@
 import { ethers } from "ethers";
 import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
-import { EnglishAuction_ABI, DutchAuction_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 export interface EnglishAuctionParams {
   nftContract: string;
@@ -73,7 +73,8 @@ export class AuctionService {
     }
 
     const address = userHubService.getEnglishAuction();
-    return new ethers.Contract(address, EnglishAuction_ABI, this.signer);
+    const abi = await getContractABI("EnglishAuction");
+    return new ethers.Contract(address, abi, this.signer);
   }
 
   /**
@@ -85,7 +86,8 @@ export class AuctionService {
     }
 
     const address = userHubService.getDutchAuction();
-    return new ethers.Contract(address, DutchAuction_ABI, this.signer);
+    const abi = await getContractABI("DutchAuction");
+    return new ethers.Contract(address, abi, this.signer);
   }
 
   /**
@@ -337,14 +339,15 @@ export class AuctionService {
         throw new Error("Provider not available");
       }
 
+      const abi = await getContractABI("EnglishAuction");
       const auction = new ethers.Contract(
         userHubService.getEnglishAuction(),
-        EnglishAuction_ABI,
+        abi,
         this.provider
       );
 
       const history = await auction.getBidHistory(auctionId);
-      
+
       return history.map((bid: any) => ({
         bidder: bid.bidder,
         amount: bid.amount,
@@ -368,9 +371,10 @@ export class AuctionService {
         throw new Error("Provider not available");
       }
 
+      const abi = await getContractABI("EnglishAuction");
       const auction = new ethers.Contract(
         userHubService.getEnglishAuction(),
-        EnglishAuction_ABI,
+        abi,
         this.provider
       );
 
@@ -393,9 +397,10 @@ export class AuctionService {
         throw new Error("Provider not available");
       }
 
+      const abi = await getContractABI("EnglishAuction");
       const auction = new ethers.Contract(
         userHubService.getEnglishAuction(),
-        EnglishAuction_ABI,
+        abi,
         this.provider
       );
 
@@ -418,9 +423,10 @@ export class AuctionService {
         throw new Error("Provider not available");
       }
 
+      const abi = await getContractABI("DutchAuction");
       const auction = new ethers.Contract(
         userHubService.getDutchAuction(),
-        DutchAuction_ABI,
+        abi,
         this.provider
       );
 
@@ -447,14 +453,15 @@ export class AuctionService {
         throw new Error("Provider not available");
       }
 
+      const abi = await getContractABI("DutchAuction");
       const auction = new ethers.Contract(
         userHubService.getDutchAuction(),
-        DutchAuction_ABI,
+        abi,
         this.provider
       );
 
       const decay = await auction.calculatePriceDecay(auctionId);
-      
+
       return {
         currentPrice: decay.currentPrice,
         priceDropPerHour: decay.priceDropPerHour,
@@ -482,13 +489,14 @@ export class AuctionService {
         throw new Error("Provider not available");
       }
 
-      const contractAddress = auctionType === "English" 
+      const contractAddress = auctionType === "English"
         ? userHubService.getEnglishAuction()
         : userHubService.getDutchAuction();
-      
-      const abi = auctionType === "English" 
-        ? EnglishAuction_ABI 
-        : DutchAuction_ABI;
+
+      const abiName = auctionType === "English"
+        ? "EnglishAuction"
+        : "DutchAuction";
+      const abi = await getContractABI(abiName);
 
       const auction = new ethers.Contract(contractAddress, abi, this.provider);
 
@@ -514,14 +522,15 @@ export class AuctionService {
         throw new Error("Provider not available");
       }
 
+      const abi = await getContractABI("EnglishAuction");
       const auction = new ethers.Contract(
         userHubService.getEnglishAuction(),
-        EnglishAuction_ABI,
+        abi,
         this.provider
       );
 
       const bid = await auction.getHighestBid(auctionId);
-      
+
       return {
         bidder: bid.bidder,
         amount: bid.amount,

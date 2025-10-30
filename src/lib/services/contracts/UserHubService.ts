@@ -11,11 +11,10 @@
  */
 
 import { ethers } from "ethers";
-import { getHubAddress } from "@/lib/config/networks";
-import { UserHub_ABI } from "@/lib/contracts/abis";
+import { getHubAddressFromManager } from "@/lib/services/contracts/AddressManager";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 import { ZERO_ADDRESS } from "@/lib/constants";
 import { logger } from "@/lib/utils/logger";
-import { envConfigManager } from "@/lib/utils/env-config";
 
 export interface UserHubAddresses {
   hub: string;
@@ -49,51 +48,34 @@ export class UserHubService {
 
     const network = await provider.getNetwork();
     const chainId = Number(network.chainId);
-    const hubAddress = getHubAddress(chainId);
 
     logger.info(
       "UserHub initialization starting",
       {
         chainId,
-        hubAddress,
         networkName: network.name,
       },
       { component: "UserHubService", action: "initialize" }
     );
 
-    // Check if hub address is configured
-    if (!hubAddress || hubAddress === ZERO_ADDRESS) {
-      const availableAddresses = {
-        local: getHubAddress(31337),
-        sepolia: getHubAddress(11155111),
-        mainnet: getHubAddress(1),
-      };
-
-      logger.error(
-        "UserHub not configured",
-        {
-          currentChainId: chainId,
-          availableAddresses,
-          defaultChainId: envConfigManager.getDefaultChainId(),
-        },
+    // Fetch hub address from API
+    let hubAddress: string;
+    try {
+      hubAddress = await getHubAddressFromManager(chainId);
+      logger.info(
+        "UserHub address fetched from API",
+        { chainId, hubAddress },
         { component: "UserHubService", action: "initialize" }
       );
-
-      const defaultChainId = envConfigManager.getDefaultChainId();
-      const hasDefaultConfig = !!getHubAddress(defaultChainId);
-
-      let suggestion = "";
-      if (hasDefaultConfig && chainId !== defaultChainId) {
-        suggestion = ` Try switching to chain ${defaultChainId} (configured in Settings).`;
-      } else if (!hasDefaultConfig) {
-        suggestion = ` Please configure UserHub address for chain ${chainId} in Settings Modal.`;
-      }
-
+    } catch (error) {
+      logger.error(
+        "Failed to fetch UserHub address from API",
+        error as Error,
+        { component: "UserHubService", action: "initialize" }
+      );
       throw new Error(
-        `UserHub not configured for chain ${chainId} (${network.name}). ` +
-          `Available addresses: ${JSON.stringify(
-            availableAddresses
-          )}.${suggestion}`
+        `Failed to fetch UserHub address for chain ${chainId} (${network.name}). ` +
+        `Please ensure Zuno API is available and contracts are deployed to the network.`
       );
     }
 
@@ -106,9 +88,12 @@ export class UserHubService {
       );
     }
 
+    // Fetch ABI from API
+    const abi = await getContractABI("UserHub");
+
     this.hub = new ethers.Contract(
       hubAddress,
-      UserHub_ABI,
+      abi,
       signer || provider
     );
 

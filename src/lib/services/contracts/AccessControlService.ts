@@ -7,7 +7,7 @@
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { userHubService } from "./UserHubService";
-import { MarketplaceAccessControl_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -89,14 +89,16 @@ export class AccessControlService {
   /**
    * Get access control contract instance
    */
-  private getAccessControlContract(readOnly: boolean = false): ethers.Contract {
+  private async getAccessControlContract(readOnly: boolean = false): Promise<ethers.Contract> {
+    const abi = await getContractABI("MarketplaceAccessControl");
+
     if (readOnly && this.provider) {
       if (!this.accessControlAddress) {
         throw new Error("AccessControl address not configured");
       }
       return new ethers.Contract(
         this.accessControlAddress,
-        MarketplaceAccessControl_ABI,
+        abi,
         this.provider
       );
     }
@@ -111,7 +113,7 @@ export class AccessControlService {
 
     return new ethers.Contract(
       this.accessControlAddress,
-      MarketplaceAccessControl_ABI,
+      abi,
       this.signer
     );
   }
@@ -124,7 +126,7 @@ export class AccessControlService {
    * Check if an account has a specific role
    */
   async hasRole(role: string, account: string): Promise<boolean> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     return await contract.hasRole(role, account);
   }
 
@@ -132,7 +134,7 @@ export class AccessControlService {
    * Check if account has a specific permission
    */
   async hasPermission(account: string, permission: string): Promise<boolean> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     return await contract.hasPermission(account, permission);
   }
 
@@ -140,7 +142,7 @@ export class AccessControlService {
    * Get all active roles for an account
    */
   async getActiveRoles(account: string): Promise<string[]> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     return await contract.getActiveRoles(account);
   }
 
@@ -148,7 +150,7 @@ export class AccessControlService {
    * Get role admin (who can grant/revoke the role)
    */
   async getRoleAdmin(role: string): Promise<string> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     return await contract.getRoleAdmin(role);
   }
 
@@ -156,7 +158,7 @@ export class AccessControlService {
    * Get number of accounts with a role
    */
   async getRoleMemberCount(role: string): Promise<bigint> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     return await contract.getRoleMemberCount(role);
   }
 
@@ -164,7 +166,7 @@ export class AccessControlService {
    * Get role member info (current and max members)
    */
   async getRoleMemberInfo(role: string): Promise<RoleMemberInfo> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     const [current, maximum] = await contract.getRoleMemberInfo(role);
 
     return { current, maximum };
@@ -174,7 +176,7 @@ export class AccessControlService {
    * Get account at specific index in role
    */
   async getRoleMember(role: string, index: bigint): Promise<string> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     return await contract.getRoleMember(role, index);
   }
 
@@ -190,7 +192,7 @@ export class AccessControlService {
     account: string,
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.grantRoleWithReason(role, account, reason);
     await tx.wait();
@@ -206,7 +208,7 @@ export class AccessControlService {
     account: string,
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.revokeRoleWithReason(role, account, reason);
     await tx.wait();
@@ -221,7 +223,7 @@ export class AccessControlService {
     role: string,
     account: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.renounceRole(role, account);
     await tx.wait();
@@ -237,7 +239,7 @@ export class AccessControlService {
     accounts: string[],
     reasons: string[]
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.batchGrantRoles(roles, accounts, reasons);
     await tx.wait();
@@ -253,7 +255,7 @@ export class AccessControlService {
     accounts: string[],
     reasons: string[]
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.batchRevokeRoles(roles, accounts, reasons);
     await tx.wait();
@@ -272,7 +274,7 @@ export class AccessControlService {
     role: string,
     isActive: boolean
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.setRoleActive(role, isActive);
     await tx.wait();
@@ -287,7 +289,7 @@ export class AccessControlService {
     role: string,
     maxMembers: bigint
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.setRoleMemberLimit(role, maxMembers);
     await tx.wait();
@@ -302,7 +304,7 @@ export class AccessControlService {
     role: string,
     permissions: RolePermissions
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getAccessControlContract();
+    const contract = await this.getAccessControlContract();
 
     const tx = await contract.updateRolePermissions(role, permissions);
     await tx.wait();
@@ -321,7 +323,7 @@ export class AccessControlService {
     role: string,
     account: string
   ): Promise<RoleAssignment[]> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     const history = await contract.getRoleHistory(role, account);
 
     return history.map((h: any) => ({
@@ -450,7 +452,7 @@ export class AccessControlService {
    * Get permissions for a role
    */
   async getRolePermissions(role: string): Promise<RolePermissions> {
-    const contract = this.getAccessControlContract(true);
+    const contract = await this.getAccessControlContract(true);
     const perms = await contract.rolePermissions(role);
 
     return {

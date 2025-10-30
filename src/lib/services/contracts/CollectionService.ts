@@ -12,12 +12,7 @@
 import { ethers } from "ethers";
 import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
-import {
-  ERC721Collection_ABI,
-  ERC1155Collection_ABI,
-  ERC721CollectionFactory_ABI,
-  ERC1155CollectionFactory_ABI,
-} from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 import {
   ZERO_ADDRESS,
   INTERFACE_IDS,
@@ -130,10 +125,11 @@ export class CollectionService {
       );
     }
 
-    const abi =
+    const abiName =
       tokenType === "ERC721"
-        ? ERC721CollectionFactory_ABI
-        : ERC1155CollectionFactory_ABI;
+        ? "ERC721CollectionFactory"
+        : "ERC1155CollectionFactory";
+    const abi = await getContractABI(abiName);
 
     return new ethers.Contract(factoryAddress, abi, this.signer);
   }
@@ -327,7 +323,7 @@ export class CollectionService {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    const collection = this.getCollectionContract(collectionAddress, tokenType);
+    const collection = await this.getCollectionContract(collectionAddress, tokenType);
 
     logger.info(
       "Adding addresses to allowlist",
@@ -348,16 +344,17 @@ export class CollectionService {
   /**
    * Get collection contract instance
    */
-  private getCollectionContract(
+  private async getCollectionContract(
     address: string,
     tokenType: NFTType
-  ): ethers.Contract {
+  ): Promise<ethers.Contract> {
     if (!this.provider) {
       throw new Error("Provider not available");
     }
 
-    const abi =
-      tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
+    const abiName =
+      tokenType === "ERC721" ? "ERC721Collection" : "ERC1155Collection";
+    const abi = await getContractABI(abiName);
 
     return new ethers.Contract(address, abi, this.signer || this.provider);
   }
@@ -379,7 +376,7 @@ export class CollectionService {
     );
     const tokenType = detectedType || params.tokenType;
 
-    const collection = this.getCollectionContract(params.collection, tokenType);
+    const collection = await this.getCollectionContract(params.collection, tokenType);
 
     // Verify contract exists
     const code = await this.provider?.getCode(params.collection);
@@ -568,7 +565,7 @@ export class CollectionService {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    const collectionContract = this.getCollectionContract(
+    const collectionContract = await this.getCollectionContract(
       collection,
       tokenType
     );
@@ -585,7 +582,7 @@ export class CollectionService {
     operator: string,
     tokenType: NFTType
   ): Promise<boolean> {
-    const collectionContract = this.getCollectionContract(
+    const collectionContract = await this.getCollectionContract(
       collection,
       tokenType
     );
@@ -605,7 +602,7 @@ export class CollectionService {
       throw new Error("Signer not available - connect wallet first");
     }
 
-    const collection = this.getCollectionContract(collectionAddress, tokenType);
+    const collection = await this.getCollectionContract(collectionAddress, tokenType);
 
     return await collection.updateMintStage();
   }
@@ -619,7 +616,7 @@ export class CollectionService {
     userAddress: string,
     tokenType: NFTType
   ): Promise<MintInfo> {
-    const collection = this.getCollectionContract(
+    const collection = await this.getCollectionContract(
       collectionAddress,
       tokenType
     );
@@ -700,7 +697,7 @@ export class CollectionService {
     address: string,
     tokenType: NFTType
   ): Promise<CollectionInfo> {
-    const collection = this.getCollectionContract(address, tokenType);
+    const collection = await this.getCollectionContract(address, tokenType);
 
     // Fetch all properties from contract
     const [
@@ -741,7 +738,7 @@ export class CollectionService {
    * Get token owner (ERC721 only)
    */
   async getTokenOwner(collection: string, tokenId: string): Promise<string> {
-    const collectionContract = this.getCollectionContract(collection, "ERC721");
+    const collectionContract = await this.getCollectionContract(collection, "ERC721");
     return await collectionContract.ownerOf(tokenId);
   }
 
@@ -753,7 +750,7 @@ export class CollectionService {
     owner: string,
     tokenId: string
   ): Promise<string> {
-    const collectionContract = this.getCollectionContract(
+    const collectionContract = await this.getCollectionContract(
       collection,
       "ERC1155"
     );

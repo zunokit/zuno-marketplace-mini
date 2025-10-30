@@ -1,43 +1,30 @@
 /**
  * Network Configuration
- * Centralized network and contract configuration with localStorage priority
+ * Simplified network configuration without hardcoded addresses
+ * Contract addresses are fetched dynamically from API
  */
 
-import { envConfigManager } from "@/lib/utils/env-config";
+import { getHubAddressFromManager } from "@/lib/services/contracts/AddressManager";
 
 export interface NetworkConfig {
   chainId: number;
   name: string;
   rpcUrl: string;
-  hubAddress?: string;
   isTestnet?: boolean;
   blockExplorer?: string;
 }
 
 /**
- * Get network configuration with localStorage priority
- * Priority: localStorage (Settings Modal) > process.env
+ * Get network configuration
+ * Contract addresses are fetched dynamically from API
  */
 function getNetworkConfigMap(): Record<number, NetworkConfig> {
-  // Get config from envConfigManager (handles localStorage > process.env priority)
-  const hubLocal = envConfigManager.getUserHubAddress(31337);
-  const hubSepolia = envConfigManager.getUserHubAddress(11155111);
-  const hubMainnet = envConfigManager.getUserHubAddress(1);
-
-  // Get RPC URLs from config manager (handles localStorage > process.env priority)
-  const rpcLocal = envConfigManager.getRpcUrl(31337) || "http://127.0.0.1:8545";
-  const rpcSepolia =
-    envConfigManager.getRpcUrl(11155111) || "https://rpc.sepolia.org";
-  const rpcMainnet =
-    envConfigManager.getRpcUrl(1) || "https://eth.public-rpc.com";
-
   return {
     // Local Network (Anvil/Hardhat)
     31337: {
       chainId: 31337,
       name: "Local Network",
-      rpcUrl: rpcLocal,
-      hubAddress: hubLocal,
+      rpcUrl: "http://127.0.0.1:8545",
       isTestnet: true,
     },
 
@@ -45,8 +32,7 @@ function getNetworkConfigMap(): Record<number, NetworkConfig> {
     11155111: {
       chainId: 11155111,
       name: "Sepolia",
-      rpcUrl: rpcSepolia,
-      hubAddress: hubSepolia,
+      rpcUrl: "https://rpc.sepolia.org",
       isTestnet: true,
       blockExplorer: "https://sepolia.etherscan.io",
     },
@@ -55,8 +41,7 @@ function getNetworkConfigMap(): Record<number, NetworkConfig> {
     1: {
       chainId: 1,
       name: "Ethereum",
-      rpcUrl: rpcMainnet,
-      hubAddress: hubMainnet,
+      rpcUrl: "https://eth.public-rpc.com",
       isTestnet: false,
       blockExplorer: "https://etherscan.io",
     },
@@ -64,18 +49,17 @@ function getNetworkConfigMap(): Record<number, NetworkConfig> {
 }
 
 export function getDefaultChainId(): number {
-  return envConfigManager.getDefaultChainId();
+  return 31337; // Default to local network for development
 }
 
 export function getNetworkConfig(chainId: number): NetworkConfig | undefined {
   return getNetworkConfigMap()[chainId];
 }
 
-export function getHubAddress(chainId: number): string | undefined {
-  return envConfigManager.getUserHubAddress(chainId);
+export function getHubAddress(chainId: number): Promise<string> {
+  return getHubAddressFromManager(chainId);
 }
 
 export function isNetworkSupported(chainId: number): boolean {
-  const hubAddress = getHubAddress(chainId);
-  return !!hubAddress && hubAddress.length > 0;
+  return !!getNetworkConfig(chainId);
 }

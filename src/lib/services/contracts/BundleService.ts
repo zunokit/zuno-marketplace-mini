@@ -6,7 +6,7 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { BundleManager_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 import { userHubService } from "@/lib/services/contracts/UserHubService";
 
 export interface BundleItem {
@@ -62,10 +62,11 @@ export class BundleService {
     if (!this.bundleManagerAddress) {
       throw new Error("Bundle manager not initialized");
     }
-    
+
+    const abi = await getContractABI("BundleManager");
     return new ethers.Contract(
       this.bundleManagerAddress,
-      BundleManager_ABI,
+      abi,
       this.signer
     );
   }
@@ -208,9 +209,10 @@ export class BundleService {
         throw new Error("BundleManager address not configured");
       }
 
+      const abi = await getContractABI("BundleManager");
       const contract = new ethers.Contract(
         address,
-        BundleManager_ABI,
+        abi,
         this.provider
       );
 

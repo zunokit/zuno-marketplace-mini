@@ -7,7 +7,7 @@
 import { ethers } from "ethers";
 import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
-import { OfferManager_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 export interface NFTOfferParams {
   collection: string;
@@ -59,10 +59,11 @@ export class OfferService {
     if (!this.offerManagerAddress) {
       throw new Error("Offer manager not initialized");
     }
-    
+
+    const abi = await getContractABI("OfferManager");
     return new ethers.Contract(
       this.offerManagerAddress,
-      OfferManager_ABI,
+      abi,
       this.signer
     );
   }
@@ -272,9 +273,10 @@ export class OfferService {
         throw new Error("OfferManager address not loaded from hub");
       }
 
+      const abi = await getContractABI("OfferManager");
       const contract = new ethers.Contract(
         this.offerManagerAddress,
-        OfferManager_ABI,
+        abi,
         this.provider
       );
 

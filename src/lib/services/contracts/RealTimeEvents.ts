@@ -7,14 +7,7 @@
 import { ethers } from "ethers";
 import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
-import {
-  ERC721NFTExchange_ABI,
-  ERC1155NFTExchange_ABI,
-  EnglishAuction_ABI,
-  DutchAuction_ABI,
-  BundleManager_ABI,
-  OfferManager_ABI,
-} from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 export interface EventSubscription {
   id: string;
@@ -77,9 +70,10 @@ export class RealTimeEventsService {
 
       const addresses = await userHubService.getAddresses();
       const exchangeAddress = addresses.erc721Exchange;
+      const abi = await getContractABI("ERC721NFTExchange");
       const exchange = new ethers.Contract(
         exchangeAddress,
-        ERC721NFTExchange_ABI,
+        abi,
         this.provider
       );
 
@@ -157,9 +151,10 @@ export class RealTimeEventsService {
 
       const offerAddresses = await userHubService.getAddresses();
       const offerAddress = offerAddresses.offerManager;
+      const abi = await getContractABI("OfferManager");
       const offerManager = new ethers.Contract(
         offerAddress,
-        OfferManager_ABI,
+        abi,
         this.provider
       );
 
@@ -237,9 +232,10 @@ export class RealTimeEventsService {
 
       const auctionAddresses = await userHubService.getAddresses();
       const englishAuctionAddress = auctionAddresses.englishAuction;
+      const abi = await getContractABI("EnglishAuction");
       const englishAuction = new ethers.Contract(
         englishAuctionAddress,
-        EnglishAuction_ABI,
+        abi,
         this.provider
       );
 
@@ -317,9 +313,10 @@ export class RealTimeEventsService {
 
       const bundleAddresses = await userHubService.getAddresses();
       const bundleAddress = bundleAddresses.bundleManager;
+      const abi = await getContractABI("BundleManager");
       const bundleManager = new ethers.Contract(
         bundleAddress,
-        BundleManager_ABI,
+        abi,
         this.provider
       );
 

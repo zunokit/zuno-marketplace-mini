@@ -7,6 +7,7 @@
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { envConfigManager } from "@/lib/utils/env-config";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // MarketplaceValidator is deployment-specific and not in UserHub
 // Must be configured separately via environment
@@ -73,8 +74,13 @@ export class MarketplaceValidatorService {
         throw new Error("No contract at MarketplaceValidator address");
       }
 
-      // Define MarketplaceValidator ABI
-      const MarketplaceValidator_ABI = [
+      // Note: MarketplaceValidator is not yet deployed and not in ABI Manager
+      // Using inline ABI until contract is deployed and added to the API
+      logger.info("Using inline ABI for MarketplaceValidator (not yet deployed)", null, {
+        component: "MarketplaceValidatorService",
+        action: "initialize"
+      });
+      const abi = [
         "function isNFTAvailable(address nftContract, uint256 tokenId, address owner) external view returns (bool isAvailable, uint8 status)",
         "function getNFTIdentifier(address nftContract, uint256 tokenId, address owner) external pure returns (bytes32)",
         "function getNFTStatus(address nftContract, uint256 tokenId, address owner) external view returns (uint8)",
@@ -97,7 +103,7 @@ export class MarketplaceValidatorService {
 
       this.validator = new ethers.Contract(
         validatorAddress,
-        MarketplaceValidator_ABI,
+        abi,
         signer || provider
       );
 

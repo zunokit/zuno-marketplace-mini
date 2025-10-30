@@ -7,6 +7,7 @@
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { envConfigManager } from "@/lib/utils/env-config";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // AdminHub is deployment-specific and not in UserHub
 // Must be configured separately via environment
@@ -69,25 +70,11 @@ export class AdminHubService {
         throw new Error("No contract at AdminHub address");
       }
 
-      // Note: We would need AdminHub_ABI imported
-      // For now, using a placeholder - this needs the actual ABI
-      const AdminHub_ABI = [
-        "function registerExchange(uint8 tokenStandard, address exchange) external",
-        "function unregisterExchange(uint8 tokenStandard) external",
-        "function registerCollectionFactory(string tokenType, address factory) external",
-        "function unregisterCollectionFactory(string tokenType) external",
-        "function registerAuction(uint8 auctionType, address auction) external",
-        "function unregisterAuction(uint8 auctionType) external",
-        "function setFeeRegistry(address feeRegistry) external",
-        "function setAdditionalContracts(address validator, address emergency, address access, address history) external",
-        "function emergencyPause() external",
-        "function emergencyUnpause() external",
-        "function getAllRegistries() external view returns (address, address, address, address)",
-      ];
+      const abi = await getContractABI("AdminHub");
 
       this.adminHub = new ethers.Contract(
         adminHubAddress,
-        AdminHub_ABI,
+        abi,
         signer || provider
       );
 
