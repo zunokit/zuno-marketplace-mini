@@ -35,7 +35,7 @@ import {
   Sparkles,
   TrendingUp
 } from "lucide-react";
-import { collectionService } from "@/lib/services/contracts/CollectionService";
+import { collectionService } from "@/lib/services/contracts";
 import { ProviderFactory } from "@/lib/services/web3/provider-factory";
 
 // Types

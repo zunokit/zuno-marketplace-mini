@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { logger } from "@/lib/utils/logger";
 import { addNotification } from "@/lib/store/slices/notificationSlice";
-import { bundleService } from "@/lib/services/contracts/BundleService";
+import { bundleService } from "@/lib/services/contracts";
 
 export const useBundle = () => {
   const dispatch = useAppDispatch();

@@ -34,7 +34,7 @@ import {
   royaltyManagerService,
   RoyaltyRecipient,
   RoyaltyCaps,
-} from "@/lib/services/contracts/RoyaltyManagerService";
+} from "@/lib/services/contracts";
 import { DollarSign, Users, Settings, CheckCircle } from "lucide-react";
 
 interface RoyaltyConfig {

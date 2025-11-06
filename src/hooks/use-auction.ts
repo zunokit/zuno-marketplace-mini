@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { logger } from "@/lib/utils/logger";
 import { addNotification } from "@/lib/store/slices/notificationSlice";
-import { auctionService } from "@/lib/services/contracts/AuctionService";
+import { auctionService } from "@/lib/services/contracts";
 
 export const useAuction = () => {
   const dispatch = useAppDispatch();

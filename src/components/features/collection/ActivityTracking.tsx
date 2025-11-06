@@ -10,7 +10,7 @@ import { logger } from "@/lib/utils/logger";
 import { generateReactKey } from "@/lib/utils/uuid";
 import { ethers } from "ethers";
 import { eventService } from "@/lib/services/blockchain/EventService";
-import { collectionService } from "@/lib/services/contracts/CollectionService";
+import { collectionService } from "@/lib/services/contracts";
 import {
   ParsedEvent,
   ActivityEvent,

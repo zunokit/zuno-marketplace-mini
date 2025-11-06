@@ -34,7 +34,7 @@ import {
   emergencyManagerService,
   EmergencyManagerService,
   EmergencyStatus,
-} from "@/lib/services/contracts/EmergencyManagerService";
+} from "@/lib/services/contracts";
 import {
   AlertTriangle,
   Shield,
