@@ -50,29 +50,51 @@ export const fetchActiveListings = createAsyncThunk(
       // Combine and enrich with metadata
       const allListings = [...erc721Listings, ...erc1155Listings];
 
-      // Fetch metadata for each NFT
+      // Fetch metadata for each NFT and map to slice Listing type
       const enrichedListings = await Promise.all(
-        allListings.map(async (listing) => {
+        allListings.map(async (listing): Promise<Listing> => {
           try {
             const metadata = await nftMetadataService.getNFTMetadata(
-              listing.tokenContract,
-              listing.tokenId
+              listing.contractAddress,
+              listing.tokenId.toString()
             );
 
             return {
-              ...listing,
+              id: listing.listingId,
+              seller: listing.seller,
+              tokenContract: listing.contractAddress,
+              tokenId: listing.tokenId.toString(),
+              price: listing.price.toString(),
+              currency: listing.paymentToken,
+              status: listing.isActive ? "ACTIVE" : "CANCELLED",
+              tokenType: listing.tokenType,
+              amount: listing.amount.toString(),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
               nft: {
                 name: metadata?.name,
                 image: metadata?.image,
                 collection: {
-                  name: metadata?.collectionName,
+                  name: listing.contractAddress, // Use contract address as fallback
                   verified: false, // TODO: Implement verification check
                 },
               },
             };
           } catch (error) {
-            // Return listing without metadata if fetch fails
-            return listing;
+            // Return minimal listing without metadata if fetch fails
+            return {
+              id: listing.listingId,
+              seller: listing.seller,
+              tokenContract: listing.contractAddress,
+              tokenId: listing.tokenId.toString(),
+              price: listing.price.toString(),
+              currency: listing.paymentToken,
+              status: listing.isActive ? "ACTIVE" : "CANCELLED",
+              tokenType: listing.tokenType,
+              amount: listing.amount.toString(),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            };
           }
         })
       );

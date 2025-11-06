@@ -65,12 +65,11 @@ export function ActivityTracking({
       setError(null);
 
       try {
-        // Get collection contract using provider
-        const { ERC721Collection_ABI, ERC1155Collection_ABI } = await import(
-          "@/lib/contracts/abis"
-        );
-        const abi =
-          tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
+        // Get collection contract ABI
+        const { getContractABI } = await import("@/lib/contracts/abi-manager");
+        const contractName =
+          tokenType === "ERC721" ? "ERC721Collection" : "ERC1155Collection";
+        const abi = await getContractABI(contractName as any);
 
         // Get provider from web3Utils
         const { web3Utils } = await import("@/lib/utils/web3");

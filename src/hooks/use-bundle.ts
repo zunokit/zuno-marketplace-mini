@@ -57,20 +57,19 @@ export const useBundle = () => {
           })
         );
 
-        const receipt = await tx.wait();
+        // Service already waits for transaction and returns bundleId
+        const bundleId = await tx;
 
-        if (receipt?.status === 1) {
-          logger.endTimer("create-bundle", "Bundle created successfully");
-          dispatch(
-            addNotification({
-              type: "success",
-              title: "Bundle Created",
-              message: "Your bundle has been created!",
-            })
-          );
-        }
+        logger.endTimer("create-bundle", "Bundle created successfully");
+        dispatch(
+          addNotification({
+            type: "success",
+            title: "Bundle Created",
+            message: `Your bundle has been created! ID: ${bundleId}`,
+          })
+        );
 
-        return receipt;
+        return bundleId;
       } catch (error) {
         logger.error("Failed to create bundle", error, {
           component: "useBundle",
@@ -106,7 +105,11 @@ export const useBundle = () => {
           action: "buyBundle",
         });
 
-        const tx = await bundleService.purchaseBundle(bundleId);
+        // Get bundle info to get the price
+        const bundleInfo = await bundleService.getBundle(bundleId);
+        const price = bundleInfo.totalPrice || "0";
+
+        const tx = await bundleService.purchaseBundle(bundleId, price);
 
         dispatch(
           addNotification({
