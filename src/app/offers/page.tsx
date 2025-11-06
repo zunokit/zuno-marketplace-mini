@@ -132,7 +132,7 @@ export default function OffersPage() {
           if (filterMine && offer.offerer !== address) return null;
 
           // Get metadata
-          let metadata: any = {};
+          const metadata: any = {};
           try {
             if (activeTab === "nft" && offer.tokenId) {
               const nftMeta = await nftMetadataService.getNFTMetadata(

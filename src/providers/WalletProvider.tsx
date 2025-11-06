@@ -491,13 +491,12 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // Auto-reconnect on mount
   useEffect(() => {
     let mounted = true;
-    let timeoutId: NodeJS.Timeout;
 
     const attemptReconnect = async () => {
       if (!mounted || state.isConnected || state.isConnecting) return;
 
       const connectionData = await WalletService.reconnect();
-      
+
       if (connectionData && mounted) {
         dispatch({
           type: ActionType.CONNECT_SUCCESS,
@@ -515,7 +514,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     };
 
     // Delay reconnect to avoid race conditions
-    timeoutId = setTimeout(attemptReconnect, 500);
+    const timeoutId = setTimeout(attemptReconnect, 500);
 
     return () => {
       mounted = false;
