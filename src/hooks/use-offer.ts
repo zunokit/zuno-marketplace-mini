@@ -31,11 +31,11 @@ export const useOffer = () => {
           action: "makeNFTOffer",
         });
 
-        const tx = await offerService.createNFTOffer({
-          nftContract: params.contractAddress,
+        const offerId = await offerService.createNFTOffer({
+          collection: params.contractAddress,
           tokenId: params.tokenId,
           price: params.price,
-          duration: parseInt(params.expiry) * 86400, // Convert days to seconds
+          expirationTime: Math.floor(Date.now() / 1000) + parseInt(params.expiry) * 86400, // Unix timestamp
         });
 
         dispatch(
@@ -46,20 +46,17 @@ export const useOffer = () => {
           })
         );
 
-        const receipt = await tx.wait();
+        // Service already waits and returns offerId
+        logger.endTimer("make-nft-offer", "NFT offer created");
+        dispatch(
+          addNotification({
+            type: "success",
+            title: "Offer Created",
+            message: `Your NFT offer has been created! ID: ${offerId}`,
+          })
+        );
 
-        if (receipt?.status === 1) {
-          logger.endTimer("make-nft-offer", "NFT offer created");
-          dispatch(
-            addNotification({
-              type: "success",
-              title: "Offer Created",
-              message: "Your NFT offer has been created!",
-            })
-          );
-        }
-
-        return receipt;
+        return offerId;
       } catch (error) {
         logger.error("Failed to make NFT offer", error, {
           component: "useOffer",
@@ -99,11 +96,11 @@ export const useOffer = () => {
           action: "makeCollectionOffer",
         });
 
-        const tx = await offerService.createCollectionOffer({
+        const offerId = await offerService.createCollectionOffer({
           collection: params.contractAddress,
-          pricePerItem: params.price,
+          price: params.price,
           quantity: parseInt(params.quantity),
-          duration: parseInt(params.expiry) * 86400, // Convert days to seconds
+          expirationTime: Math.floor(Date.now() / 1000) + parseInt(params.expiry) * 86400, // Unix timestamp
         });
 
         dispatch(
@@ -114,20 +111,17 @@ export const useOffer = () => {
           })
         );
 
-        const receipt = await tx.wait();
+        // Service already waits and returns offerId
+        logger.endTimer("make-collection-offer", "Collection offer created");
+        dispatch(
+          addNotification({
+            type: "success",
+            title: "Offer Created",
+            message: `Your collection offer has been created! ID: ${offerId}`,
+          })
+        );
 
-        if (receipt?.status === 1) {
-          logger.endTimer("make-collection-offer", "Collection offer created");
-          dispatch(
-            addNotification({
-              type: "success",
-              title: "Offer Created",
-              message: "Your collection offer has been created!",
-            })
-          );
-        }
-
-        return receipt;
+        return offerId;
       } catch (error) {
         logger.error("Failed to make collection offer", error, {
           component: "useOffer",
@@ -169,13 +163,12 @@ export const useOffer = () => {
           action: "makeTraitOffer",
         });
 
-        const tx = await offerService.createTraitOffer({
+        const offerId = await offerService.createTraitOffer({
           collection: params.contractAddress,
-          traitType: params.traitType,
-          traitValue: params.traitValue,
-          pricePerItem: params.price,
+          traits: [`${params.traitType}:${params.traitValue}`], // Combine into traits array
+          price: params.price,
           quantity: parseInt(params.quantity),
-          duration: parseInt(params.expiry) * 86400, // Convert days to seconds
+          expirationTime: Math.floor(Date.now() / 1000) + parseInt(params.expiry) * 86400, // Unix timestamp
         });
 
         dispatch(
@@ -186,20 +179,17 @@ export const useOffer = () => {
           })
         );
 
-        const receipt = await tx.wait();
+        // Service already waits and returns offerId
+        logger.endTimer("make-trait-offer", "Trait offer created");
+        dispatch(
+          addNotification({
+            type: "success",
+            title: "Offer Created",
+            message: `Your trait offer has been created! ID: ${offerId}`,
+          })
+        );
 
-        if (receipt?.status === 1) {
-          logger.endTimer("make-trait-offer", "Trait offer created");
-          dispatch(
-            addNotification({
-              type: "success",
-              title: "Offer Created",
-              message: "Your trait offer has been created!",
-            })
-          );
-        }
-
-        return receipt;
+        return offerId;
       } catch (error) {
         logger.error("Failed to make trait offer", error, {
           component: "useOffer",

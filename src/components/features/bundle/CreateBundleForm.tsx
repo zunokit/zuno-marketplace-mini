@@ -72,8 +72,8 @@ export function CreateBundleForm({ onSuccess }: CreateBundleFormProps = {}) {
         duration: values.duration,
       });
 
-      if (receipt?.hash) {
-        setTxHash(receipt.hash);
+      if (receipt) {
+        setTxHash(receipt); // receipt is now bundleId string
         form.reset();
         onSuccess?.();
       }

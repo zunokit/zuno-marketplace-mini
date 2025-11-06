@@ -17,6 +17,7 @@ export const useAuction = () => {
     async (params: {
       tokenContract: string;
       tokenId: string;
+      amount?: string;
       startPrice: string;
       reservePrice?: string;
       minBidIncrement: string;
@@ -37,10 +38,10 @@ export const useAuction = () => {
         const tx = await auctionService.createEnglishAuction({
           nftContract: params.tokenContract,
           tokenId: params.tokenId,
-          startingBid: params.startPrice,
+          amount: params.amount || "1",
+          startPrice: params.startPrice,
           reservePrice: params.reservePrice || "0",
-          minBidIncrement: params.minBidIncrement,
-          duration: parseInt(params.duration) * 86400, // Convert days to seconds
+          duration: parseInt(params.duration), // in hours as per type
         });
 
         dispatch(
@@ -91,8 +92,10 @@ export const useAuction = () => {
     async (params: {
       tokenContract: string;
       tokenId: string;
+      amount?: string;
       startPrice: string;
       endPrice: string;
+      priceDropPerHour?: string;
       duration: string; // in hours
     }) => {
       try {
@@ -110,9 +113,11 @@ export const useAuction = () => {
         const tx = await auctionService.createDutchAuction({
           nftContract: params.tokenContract,
           tokenId: params.tokenId,
+          amount: params.amount || "1",
           startPrice: params.startPrice,
-          endPrice: params.endPrice,
-          duration: parseInt(params.duration) * 3600, // Convert hours to seconds
+          reservePrice: params.endPrice || "0", // endPrice maps to reservePrice
+          duration: parseInt(params.duration), // in hours as per type
+          priceDropPerHour: params.priceDropPerHour || "0.01",
         });
 
         dispatch(
@@ -232,7 +237,14 @@ export const useAuction = () => {
           { component: "useAuction", action: "buyDutchAuction" }
         );
 
-        const tx = await auctionService.buyFromDutchAuction(auctionId);
+        // Get current price from auction
+        const auctionInfo = await auctionService.getDutchAuctionInfo(auctionId);
+        const currentPrice = auctionInfo.currentPrice || "0";
+
+        const tx = await auctionService.buyFromDutchAuction(
+          auctionId,
+          currentPrice
+        );
 
         dispatch(
           addNotification({
