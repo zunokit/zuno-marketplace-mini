@@ -510,7 +510,31 @@ export class ExchangeService {
   }
 
   /**
-   * List NFT for sale
+   * List an NFT for sale on the marketplace
+   *
+   * Creates a listing for an NFT (ERC721 or ERC1155) that buyers can purchase.
+   * The NFT must be approved for the exchange contract before listing.
+   *
+   * @param params - Listing parameters
+   * @param params.contractAddress - NFT contract address
+   * @param params.tokenId - Token ID to list
+   * @param params.price - Sale price in ETH (as string, e.g. "0.1")
+   * @param params.duration - Listing duration in seconds
+   * @param params.amount - Amount to list (for ERC1155 only, defaults to "1")
+   * @param params.tokenType - Token standard ("ERC721" or "ERC1155")
+   * @returns Listing ID as string
+   * @throws {Error} If user is not connected, NFT not approved, or transaction fails
+   *
+   * @example
+   * ```ts
+   * const listingId = await exchangeService.listNFT({
+   *   contractAddress: "0x...",
+   *   tokenId: "1",
+   *   price: "0.5",
+   *   duration: "86400", // 24 hours
+   *   tokenType: "ERC721"
+   * });
+   * ```
    */
   async listNFT(params: ListingParams): Promise<string> {
     try {
@@ -861,19 +885,34 @@ export class ExchangeService {
 
   /**
    * Format transaction error for user-friendly messages
+   *
+   * Converts low-level blockchain errors into readable error messages.
+   * Handles common error cases like user rejection, insufficient funds,
+   * and contract reverts.
+   *
+   * @param error - Error from ethers.js transaction
+   * @returns Formatted Error object with user-friendly message
    */
-  private formatTransactionError(error: any): Error {
-    if (error.code === "ACTION_REJECTED") {
-      return new Error("Transaction was rejected by user");
+  private formatTransactionError(error: unknown): Error {
+    if (typeof error === "object" && error !== null) {
+      const err = error as { code?: string; message?: string };
+
+      if (err.code === "ACTION_REJECTED") {
+        return new Error("Transaction was rejected by user");
+      }
+      if (err.code === "INSUFFICIENT_FUNDS") {
+        return new Error("Insufficient funds to complete transaction");
+      }
+      if (err.message?.includes("execution reverted")) {
+        const revertReason = err.message.split("execution reverted: ")[1];
+        return new Error(revertReason || "Transaction failed");
+      }
+      if (err.message) {
+        return new Error(err.message);
+      }
     }
-    if (error.code === "INSUFFICIENT_FUNDS") {
-      return new Error("Insufficient funds to complete transaction");
-    }
-    if (error.message?.includes("execution reverted")) {
-      const revertReason = error.message.split("execution reverted: ")[1];
-      return new Error(revertReason || "Transaction failed");
-    }
-    return new Error(error.message || "Transaction failed");
+
+    return new Error("Transaction failed");
   }
 }
 
