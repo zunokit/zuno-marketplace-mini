@@ -1,9 +1,9 @@
 /**
  * Contract Services - Centralized export
- * All services now use MarketplaceHub for address discovery
+ * All services now use UserHub for address discovery
  */
 
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { exchangeService } from "./ExchangeService";
 import { auctionService } from "./AuctionService";
@@ -18,16 +18,17 @@ import { listingValidatorService } from "./ListingValidatorService";
 import { listingHistoryTrackerService } from "./ListingHistoryTrackerService";
 import { collectionVerifierService } from "./CollectionVerifierService";
 import { timelockService } from "./TimelockService";
+import { adminHubService } from "./AdminHubService";
+import { marketplaceValidatorService } from "./MarketplaceValidatorService";
 import { ZERO_ADDRESS } from "@/lib/constants";
 
 export {
-  marketplaceHubService,
-  MarketplaceHubService,
-} from "./MarketplaceHubService";
+  userHubService,
+  UserHubService,
+} from "./UserHubService";
 export type {
-  MarketplaceAddresses,
-  FeeBreakdown,
-} from "./MarketplaceHubService";
+  UserHubAddresses,
+} from "./UserHubService";
 
 export { exchangeService, ExchangeService } from "./ExchangeService";
 export type { ListingParams, BatchListingParams } from "./ExchangeService";
@@ -145,11 +146,39 @@ export type {
   PendingAction,
 } from "./TimelockService";
 
+export { adminHubService, AdminHubService } from "./AdminHubService";
+export type {
+  AdminHubConfig,
+  TokenStandard,
+  AuctionType as AdminAuctionType,
+} from "./AdminHubService";
+
+export { 
+  marketplaceValidatorService, 
+  MarketplaceValidatorService 
+} from "./MarketplaceValidatorService";
+export type {
+  NFTStatus,
+  NFTStatusInfo,
+  ValidationResult as ValidatorValidationResult,
+} from "./MarketplaceValidatorService";
+
 export {
   collectionQueryService,
   CollectionQueryService,
 } from "./CollectionQueryService";
 export type { CollectionData } from "./CollectionQueryService";
+
+// Export NFT Metadata Service
+export { nftMetadataService } from "../NFTMetadataService";
+export type { NFTMetadata, CollectionMetadata as CollectionMetadataInfo } from "../NFTMetadataService";
+
+// Export User NFT Service
+export { userNFTService } from "../UserNFTService";
+export type { UserNFT } from "../UserNFTService";
+
+// Export Listing type from ExchangeService
+export type { Listing } from "./ExchangeService";
 
 /**
  * Initialize all services
@@ -170,16 +199,22 @@ export async function initializeServices(
   signer?: any
 ): Promise<void> {
   try {
-    // Initialize Hub first (it loads all addresses)
-    await marketplaceHubService.initialize(provider, signer);
+    // Initialize UserHub first (it loads all addresses)
+    await userHubService.initialize(provider, signer);
+    
+    // Initialize metadata and user NFT services
+    const { nftMetadataService } = await import("../NFTMetadataService");
+    const { userNFTService } = await import("../UserNFTService");
+    await nftMetadataService.initialize(provider);
+    await userNFTService.initialize(provider);
 
     // Check if we have valid addresses
-    const addresses = marketplaceHubService.getAddresses();
+    const addresses = userHubService.getAddresses();
     const hasValidAddresses = addresses.erc721Exchange !== ZERO_ADDRESS;
 
     if (hasValidAddresses) {
       // Initialize other services only if we have valid addresses
-      const services = [
+      const coreServices = [
         exchangeService,
         auctionService,
         bundleService,
@@ -195,14 +230,30 @@ export async function initializeServices(
         timelockService,
       ];
 
+      // Initialize optional services (may not have addresses configured)
+      const optionalServices = [
+        adminHubService,
+        marketplaceValidatorService,
+      ];
+
+      // Initialize core services
       await Promise.all(
-        services.map((svc) => svc.initialize(provider, signer))
+        coreServices.map((svc) => svc.initialize(provider, signer))
       );
 
+      // Initialize optional services without failing
+      await Promise.allSettled(
+        optionalServices.map((svc) => svc.initialize(provider, signer))
+      );
+
+      const totalServices = coreServices.length + optionalServices.length;
+
       logger.success(
-        `All marketplace services initialized (${services.length} services)`,
+        `All marketplace services initialized (${totalServices} services)`,
         {
-          serviceCount: services.length,
+          coreServices: coreServices.length,
+          optionalServices: optionalServices.length,
+          totalServices,
         },
         { component: "ContractServices", action: "initialize" }
       );

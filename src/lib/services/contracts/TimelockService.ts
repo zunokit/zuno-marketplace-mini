@@ -6,8 +6,8 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
-import { MarketplaceTimelock_ABI } from "@/lib/contracts/abis";
+import { userHubService } from "./UserHubService";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -73,14 +73,16 @@ export class TimelockService {
   /**
    * Get timelock contract instance
    */
-  private getTimelockContract(readOnly: boolean = false): ethers.Contract {
+  private async getTimelockContract(readOnly: boolean = false): Promise<ethers.Contract> {
+    const abi = await getContractABI("MarketplaceTimelock");
+
     if (readOnly && this.provider) {
       if (!this.timelockAddress) {
         throw new Error("MarketplaceTimelock address not configured");
       }
       return new ethers.Contract(
         this.timelockAddress,
-        MarketplaceTimelock_ABI,
+        abi,
         this.provider
       );
     }
@@ -95,7 +97,7 @@ export class TimelockService {
 
     return new ethers.Contract(
       this.timelockAddress,
-      MarketplaceTimelock_ABI,
+      abi,
       this.signer
     );
   }
@@ -120,7 +122,7 @@ export class TimelockService {
     tx: ethers.ContractTransactionResponse;
     actionId: string;
   }> {
-    const contract = this.getTimelockContract();
+    const contract = await this.getTimelockContract();
 
     const tx = await contract.scheduleAction(target, data, value, description);
     const receipt = await tx.wait();
@@ -148,7 +150,7 @@ export class TimelockService {
   async executeAction(
     actionId: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getTimelockContract();
+    const contract = await this.getTimelockContract();
 
     const tx = await contract.executeAction(actionId);
     await tx.wait();
@@ -163,7 +165,7 @@ export class TimelockService {
   async cancelAction(
     actionId: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getTimelockContract();
+    const contract = await this.getTimelockContract();
 
     const tx = await contract.cancelAction(actionId);
     await tx.wait();
@@ -179,7 +181,7 @@ export class TimelockService {
    * Get action data
    */
   async getActionData(actionId: string): Promise<ActionData> {
-    const contract = this.getTimelockContract(true);
+    const contract = await this.getTimelockContract(true);
     const action = await contract.getActionData(actionId);
 
     return {
@@ -199,7 +201,7 @@ export class TimelockService {
    * Get time remaining until action can be executed
    */
   async getTimeRemaining(actionId: string): Promise<bigint> {
-    const contract = this.getTimelockContract(true);
+    const contract = await this.getTimelockContract(true);
     return await contract.getTimeRemaining(actionId);
   }
 
@@ -207,7 +209,7 @@ export class TimelockService {
    * Check if action is ready to execute
    */
   async isActionReady(actionId: string): Promise<boolean> {
-    const contract = this.getTimelockContract(true);
+    const contract = await this.getTimelockContract(true);
     return await contract.isActionReady(actionId);
   }
 
@@ -215,7 +217,7 @@ export class TimelockService {
    * Get current timelock duration
    */
   async getTimelockDuration(): Promise<bigint> {
-    const contract = this.getTimelockContract(true);
+    const contract = await this.getTimelockContract(true);
     return await contract.timelockDuration();
   }
 
@@ -249,7 +251,7 @@ export class TimelockService {
     tx: ethers.ContractTransactionResponse;
     actionId: string;
   }> {
-    const contract = this.getTimelockContract();
+    const contract = await this.getTimelockContract();
 
     // Encode the function call
     const iface = contract.interface;
@@ -425,7 +427,7 @@ export class TimelockService {
       throw new Error("Provider or address not available");
     }
 
-    const contract = this.getTimelockContract(true);
+    const contract = await this.getTimelockContract(true);
 
     // Get ActionScheduled events
     const filter = contract.filters.ActionScheduled();
@@ -474,7 +476,7 @@ export class TimelockService {
   async monitorTimelockEvents(
     callback: (eventName: string, event: ethers.LogDescription) => void
   ): Promise<void> {
-    const contract = this.getTimelockContract(true);
+    const contract = await this.getTimelockContract(true);
 
     contract.on("ActionScheduled", (...args) => {
       const event = args[args.length - 1];
@@ -496,7 +498,7 @@ export class TimelockService {
    * Stop monitoring events
    */
   async stopMonitoring(): Promise<void> {
-    const contract = this.getTimelockContract(true);
+    const contract = await this.getTimelockContract(true);
     contract.removeAllListeners();
   }
 }

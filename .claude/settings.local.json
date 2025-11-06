@@ -9,7 +9,10 @@
       "Bash(npx eslint:*)",
       "Bash(node:*)",
       "Bash(npx hardhat node:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(forge test:*)",
+      "Bash(npm run extract-abis:*)"
     ],
     "deny": [],
     "ask": []

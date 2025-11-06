@@ -41,15 +41,36 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 - `ListingHistoryTrackerService` - Analytics and stats
 - `CollectionVerifierService` - Collection verification
 
-See `docs/SERVICE_ARCHITECTURE.md` for complete service documentation.
-
 ### 3. Contract ABI Management
 
-- ABIs stored in `src/lib/contracts/abis/`
-- Auto-generated from Foundry artifacts using `node scripts/extract-abis.js`
-- ABI exports follow pattern: `{ContractName}_ABI`
-- Import from: `import { MarketplaceHub_ABI } from '@/lib/contracts/abis'`
-- **Never manually edit ABI files** - always regenerate from contracts
+**Dynamic ABI Loading from API** (Production):
+
+- ABIs are fetched from Zuno Marketplace ABIs API at runtime
+- Managed by `ABIManager` in `src/lib/contracts/abi-manager.ts`
+- Automatic caching with TanStack React Query (1-hour stale time, 24-hour cache)
+- **Configuration**: Set `NEXT_PUBLIC_ZUNO_API_URL` and `NEXT_PUBLIC_ZUNO_API_KEY` in `.env`
+
+**Usage in Services**:
+```typescript
+import { getContractABI } from "@/lib/contracts/abi-manager";
+
+// Fetch ABI and create contract
+const abi = await getContractABI("UserHub");
+const contract = new ethers.Contract(address, abi, signer);
+```
+
+**Usage in React Components**:
+```typescript
+import { useContractABIByName } from "@/lib/hooks/useContractABI";
+
+const { data: contractABI, isLoading } = useContractABIByName("UserHub");
+```
+
+**Benefits**:
+- No hardcoded ABIs in bundle (smaller bundle size)
+- Automatic updates when contracts are upgraded
+- Single source of truth from API
+- Built-in versioning and rollback support
 
 ### 4. Development Modes
 
@@ -63,9 +84,8 @@ anvil --port 8545
 cd ../zuno-marketplace-contracts
 make deploy-all-local
 
-# Terminal 3: Extract ABIs and run
+# Terminal 3: Run the application
 cd ../zuno-marketplace-mini
-node scripts/extract-abis.js
 npm run dev:local
 ```
 
@@ -173,48 +193,13 @@ npm run type-check       # TypeScript type checking
 
 ### Utility Scripts
 
-**Via npm (recommended)**:
-
-```bash
-npm run extract-abis         # Extract ABIs with default paths
-npm run extract-abis:help    # Show help and options
-npm run test:all             # Run all test scripts
-```
-
-**Direct usage**:
-
-```bash
-# Extract ABIs (supports custom paths)
-node scripts/extract-abis.js [--contracts-dir <path>] [--output-dir <path>]
-
-# Manage mint stages (TypeScript - requires tsx)
-npx tsx scripts/start-mint.ts <collection-address> [target-stage]
-
-# Manage allowlist (TypeScript - requires tsx)
-npx tsx scripts/manage-allowlist.ts <collection-address> <add|remove|check> <addresses...>
-
-# Collection creation (JavaScript)
-node scripts/collections/create-erc721.js
-node scripts/collections/create-erc1155.js
-
-# NFT minting (JavaScript)
-node scripts/nfts/mint-erc721.js <collection-address> [quantity] [recipient]
-node scripts/nfts/mint-erc1155.js <collection-address> <token-id> <amount> [recipient]
-```
-
-See `scripts/README.md` for complete script documentation.
-
 ### Working with Contracts
 
 **When contracts are updated**:
 
 1. Deploy new contracts in `zuno-marketplace-contracts`
 2. Copy MarketplaceHub address to `.env.local` or Settings Modal
-3. Run extract-abis to update ABIs
-   - Via npm: `npm run extract-abis`
-   - With custom paths: `node scripts/extract-abis.js --contracts-dir /path/to/contracts/out`
-   - Show help: `npm run extract-abis:help`
-4. Restart dev server
+3. Restart dev server
 
 **Service initialization pattern**:
 
@@ -281,8 +266,16 @@ The project doesn't have formal tests yet. When testing manually:
 Required variables:
 
 ```bash
+# Chain Configuration
 NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337  # or 11155111 for Sepolia
-NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
+
+# Hub Contract Addresses
+NEXT_PUBLIC_USER_HUB_LOCAL=0x...  # From contract deployment
+NEXT_PUBLIC_ADMIN_HUB_LOCAL=0x...  # From contract deployment
+
+# Zuno Marketplace ABIs API (for dynamic ABI loading)
+NEXT_PUBLIC_ZUNO_API_URL=http://localhost:3000  # URL to Zuno ABIs API
+NEXT_PUBLIC_ZUNO_API_KEY=  # Optional API key for authenticated requests
 ```
 
 **Priority**: localStorage (Settings Modal) > process.env (.env.local)
@@ -294,10 +287,18 @@ NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
 
 ### Contract Naming Standards
 
-- Contracts: PascalCase (e.g., `MarketplaceHub`)
-- ABIs: `{ContractName}_ABI` (e.g., `MarketplaceHub_ABI`)
+- Contracts: PascalCase (e.g., `UserHub`, `ERC721NFTExchange`)
+- ABI Manager Names: Contract name without suffix (e.g., `"UserHub"`, `"ERC721NFTExchange"`)
 - Services: `{ContractName}Service` class, `{contractName}Service` instance
-- See `docs/CONTRACT_NAMING_STANDARD.md` for complete standards
+
+**Example**:
+```typescript
+// Fetch ABI by contract name
+const abi = await getContractABI("UserHub");
+
+// Use in service
+import { userHubService } from "@/lib/services/contracts";
+```
 
 ### Security Notes
 
@@ -430,10 +431,6 @@ src/
 
 - NFT must be approved before listing: `await collectionService.setApprovalForAll(...)`
 
-**"ABIs outdated"**
-
-- Run `node scripts/extract-abis.js` to regenerate ABIs from latest contracts
-
 **"ESLint no-console error"**
 
 - Replace `console.log` with `logger.info()` and add context
@@ -447,11 +444,3 @@ src/
 - For local networks: Restart Anvil and redeploy contracts
 - For testnets: Ensure RPC endpoint is fully synchronized
 - Update RPC URLs via Settings Modal if using custom endpoints
-
-## Additional Documentation
-
-- `docs/SETUP_GUIDE.md` - Detailed setup instructions
-- `docs/CONTRACT_INTEGRATION.md` - Smart contract integration guide
-- `docs/CODE_STRUCTURE.md` - Architecture and patterns
-- `docs/SERVICE_ARCHITECTURE.md` - Complete service documentation
-- `docs/CONTRACT_NAMING_STANDARD.md` - Naming conventions

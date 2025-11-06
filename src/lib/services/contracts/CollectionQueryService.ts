@@ -4,14 +4,11 @@
  */
 
 import { ethers } from "ethers";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { listingHistoryTrackerService } from "./ListingHistoryTrackerService";
 import { exchangeService } from "./ExchangeService";
-import {
-  ERC721Collection_ABI,
-  ERC1155Collection_ABI,
-} from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 import { DEAD_ADDRESS, ZERO_ADDRESS } from "@/lib/constants";
 
 export interface CollectionData {
@@ -59,9 +56,10 @@ export class CollectionQueryService {
     }
 
     try {
-      // Get factory addresses
-      const erc721Factory = marketplaceHubService.getERC721Factory();
-      const erc1155Factory = marketplaceHubService.getERC1155Factory();
+      // Get factory addresses from userHubService
+      const addresses = await userHubService.getAddresses();
+      const erc721Factory = addresses.erc721Factory;
+      const erc1155Factory = addresses.erc1155Factory;
 
       logger.info(
         "Querying collections from factories",
@@ -291,8 +289,9 @@ export class CollectionQueryService {
       }
 
       // Create contract interface using the proper ABIs
-      const contractABI =
-        tokenType === "ERC721" ? ERC721Collection_ABI : ERC1155Collection_ABI;
+      const abiName =
+        tokenType === "ERC721" ? "ERC721Collection" : "ERC1155Collection";
+      const contractABI = await getContractABI(abiName);
 
       const contract = new ethers.Contract(address, contractABI, this.provider);
 

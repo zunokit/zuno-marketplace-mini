@@ -1,880 +1,640 @@
 "use client";
 
-/**
- * Offers Page
- * Migrated from frontend-foundry/src/components/OfferManager.jsx
- * Make, accept, and manage offers on NFTs
- */
-
 import { useState, useEffect } from "react";
+import { useWallet } from "@/providers/WalletProvider";
+import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import Image from "next/image";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  offerService,
+  nftMetadataService,
+  userHubService
+} from "@/lib/services/contracts";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { useAppSelector } from "@/lib/store/hooks";
-import { useToast } from "@/hooks/use-toast";
-import { offerService } from "@/lib/services/contracts/OfferService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  AlertCircle,
-  Loader2,
+  Gift,
+  Package,
+  Tag,
+  DollarSign,
   Clock,
-  Check,
-  X,
+  User,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Info,
   TrendingUp,
+  AlertCircle,
+  Heart,
+  Zap,
+  Filter
 } from "lucide-react";
-
-// Offer types enum
-enum OfferType {
-  NFT = 0,
-  COLLECTION = 1,
-  TRAIT = 2,
-}
-
-enum OfferStatus {
-  ACTIVE = "ACTIVE",
-  ACCEPTED = "ACCEPTED",
-  CANCELLED = "CANCELLED",
-  EXPIRED = "EXPIRED",
-}
+import Link from "next/link";
+import { toast } from "sonner";
+import { formatEther, parseEther } from "ethers";
 
 interface Offer {
-  id: string;
-  type: OfferType;
-  nftContract: string;
+  offerId: string;
+  offerType: "NFT" | "COLLECTION" | "TRAIT";
+  offerer: string;
+  collection: string;
   tokenId?: string;
-  collectionName: string;
-  offerPrice: string;
-  quantity: number;
-  status: OfferStatus;
-  creator: string;
-  expirationTime: number;
-  expiresAt: number;
-  createdAt: number;
-  traits?: string[];
-  nftImage?: string;
-  nftName?: string;
+  traitType?: string;
+  traitValue?: string;
+  offerAmount: bigint;
+  paymentToken: string;
+  quantity?: number;
+  expirationTime: bigint;
+  status: "ACTIVE" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+  metadata?: {
+    collectionName?: string;
+    nftName?: string;
+    image?: string;
+  };
 }
 
 export default function OffersPage() {
-  const { toast } = useToast();
+  const { account: address, isConnected } = useWallet();
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"nft" | "collection" | "trait">("nft");
+  
+  // Create offer dialog
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [offerType, setOfferType] = useState<"nft" | "collection" | "trait">("nft");
+  const [targetCollection, setTargetCollection] = useState("");
+  const [targetTokenId, setTargetTokenId] = useState("");
+  const [traitType, setTraitType] = useState("");
+  const [traitValue, setTraitValue] = useState("");
+  const [offerAmount, setOfferAmount] = useState("");
+  const [paymentToken, setPaymentToken] = useState("ETH");
+  const [quantity, setQuantity] = useState("1");
+  const [duration, setDuration] = useState("7"); // days
+  const [creating, setCreating] = useState(false);
+  
+  // Filter states
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "expired">("active");
+  const [filterMine, setFilterMine] = useState(false);
 
-  // Redux state
-  const { account, isConnected } = useAppSelector((state) => state.wallet);
-
-  // Local state
-  const [activeOffers, setActiveOffers] = useState<Offer[]>([]);
-  const [userOffers, setUserOffers] = useState<Offer[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  // Offer creation state
-  const [offerType, setOfferType] = useState<
-    "nft" | "collection" | "trait" | null
-  >(null);
-  const [nftOffer, setNftOffer] = useState({
-    collection: "",
-    tokenId: "",
-    price: "",
-    expirationDays: "7",
-  });
-  const [collectionOffer, setCollectionOffer] = useState({
-    collection: "",
-    price: "",
-    expirationDays: "7",
-  });
-  const [traitOffer, setTraitOffer] = useState({
-    collection: "",
-    traits: "",
-    price: "",
-    expirationDays: "7",
-  });
-
-  /**
-   * Load offers and subscribe to events
-   */
   useEffect(() => {
-    if (account) {
-      loadOffers();
+    fetchOffers();
+  }, [activeTab, filterStatus, filterMine, address]);
 
-      // TODO: Subscribe to real-time events
-      // Requires provider to be available in component
-    }
-  }, [account]);
-
-  /**
-   * Load offers from blockchain
-   */
-  const loadOffers = async () => {
-    if (!account) return;
-
-    setLoading(true);
+  const fetchOffers = async () => {
     try {
-      // Real blockchain data
-      const [active, user] = await Promise.all([
-        offerService.getActiveOffers(),
-        offerService.getUserOffers(account),
-      ]);
-
-      // Convert OfferInfo to Offer format for compatibility
-      const convertOfferInfo = (offerInfo: any) => ({
-        id: offerInfo.id,
-        type: offerInfo.offerType,
-        nftContract: offerInfo.collection,
-        tokenId: offerInfo.tokenId,
-        collectionName: `Collection ${offerInfo.collection.slice(0, 6)}...`,
-        offerPrice: offerInfo.price,
-        quantity: offerInfo.quantity,
-        status: offerInfo.status,
-        creator: offerInfo.creator,
-        expirationTime: offerInfo.expirationTime,
-        expiresAt: offerInfo.expirationTime,
-        createdAt: Date.now(),
-        traits: offerInfo.traits || [],
-      });
-
-      setActiveOffers(active.map(convertOfferInfo));
-      setUserOffers(user.map(convertOfferInfo));
-    } catch (error) {
-      logger.error("Error loading offers", error, {
+      setLoading(true);
+      logger.info(`Fetching ${activeTab} offers from blockchain`, null, {
         component: "OffersPage",
-        action: "loadOffers",
+        action: "fetchOffers"
       });
-      toast({
-        title: "Error Loading Offers",
-        description:
-          error instanceof Error ? error.message : "Failed to load offers",
-        variant: "destructive",
+
+      const offerManager = await offerService.getOfferManagerContract();
+      
+      // Get offers based on type
+      let filter;
+      switch (activeTab) {
+        case "nft":
+          filter = offerManager.filters.NFTOfferCreated();
+          break;
+        case "collection":
+          filter = offerManager.filters.CollectionOfferCreated();
+          break;
+        case "trait":
+          filter = offerManager.filters.TraitOfferCreated();
+          break;
+      }
+
+      const events = await offerManager.queryFilter(filter);
+      
+      const offerPromises = events.map(async (event) => {
+        try {
+          const offerId = (event as any).args?.[0];
+          if (!offerId) return null;
+
+          // Get offer details from contract
+          const offer = await offerManager.getOffer(offerId);
+          
+          // Check status
+          const now = BigInt(Math.floor(Date.now() / 1000));
+          const isExpired = offer.expirationTime <= now;
+          const status = offer.status === 0 ? (isExpired ? "EXPIRED" : "ACTIVE") :
+                        offer.status === 1 ? "ACCEPTED" : "CANCELLED";
+          
+          // Apply filters
+          if (filterStatus === "active" && status !== "ACTIVE") return null;
+          if (filterStatus === "expired" && status !== "EXPIRED") return null;
+          if (filterMine && offer.offerer !== address) return null;
+
+          // Get metadata
+          let metadata: any = {};
+          try {
+            if (activeTab === "nft" && offer.tokenId) {
+              const nftMeta = await nftMetadataService.getNFTMetadata(
+                offer.collection,
+                offer.tokenId.toString()
+              );
+              metadata.nftName = nftMeta?.name;
+              metadata.image = nftMeta?.image;
+            }
+            
+            const collectionMeta = await nftMetadataService.getCollectionMetadata(
+              offer.collection
+            );
+            metadata.collectionName = collectionMeta?.name;
+          } catch {}
+
+          return {
+            offerId,
+            offerType: activeTab.toUpperCase() as "NFT" | "COLLECTION" | "TRAIT",
+            offerer: offer.offerer,
+            collection: offer.collection,
+            tokenId: offer.tokenId?.toString(),
+            traitType: offer.traitType,
+            traitValue: offer.traitValue,
+            offerAmount: offer.offerAmount,
+            paymentToken: offer.paymentToken,
+            quantity: offer.quantity ? Number(offer.quantity) : undefined,
+            expirationTime: offer.expirationTime,
+            status,
+            metadata
+          } as Offer;
+        } catch (error) {
+          logger.warn("Failed to fetch offer data", error, {
+            component: "OffersPage",
+            action: "fetchOffers"
+          });
+          return null;
+        }
       });
+
+      const offerData = (await Promise.all(offerPromises))
+        .filter(o => o !== null) as Offer[];
+
+      setOffers(offerData);
+      logger.success(`Fetched ${offerData.length} ${activeTab} offers`, null, {
+        component: "OffersPage",
+        action: "fetchOffers"
+      });
+    } catch (error) {
+      logger.error("Failed to fetch offers", error, {
+        component: "OffersPage",
+        action: "fetchOffers"
+      });
+      setOffers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Format time remaining
-   */
-  const formatTimeRemaining = (expiresAt: number): string => {
-    const now = Date.now();
-    const remaining = expiresAt - now;
+  const handleCreateOffer = async () => {
+    if (!isConnected || !address) {
+      toast.error("Please connect your wallet");
+      return;
+    }
 
-    if (remaining <= 0) return "Expired";
+    try {
+      setCreating(true);
+      const amount = parseEther(offerAmount);
+      const durationInSeconds = parseInt(duration) * 86400; // days to seconds
+      
+      logger.info("Creating offer", {
+        type: offerType,
+        collection: targetCollection,
+        amount: offerAmount
+      }, {
+        component: "OffersPage",
+        action: "handleCreateOffer"
+      });
 
-    const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(
-      (remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-    );
+      let tx;
+      let txHash: string;
+      if (offerType === "nft") {
+        txHash = await offerService.createNFTOffer({
+          collection: targetCollection,
+          tokenId: targetTokenId,
+          price: amount.toString(),
+          expirationTime: Math.floor(Date.now() / 1000) + durationInSeconds
+        });
+      } else if (offerType === "collection") {
+        txHash = await offerService.createCollectionOffer({
+          collection: targetCollection,
+          price: amount.toString(),
+          quantity: parseInt(quantity),
+          expirationTime: Math.floor(Date.now() / 1000) + durationInSeconds
+        });
+      } else {
+        txHash = await offerService.createTraitOffer({
+          collection: targetCollection,
+          traits: [traitType, traitValue],
+          price: amount.toString(),
+          quantity: parseInt(quantity),
+          expirationTime: Math.floor(Date.now() / 1000) + durationInSeconds
+        });
+      }
 
+      // Transaction hash is returned, no need to wait
+      toast.success("Offer created successfully!");
+      setCreateDialogOpen(false);
+      
+      // Reset form
+      setTargetCollection("");
+      setTargetTokenId("");
+      setTraitType("");
+      setTraitValue("");
+      setOfferAmount("");
+      setQuantity("1");
+      setDuration("7");
+      
+      // Refresh offers
+      await fetchOffers();
+    } catch (error: any) {
+      logger.error("Failed to create offer", error, {
+        component: "OffersPage",
+        action: "handleCreateOffer"
+      });
+      toast.error(error.message || "Failed to create offer");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCancelOffer = async (offerId: string) => {
+    try {
+      logger.info("Cancelling offer", { offerId }, {
+        component: "OffersPage",
+        action: "handleCancelOffer"
+      });
+
+      const tx = await offerService.cancelOffer(offerId);
+      await tx.wait();
+      
+      toast.success("Offer cancelled successfully!");
+      await fetchOffers();
+    } catch (error) {
+      logger.error("Failed to cancel offer", error, {
+        component: "OffersPage",
+        action: "handleCancelOffer"
+      });
+      toast.error("Failed to cancel offer");
+    }
+  };
+
+  const formatTimeLeft = (expiration: bigint) => {
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    const diff = Number(expiration - now);
+    
+    if (diff <= 0) return "Expired";
+    
+    const days = Math.floor(diff / 86400);
+    const hours = Math.floor((diff % 86400) / 3600);
+    
     if (days > 0) return `${days}d ${hours}h`;
     return `${hours}h`;
   };
 
-  /**
-   * Get offer type badge
-   */
-  const getOfferTypeBadge = (type: OfferType) => {
-    switch (type) {
-      case OfferType.NFT:
-        return <Badge variant="default">NFT Offer</Badge>;
-      case OfferType.COLLECTION:
-        return <Badge variant="secondary">Collection Offer</Badge>;
-      case OfferType.TRAIT:
-        return <Badge variant="outline">Trait Offer</Badge>;
-    }
-  };
-
-  /**
-   * Get status badge
-   */
-  const getStatusBadge = (status: OfferStatus) => {
-    switch (status) {
-      case OfferStatus.ACTIVE:
-        return (
-          <Badge variant="default" className="gap-1">
-            <TrendingUp className="h-3 w-3" />
-            Active
-          </Badge>
-        );
-      case OfferStatus.ACCEPTED:
-        return (
-          <Badge variant="default" className="gap-1 bg-green-500">
-            <Check className="h-3 w-3" />
-            Accepted
-          </Badge>
-        );
-      case OfferStatus.CANCELLED:
-        return (
-          <Badge variant="destructive" className="gap-1">
-            <X className="h-3 w-3" />
-            Cancelled
-          </Badge>
-        );
-      case OfferStatus.EXPIRED:
-        return <Badge variant="secondary">Expired</Badge>;
-    }
-  };
-
-  /**
-   * Handle accept offer
-   */
-  const handleAcceptOffer = async (offerId: string) => {
-    try {
-      // Real contract interaction
-      await offerService.acceptOffer(offerId);
-      toast({
-        title: "Offer Accepted!",
-        description: "You have successfully accepted the offer",
-      });
-      loadOffers();
-    } catch (error) {
-      toast({
-        title: "Accept Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to accept offer",
-        variant: "destructive",
-      });
-    }
-  };
-
-  /**
-   * Handle cancel offer
-   */
-  const handleCancelOffer = async (offerId: string) => {
-    try {
-      // Real contract interaction
-      await offerService.cancelOffer(offerId);
-      toast({
-        title: "Offer Cancelled",
-        description: "Your offer has been cancelled",
-      });
-      loadOffers();
-    } catch (error) {
-      toast({
-        title: "Cancel Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to cancel offer",
-        variant: "destructive",
-      });
-    }
-  };
-
-  /**
-   * Handle create NFT offer
-   */
-  const handleCreateNFTOffer = async () => {
-    try {
-      await offerService.createNFTOffer({
-        collection: nftOffer.collection,
-        tokenId: nftOffer.tokenId,
-        price: nftOffer.price,
-        expirationTime:
-          Math.floor(Date.now() / 1000) +
-          parseInt(nftOffer.expirationDays) * 24 * 60 * 60,
-      });
-      toast({
-        title: "NFT Offer Created",
-        description: "Your NFT offer has been created successfully",
-      });
-      setNftOffer({
-        collection: "",
-        tokenId: "",
-        price: "",
-        expirationDays: "7",
-      });
-      loadOffers();
-    } catch (error) {
-      toast({
-        title: "Create Offer Failed",
-        description:
-          error instanceof Error ? error.message : "Failed to create NFT offer",
-        variant: "destructive",
-      });
-    }
-  };
-
-  /**
-   * Handle create collection offer
-   */
-  const handleCreateCollectionOffer = async () => {
-    try {
-      await offerService.createCollectionOffer({
-        collection: collectionOffer.collection,
-        price: collectionOffer.price,
-        quantity: 1, // Default quantity
-        expirationTime:
-          Math.floor(Date.now() / 1000) +
-          parseInt(collectionOffer.expirationDays) * 24 * 60 * 60,
-      });
-      toast({
-        title: "Collection Offer Created",
-        description: "Your collection offer has been created successfully",
-      });
-      setCollectionOffer({ collection: "", price: "", expirationDays: "7" });
-      loadOffers();
-    } catch (error) {
-      toast({
-        title: "Create Offer Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to create collection offer",
-        variant: "destructive",
-      });
-    }
-  };
-
-  /**
-   * Handle create trait offer
-   */
-  const handleCreateTraitOffer = async () => {
-    try {
-      const traits = traitOffer.traits
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t);
-      await offerService.createTraitOffer({
-        collection: traitOffer.collection,
-        traits,
-        price: traitOffer.price,
-        quantity: 1, // Default quantity
-        expirationTime:
-          Math.floor(Date.now() / 1000) +
-          parseInt(traitOffer.expirationDays) * 24 * 60 * 60,
-      });
-      toast({
-        title: "Trait Offer Created",
-        description: "Your trait offer has been created successfully",
-      });
-      setTraitOffer({
-        collection: "",
-        traits: "",
-        price: "",
-        expirationDays: "7",
-      });
-      loadOffers();
-    } catch (error) {
-      toast({
-        title: "Create Offer Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to create trait offer",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Check if wallet is connected
-  if (!isConnected || !account) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Wallet Not Connected</AlertTitle>
-          <AlertDescription>
-            Please connect your wallet to view and manage offers.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-      {/* Header */}
-      <div className="mb-4 sm:mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 flex items-center gap-2">
-          💰 NFT Offers
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground">
-          Make and manage offers on NFTs
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="browse" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="browse">
-            Browse Offers
-            {activeOffers.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {activeOffers.length}
+  const OfferCard = ({ offer }: { offer: Offer }) => (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg">
+              {offer.offerType === "NFT" 
+                ? (offer.metadata?.nftName || `Token #${offer.tokenId}`)
+                : offer.offerType === "COLLECTION"
+                ? (offer.metadata?.collectionName || "Collection Offer")
+                : `${offer.traitType}: ${offer.traitValue}`}
+            </CardTitle>
+            <CardDescription>
+              {offer.metadata?.collectionName && offer.offerType === "NFT" && (
+                <span>{offer.metadata.collectionName}</span>
+              )}
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Badge variant={offer.offerType === "NFT" ? "default" : 
+                          offer.offerType === "COLLECTION" ? "secondary" : "outline"}>
+              {offer.offerType === "NFT" ? <Gift className="w-3 h-3 mr-1" /> :
+               offer.offerType === "COLLECTION" ? <Package className="w-3 h-3 mr-1" /> :
+               <Tag className="w-3 h-3 mr-1" />}
+              {offer.offerType}
+            </Badge>
+            {offer.status === "ACTIVE" ? (
+              <Badge variant="default" className="bg-green-500">
+                <Clock className="w-3 h-3 mr-1" />
+                {formatTimeLeft(offer.expirationTime)}
               </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="my-offers">
-            My Offers
-            {userOffers.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
-                {userOffers.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="create">Make Offer</TabsTrigger>
-        </TabsList>
-
-        {/* Browse Offers */}
-        <TabsContent value="browse">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : activeOffers.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Active Offers</AlertTitle>
-              <AlertDescription>
-                There are no active offers at the moment.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {activeOffers.map((offer) => (
-                <Card key={offer.id}>
-                  {offer.type === OfferType.NFT && offer.nftImage && (
-                    <div className="relative w-full h-48 bg-muted">
-                      <Image
-                        src={offer.nftImage}
-                        alt={offer.nftName || "NFT"}
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                      <div className="absolute top-2 right-2">
-                        {getOfferTypeBadge(offer.type)}
-                      </div>
-                    </div>
-                  )}
-
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">
-                          {offer.nftName || offer.collectionName}
-                        </CardTitle>
-                        <CardDescription>
-                          {offer.type === OfferType.NFT
-                            ? offer.collectionName
-                            : `${offer.quantity} NFTs`}
-                        </CardDescription>
-                      </div>
-                      {offer.type !== OfferType.NFT && (
-                        <div>{getOfferTypeBadge(offer.type)}</div>
-                      )}
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Offer Price</span>
-                      <span className="font-semibold text-lg">
-                        {offer.offerPrice} ETH
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>
-                        Expires in {formatTimeRemaining(offer.expiresAt)}
-                      </span>
-                    </div>
-                  </CardContent>
-
-                  <CardFooter>
-                    <Button
-                      className="w-full"
-                      onClick={() => handleAcceptOffer(offer.id)}
-                    >
-                      Accept Offer
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* My Offers */}
-        <TabsContent value="my-offers">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : userOffers.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Offers Made</AlertTitle>
-              <AlertDescription>
-                You haven't made any offers yet. Go to the Make Offer tab to get
-                started!
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-4">
-              {userOffers.map((offer) => (
-                <Card key={offer.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-lg">
-                            {offer.nftName || offer.collectionName}
-                          </h3>
-                          {getOfferTypeBadge(offer.type)}
-                          {getStatusBadge(offer.status)}
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 text-sm mt-4">
-                          <div>
-                            <p className="text-muted-foreground">Offer Price</p>
-                            <p className="font-semibold">
-                              {offer.offerPrice} ETH
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Created</p>
-                            <p className="font-semibold">
-                              {new Date(offer.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Expires</p>
-                            <p className="font-semibold">
-                              {formatTimeRemaining(offer.expiresAt)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      {offer.status === OfferStatus.ACTIVE && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleCancelOffer(offer.id)}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Make Offer */}
-        <TabsContent value="create">
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-4">Make an Offer</h2>
-              <p className="text-muted-foreground mb-6">
-                Create offers for specific NFTs, entire collections, or NFTs
-                with specific traits.
-              </p>
-            </div>
-
-            {/* Offer Type Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="text-center">
-                    <div className="text-4xl mb-4">🎯</div>
-                    <h3 className="font-semibold mb-2">NFT Offer</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Make an offer for a specific NFT
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setOfferType("nft")}
-                    >
-                      Create NFT Offer
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="text-center">
-                    <div className="text-4xl mb-4">🏛️</div>
-                    <h3 className="font-semibold mb-2">Collection Offer</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Make an offer for any NFT in a collection
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setOfferType("collection")}
-                    >
-                      Create Collection Offer
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="text-center">
-                    <div className="text-4xl mb-4">🔍</div>
-                    <h3 className="font-semibold mb-2">Trait Offer</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Make an offer for NFTs with specific traits
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setOfferType("trait")}
-                    >
-                      Create Trait Offer
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Offer Creation Forms */}
-            {offerType === "nft" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>NFT Offer</CardTitle>
-                  <CardDescription>
-                    Make an offer for a specific NFT
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="nft-collection">Collection Address</Label>
-                      <Input
-                        id="nft-collection"
-                        placeholder="0x..."
-                        value={nftOffer.collection}
-                        onChange={(e) =>
-                          setNftOffer({
-                            ...nftOffer,
-                            collection: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="nft-tokenId">Token ID</Label>
-                      <Input
-                        id="nft-tokenId"
-                        placeholder="123"
-                        value={nftOffer.tokenId}
-                        onChange={(e) =>
-                          setNftOffer({ ...nftOffer, tokenId: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="nft-price">Price (ETH)</Label>
-                      <Input
-                        id="nft-price"
-                        placeholder="0.1"
-                        value={nftOffer.price}
-                        onChange={(e) =>
-                          setNftOffer({ ...nftOffer, price: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="nft-expiration">Expiration (days)</Label>
-                      <Input
-                        id="nft-expiration"
-                        placeholder="7"
-                        value={nftOffer.expirationDays}
-                        onChange={(e) =>
-                          setNftOffer({
-                            ...nftOffer,
-                            expirationDays: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleCreateNFTOffer}
-                    disabled={
-                      !nftOffer.collection ||
-                      !nftOffer.tokenId ||
-                      !nftOffer.price
-                    }
-                    className="w-full"
-                  >
-                    Create NFT Offer
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {offerType === "collection" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Collection Offer</CardTitle>
-                  <CardDescription>
-                    Make an offer for any NFT in a collection
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="collection-address">
-                      Collection Address
-                    </Label>
-                    <Input
-                      id="collection-address"
-                      placeholder="0x..."
-                      value={collectionOffer.collection}
-                      onChange={(e) =>
-                        setCollectionOffer({
-                          ...collectionOffer,
-                          collection: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="collection-price">Price (ETH)</Label>
-                      <Input
-                        id="collection-price"
-                        placeholder="0.1"
-                        value={collectionOffer.price}
-                        onChange={(e) =>
-                          setCollectionOffer({
-                            ...collectionOffer,
-                            price: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="collection-expiration">
-                        Expiration (days)
-                      </Label>
-                      <Input
-                        id="collection-expiration"
-                        placeholder="7"
-                        value={collectionOffer.expirationDays}
-                        onChange={(e) =>
-                          setCollectionOffer({
-                            ...collectionOffer,
-                            expirationDays: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleCreateCollectionOffer}
-                    disabled={
-                      !collectionOffer.collection || !collectionOffer.price
-                    }
-                    className="w-full"
-                  >
-                    Create Collection Offer
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {offerType === "trait" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Trait Offer</CardTitle>
-                  <CardDescription>
-                    Make an offer for NFTs with specific traits
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="trait-collection">Collection Address</Label>
-                    <Input
-                      id="trait-collection"
-                      placeholder="0x..."
-                      value={traitOffer.collection}
-                      onChange={(e) =>
-                        setTraitOffer({
-                          ...traitOffer,
-                          collection: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="trait-traits">
-                      Traits (comma-separated)
-                    </Label>
-                    <Input
-                      id="trait-traits"
-                      placeholder="Background: Blue, Eyes: Green"
-                      value={traitOffer.traits}
-                      onChange={(e) =>
-                        setTraitOffer({ ...traitOffer, traits: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="trait-price">Price (ETH)</Label>
-                      <Input
-                        id="trait-price"
-                        placeholder="0.1"
-                        value={traitOffer.price}
-                        onChange={(e) =>
-                          setTraitOffer({
-                            ...traitOffer,
-                            price: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="trait-expiration">
-                        Expiration (days)
-                      </Label>
-                      <Input
-                        id="trait-expiration"
-                        placeholder="7"
-                        value={traitOffer.expirationDays}
-                        onChange={(e) =>
-                          setTraitOffer({
-                            ...traitOffer,
-                            expirationDays: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleCreateTraitOffer}
-                    disabled={
-                      !traitOffer.collection ||
-                      !traitOffer.traits ||
-                      !traitOffer.price
-                    }
-                    className="w-full"
-                  >
-                    Create Trait Offer
-                  </Button>
-                </CardContent>
-              </Card>
+            ) : (
+              <Badge variant="secondary">{offer.status}</Badge>
             )}
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </CardHeader>
+
+      <CardContent>
+        {offer.metadata?.image && (
+          <div className="mb-4">
+            <img
+              src={offer.metadata.image}
+              alt=""
+              className="w-full h-48 object-cover rounded-lg"
+            />
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-500">Offer Amount</span>
+            <span className="font-bold text-lg">
+              {formatEther(offer.offerAmount)} {offer.paymentToken === ethers.ZeroAddress ? "ETH" : "Token"}
+            </span>
+          </div>
+
+          {offer.quantity && offer.quantity > 1 && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">Quantity</span>
+              <span className="font-medium">{offer.quantity} NFTs</span>
+            </div>
+          )}
+
+          {offer.offerType === "TRAIT" && (
+            <div className="p-2 bg-gray-50 rounded">
+              <p className="text-sm">
+                <span className="font-medium">{offer.traitType}:</span> {offer.traitValue}
+              </p>
+            </div>
+          )}
+
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500">From</span>
+            <span className="font-mono">
+              {offer.offerer.slice(0, 6)}...{offer.offerer.slice(-4)}
+            </span>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            {offer.status === "ACTIVE" && (
+              <>
+                {offer.offerer === address ? (
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleCancelOffer(offer.offerId)}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                ) : offer.offerType === "NFT" ? (
+                  <Link href={`/nft/${offer.collection}/${offer.tokenId}`} className="flex-1">
+                    <Button variant="outline" className="w-full">
+                      View NFT
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href={`/collections/${offer.collection}`} className="flex-1">
+                    <Button variant="outline" className="w-full">
+                      View Collection
+                    </Button>
+                  </Link>
+                )}
+              </>
+            )}
+            {offer.offerType === "COLLECTION" && offer.status === "ACTIVE" && offer.offerer !== address && (
+              <Button className="flex-1">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Accept with NFT
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">NFT Offers</h1>
+            <p className="text-gray-600">Make and manage offers on NFTs, collections, and traits</p>
+          </div>
+          
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Gift className="w-4 h-4 mr-2" />
+                Make Offer
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create Offer</DialogTitle>
+                <DialogDescription>
+                  Make an offer on NFTs, collections, or specific traits
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div>
+                  <Label>Offer Type</Label>
+                  <Tabs value={offerType} onValueChange={(v) => setOfferType(v as any)}>
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="nft">NFT</TabsTrigger>
+                      <TabsTrigger value="collection">Collection</TabsTrigger>
+                      <TabsTrigger value="trait">Trait</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+                
+                <div>
+                  <Label htmlFor="collection">Collection Address</Label>
+                  <Input
+                    id="collection"
+                    placeholder="0x..."
+                    value={targetCollection}
+                    onChange={(e) => setTargetCollection(e.target.value)}
+                  />
+                </div>
+                
+                {offerType === "nft" && (
+                  <div>
+                    <Label htmlFor="tokenId">Token ID</Label>
+                    <Input
+                      id="tokenId"
+                      placeholder="1"
+                      value={targetTokenId}
+                      onChange={(e) => setTargetTokenId(e.target.value)}
+                    />
+                  </div>
+                )}
+                
+                {offerType === "trait" && (
+                  <>
+                    <div>
+                      <Label htmlFor="traitType">Trait Type</Label>
+                      <Input
+                        id="traitType"
+                        placeholder="Background"
+                        value={traitType}
+                        onChange={(e) => setTraitType(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="traitValue">Trait Value</Label>
+                      <Input
+                        id="traitValue"
+                        placeholder="Blue"
+                        value={traitValue}
+                        onChange={(e) => setTraitValue(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+                
+                {(offerType === "collection" || offerType === "trait") && (
+                  <div>
+                    <Label htmlFor="quantity">Quantity (Max NFTs)</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      placeholder="1"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      max={offerType === "collection" ? "100" : "50"}
+                    />
+                  </div>
+                )}
+                
+                <div>
+                  <Label htmlFor="amount">
+                    {offerType === "nft" ? "Offer Amount (ETH)" : "Price per NFT (ETH)"}
+                  </Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    placeholder="0.1"
+                    value={offerAmount}
+                    onChange={(e) => setOfferAmount(e.target.value)}
+                    step="0.01"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="duration">Duration (days)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    placeholder="7"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                  />
+                </div>
+                
+                {(offerType === "collection" || offerType === "trait") && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      Total offer value: {parseFloat(offerAmount || "0") * parseInt(quantity || "1")} ETH
+                      for up to {quantity} NFTs
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreateOffer} 
+                  disabled={creating || !targetCollection || !offerAmount ||
+                           (offerType === "nft" && !targetTokenId) ||
+                           (offerType === "trait" && (!traitType || !traitValue))}
+                >
+                  {creating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Gift className="w-4 h-4 mr-2" />
+                      Create Offer
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+          <div className="flex justify-between items-center mb-6">
+            <TabsList>
+              <TabsTrigger value="nft">
+                <Gift className="w-4 h-4 mr-2" />
+                NFT Offers
+              </TabsTrigger>
+              <TabsTrigger value="collection">
+                <Package className="w-4 h-4 mr-2" />
+                Collection Offers
+              </TabsTrigger>
+              <TabsTrigger value="trait">
+                <Tag className="w-4 h-4 mr-2" />
+                Trait Offers
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex gap-2">
+              <select
+                className="px-4 py-2 border rounded-md"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active Only</option>
+                <option value="expired">Expired</option>
+              </select>
+              
+              <Button
+                variant={filterMine ? "default" : "outline"}
+                onClick={() => setFilterMine(!filterMine)}
+              >
+                <User className="w-4 h-4 mr-2" />
+                My Offers
+              </Button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          ) : offers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {offers.map(offer => (
+                <OfferCard key={offer.offerId} offer={offer} />
+              ))}
+            </div>
+          ) : (
+            <Card className="p-8 text-center">
+              <Gift className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-500">No {activeTab} offers found</p>
+              {filterMine && (
+                <p className="text-sm text-gray-400 mt-2">
+                  Try removing the "My Offers" filter
+                </p>
+              )}
+            </Card>
+          )}
+        </Tabs>
+      </div>
     </div>
   );
 }

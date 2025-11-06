@@ -6,8 +6,8 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
-import { CollectionVerifier_ABI } from "@/lib/contracts/abis";
+import { userHubService } from "./UserHubService";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -84,14 +84,16 @@ export class CollectionVerifierService {
   /**
    * Get verifier contract instance
    */
-  private getVerifierContract(readOnly: boolean = false): ethers.Contract {
+  private async getVerifierContract(readOnly: boolean = false): Promise<ethers.Contract> {
+    const abi = await getContractABI("CollectionVerifier");
+
     if (readOnly && this.provider) {
       if (!this.verifierAddress) {
         throw new Error("CollectionVerifier address not configured");
       }
       return new ethers.Contract(
         this.verifierAddress,
-        CollectionVerifier_ABI,
+        abi,
         this.provider
       );
     }
@@ -106,7 +108,7 @@ export class CollectionVerifierService {
 
     return new ethers.Contract(
       this.verifierAddress,
-      CollectionVerifier_ABI,
+      abi,
       this.signer
     );
   }
@@ -119,7 +121,7 @@ export class CollectionVerifierService {
    * Check if collection is verified
    */
   async isCollectionVerified(collection: string): Promise<boolean> {
-    const contract = this.getVerifierContract(true);
+    const contract = await this.getVerifierContract(true);
     return await contract.isCollectionVerified(collection);
   }
 
@@ -129,7 +131,7 @@ export class CollectionVerifierService {
   async getCollectionVerification(
     collection: string
   ): Promise<CollectionVerification> {
-    const contract = this.getVerifierContract(true);
+    const contract = await this.getVerifierContract(true);
     const verification = await contract.getCollectionVerification(collection);
 
     return {
@@ -146,7 +148,7 @@ export class CollectionVerifierService {
    * Get collection metadata
    */
   async getCollectionMetadata(collection: string): Promise<CollectionMetadata> {
-    const contract = this.getVerifierContract(true);
+    const contract = await this.getVerifierContract(true);
     const metadata = await contract.getCollectionMetadata(collection);
 
     return {
@@ -168,7 +170,7 @@ export class CollectionVerifierService {
   async getVerificationRequest(
     collection: string
   ): Promise<VerificationRequest> {
-    const contract = this.getVerifierContract(true);
+    const contract = await this.getVerifierContract(true);
     const request = await contract.getVerificationRequest(collection);
 
     return {
@@ -187,7 +189,7 @@ export class CollectionVerifierService {
    * Get all verified collections
    */
   async getAllVerifiedCollections(): Promise<string[]> {
-    const contract = this.getVerifierContract(true);
+    const contract = await this.getVerifierContract(true);
     return await contract.getAllVerifiedCollections();
   }
 
@@ -195,7 +197,7 @@ export class CollectionVerifierService {
    * Get verification fee
    */
   async getVerificationFee(): Promise<bigint> {
-    const contract = this.getVerifierContract(true);
+    const contract = await this.getVerifierContract(true);
     return await contract.verificationFee();
   }
 
@@ -211,7 +213,7 @@ export class CollectionVerifierService {
     metadata: CollectionMetadata,
     verificationTier: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getVerifierContract();
+    const contract = await this.getVerifierContract();
 
     const fee = await this.getVerificationFee();
 
@@ -233,7 +235,7 @@ export class CollectionVerifierService {
     collection: string,
     metadata: CollectionMetadata
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getVerifierContract();
+    const contract = await this.getVerifierContract();
 
     const tx = await contract.updateCollectionMetadata(collection, metadata);
     await tx.wait();
@@ -254,7 +256,7 @@ export class CollectionVerifierService {
     verificationTier: string,
     reviewNotes: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getVerifierContract();
+    const contract = await this.getVerifierContract();
 
     const tx = await contract.processVerificationRequest(
       collection,
@@ -274,7 +276,7 @@ export class CollectionVerifierService {
     collection: string,
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getVerifierContract();
+    const contract = await this.getVerifierContract();
 
     const tx = await contract.revokeVerification(collection, reason);
     await tx.wait();
@@ -289,7 +291,7 @@ export class CollectionVerifierService {
     collections: string[],
     verificationTiers: string[]
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getVerifierContract();
+    const contract = await this.getVerifierContract();
 
     const tx = await contract.batchVerifyCollections(
       collections,
@@ -306,7 +308,7 @@ export class CollectionVerifierService {
   async updateVerificationFee(
     newFee: bigint
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getVerifierContract();
+    const contract = await this.getVerifierContract();
 
     const tx = await contract.updateVerificationFee(newFee);
     await tx.wait();
@@ -320,7 +322,7 @@ export class CollectionVerifierService {
   async toggleVerifiedOnlyMode(
     enabled: boolean
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getVerifierContract();
+    const contract = await this.getVerifierContract();
 
     const tx = await contract.toggleVerifiedOnlyMode(enabled);
     await tx.wait();

@@ -6,8 +6,8 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
-import { EmergencyManager_ABI } from "@/lib/contracts/abis";
+import { userHubService } from "./UserHubService";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -64,16 +64,18 @@ export class EmergencyManagerService {
   /**
    * Get emergency manager contract instance
    */
-  private getEmergencyManagerContract(
+  private async getEmergencyManagerContract(
     readOnly: boolean = false
-  ): ethers.Contract {
+  ): Promise<ethers.Contract> {
+    const abi = await getContractABI("EmergencyManager");
+
     if (readOnly && this.provider) {
       if (!this.emergencyManagerAddress) {
         throw new Error("EmergencyManager address not configured");
       }
       return new ethers.Contract(
         this.emergencyManagerAddress,
-        EmergencyManager_ABI,
+        abi,
         this.provider
       );
     }
@@ -88,7 +90,7 @@ export class EmergencyManagerService {
 
     return new ethers.Contract(
       this.emergencyManagerAddress,
-      EmergencyManager_ABI,
+      abi,
       this.signer
     );
   }
@@ -104,7 +106,7 @@ export class EmergencyManagerService {
   async emergencyPause(
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.emergencyPause(reason);
     await tx.wait();
@@ -116,7 +118,7 @@ export class EmergencyManagerService {
    * Unpause the marketplace after emergency
    */
   async emergencyUnpause(): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.emergencyUnpause();
     await tx.wait();
@@ -128,7 +130,7 @@ export class EmergencyManagerService {
    * Get remaining pause cooldown time
    */
   async getPauseCooldownRemaining(): Promise<bigint> {
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
     return await contract.getPauseCooldownRemaining();
   }
 
@@ -136,7 +138,7 @@ export class EmergencyManagerService {
    * Check if marketplace is paused
    */
   async isPaused(): Promise<boolean> {
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
     return await contract.paused();
   }
 
@@ -144,7 +146,7 @@ export class EmergencyManagerService {
    * Get emergency status
    */
   async getEmergencyStatus(): Promise<EmergencyStatus> {
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
 
     const isPaused = await contract.paused();
     const cooldownRemaining = await contract.getPauseCooldownRemaining();
@@ -172,7 +174,7 @@ export class EmergencyManagerService {
     isBlacklisted: boolean,
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.setContractBlacklist(
       contractAddr,
@@ -195,7 +197,7 @@ export class EmergencyManagerService {
     isBlacklisted: boolean,
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.setUserBlacklist(userAddr, isBlacklisted, reason);
     await tx.wait();
@@ -214,7 +216,7 @@ export class EmergencyManagerService {
     isBlacklisted: boolean,
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.batchSetContractBlacklist(
       contractAddrs,
@@ -230,7 +232,7 @@ export class EmergencyManagerService {
    * Check if contract is blacklisted
    */
   async isContractBlacklisted(contractAddr: string): Promise<boolean> {
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
     return await contract.isContractBlacklisted(contractAddr);
   }
 
@@ -238,7 +240,7 @@ export class EmergencyManagerService {
    * Check if user is blacklisted
    */
   async isUserBlacklisted(userAddr: string): Promise<boolean> {
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
     return await contract.isUserBlacklisted(userAddr);
   }
 
@@ -256,7 +258,7 @@ export class EmergencyManagerService {
     owners: string[],
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.emergencyBulkResetNFTStatus(
       nftContracts,
@@ -278,7 +280,7 @@ export class EmergencyManagerService {
     tokenIds: bigint[],
     owners: string[]
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.emergencyResetCollection(
       nftContract,
@@ -305,7 +307,7 @@ export class EmergencyManagerService {
     amount: bigint,
     reason: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getEmergencyManagerContract();
+    const contract = await this.getEmergencyManagerContract();
 
     const tx = await contract.emergencyWithdraw(recipient, amount, reason);
     await tx.wait();
@@ -389,7 +391,7 @@ export class EmergencyManagerService {
     if (!this.signer) return false;
 
     try {
-      const contract = this.getEmergencyManagerContract(true);
+      const contract = await this.getEmergencyManagerContract(true);
       const owner = await contract.owner();
       const userAddress = await this.signer.getAddress();
 
@@ -410,7 +412,7 @@ export class EmergencyManagerService {
       throw new Error("Provider or address not available");
     }
 
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
 
     const filter = {
       address: this.emergencyManagerAddress,
@@ -424,8 +426,8 @@ export class EmergencyManagerService {
   /**
    * Parse emergency event
    */
-  parseEmergencyEvent(log: ethers.Log): ethers.LogDescription | null {
-    const contract = this.getEmergencyManagerContract(true);
+  async parseEmergencyEvent(log: ethers.Log): Promise<ethers.LogDescription | null> {
+    const contract = await this.getEmergencyManagerContract(true);
     try {
       return contract.interface.parseLog({
         topics: log.topics as string[],
@@ -446,7 +448,7 @@ export class EmergencyManagerService {
       throw new Error("Provider or address not available");
     }
 
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
 
     // Listen for EmergencyPaused event
     contract.on("EmergencyPaused", (...args) => {
@@ -483,7 +485,7 @@ export class EmergencyManagerService {
    * Stop monitoring events
    */
   async stopMonitoring(): Promise<void> {
-    const contract = this.getEmergencyManagerContract(true);
+    const contract = await this.getEmergencyManagerContract(true);
     contract.removeAllListeners();
   }
 }

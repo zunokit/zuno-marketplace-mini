@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
-import { marketplaceHubService } from "@/lib/services/contracts/MarketplaceHubService";
+import { userHubService } from "@/lib/services/contracts/UserHubService";
 import { collectionService } from "@/lib/services/contracts/CollectionService";
 import { transactionService } from "@/lib/services/blockchain/TransactionService";
 import { eventService } from "@/lib/services/blockchain/EventService";
@@ -71,39 +71,40 @@ export function useCollection(): UseCollectionReturn {
 
   // Initialize services when wallet connects
   useEffect(() => {
+    const initServices = async () => {
+      try {
+        if (!provider || !signer) return;
+
+        // Always reinitialize services when provider/signer changes
+        // to ensure they have the latest signer instance
+        logger.info("Initializing collection services with new signer");
+
+        // Initialize UserHub first (required for all other services)
+        await userHubService.initialize(provider, signer);
+
+        // Then initialize dependent services
+        await collectionService.initialize(provider, signer);
+        await transactionService.initialize(provider, signer);
+        await eventService.initialize(provider);
+
+        setServicesInitialized(true);
+        logger.info("Collection services initialized successfully");
+      } catch (err) {
+        logger.error("Failed to initialize services", err);
+        // Don't throw - allow app to run in limited mode
+        toast.error(
+          "Contract services initialization failed. Some features may be unavailable."
+        );
+      }
+    };
+
     if (provider && signer) {
-      initializeServices();
+      initServices();
     } else {
       // Reset initialization state when wallet disconnects
       setServicesInitialized(false);
     }
   }, [provider, signer]);
-
-  const initializeServices = async () => {
-    try {
-      if (!provider || !signer) return;
-
-      // Skip if already initialized with same provider/signer
-      if (servicesInitialized) return;
-
-      // Initialize MarketplaceHub first (required for all other services)
-      await marketplaceHubService.initialize(provider, signer);
-
-      // Then initialize dependent services
-      await collectionService.initialize(provider, signer);
-      await transactionService.initialize(provider, signer);
-      await eventService.initialize(provider);
-
-      setServicesInitialized(true);
-      logger.info("Collection services initialized");
-    } catch (err) {
-      logger.error("Failed to initialize services", err);
-      // Don't throw - allow app to run in limited mode
-      toast.error(
-        "Contract services initialization failed. Some features may be unavailable."
-      );
-    }
-  };
 
   /**
    * Create a new NFT collection
@@ -115,6 +116,14 @@ export function useCollection(): UseCollectionReturn {
         setError(message);
         toast.error(message);
         throw new CollectionError(message, "NO_WALLET");
+      }
+
+      // Check if services are initialized
+      if (!servicesInitialized) {
+        const message = "Services not initialized. Please refresh the page and reconnect wallet.";
+        setError(message);
+        toast.error(message);
+        throw new CollectionError(message, "SERVICES_NOT_INITIALIZED");
       }
 
       setIsLoading(true);
@@ -147,7 +156,7 @@ export function useCollection(): UseCollectionReturn {
         setIsLoading(false);
       }
     },
-    [isConnected, account]
+    [isConnected, account, servicesInitialized]
   );
 
   /**
@@ -165,8 +174,7 @@ export function useCollection(): UseCollectionReturn {
           return null;
         }
 
-        // Ensure services are initialized
-        await initializeServices();
+        // Services are already initialized in useEffect, no need to call again
 
         const rawInfo = await collectionService.getCollectionInfo(
           address,

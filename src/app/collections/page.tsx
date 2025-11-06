@@ -1,452 +1,631 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+
+import { useState, useEffect } from "react";
+import { useWallet } from "@/providers/WalletProvider";
+import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { MainLayout } from "@/components/common/layout/MainLayout";
-import { CollectionsGrid } from "@/components/features/collection/CollectionsGrid";
-import { Input } from "@/components/ui/input";
+import {
+  collectionService,
+  listingHistoryTrackerService,
+  nftMetadataService,
+  userHubService
+} from "@/lib/services/contracts";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, TrendingUp, Filter, Grid3X3, List } from "lucide-react";
+  Grid,
+  List,
+  Search,
+  Filter,
+  Plus,
+  CheckCircle,
+  TrendingUp,
+  Users,
+  Package,
+  DollarSign,
+  Info,
+  ExternalLink,
+  Copy,
+  Loader2,
+  ShieldCheck,
+  Star,
+  Zap,
+  Image as ImageIcon
+} from "lucide-react";
 import Link from "next/link";
-import {
-  collectionQueryService,
-  type CollectionData,
-} from "@/lib/services/contracts/CollectionQueryService";
-import { marketplaceHubService } from "@/lib/services/contracts/MarketplaceHubService";
-import { web3Utils } from "@/lib/utils/web3";
-import { ZERO_ADDRESS } from "@/lib/constants";
+import { toast } from "sonner";
+import { formatEther } from "ethers";
 
-const sortOptions = [
-  { value: "volume_desc", label: "Highest Volume" },
-  { value: "volume_asc", label: "Lowest Volume" },
-  { value: "floor_desc", label: "Highest Floor" },
-  { value: "floor_asc", label: "Lowest Floor" },
-  { value: "newest", label: "Recently Created" },
-  { value: "oldest", label: "Oldest First" },
-  { value: "name_asc", label: "A to Z" },
-  { value: "name_desc", label: "Z to A" },
-];
-
-const filterOptions = [
-  { value: "all", label: "All Collections" },
-  { value: "verified", label: "Verified Only" },
-  { value: "ERC721", label: "ERC721" },
-  { value: "ERC1155", label: "ERC1155" },
-];
+interface Collection {
+  address: string;
+  name: string;
+  symbol: string;
+  owner: string;
+  tokenType: "ERC721" | "ERC1155";
+  isVerified: boolean;
+  metadata?: {
+    description?: string;
+    image?: string;
+    website?: string;
+    twitter?: string;
+  };
+  stats?: {
+    totalSupply: number;
+    floorPrice: bigint;
+    totalVolume: bigint;
+    totalSales: number;
+    averagePrice: bigint;
+    activeListings: number;
+  };
+}
 
 export default function CollectionsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("volume_desc");
-  const [filterBy, setFilterBy] = useState("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const { account: address, isConnected } = useWallet();
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [collections, setCollections] = useState<CollectionData[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterVerified, setFilterVerified] = useState(false);
+  const [sortBy, setSortBy] = useState<"volume" | "floor" | "sales">("volume");
+  
+  // Verification dialog
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [verificationData, setVerificationData] = useState({
+    website: "",
+    twitter: "",
+    description: ""
+  });
+  const [verifying, setVerifying] = useState(false);
 
-  // Load collections on mount (client-side only)
   useEffect(() => {
-    // Only run on client-side to avoid SSR issues
-    if (typeof window !== "undefined") {
-      loadCollections();
-    }
+    fetchCollections();
   }, []);
 
-  const loadCollections = async () => {
+  const fetchCollections = async () => {
     try {
       setLoading(true);
-      setError(null);
-      setCollections([]); // Clear existing collections
-
-      // Check if we're in browser environment
-      if (typeof window === "undefined") {
-        logger.warn("Not in browser environment", null, {
-          component: "CollectionsPage",
-          action: "loadCollections",
-        });
-        setError("Browser environment required for blockchain connection");
-        return;
-      }
-
-      // Initialize web3 and services
-      logger.info("Initializing Web3 provider", null, {
+      logger.info("Fetching collections from blockchain", null, {
         component: "CollectionsPage",
-        action: "loadCollections",
-      });
-      await web3Utils.initializeProvider();
-      const provider = web3Utils.getProvider();
-
-      if (!provider) {
-        logger.error("No Web3 provider available", null, {
-          component: "CollectionsPage",
-          action: "loadCollections",
-        });
-        setError(
-          "Web3 provider not available. Please connect your wallet to view collections."
-        );
-        return;
-      }
-
-      logger.success("Web3 provider initialized", null, {
-        component: "CollectionsPage",
-        action: "loadCollections",
+        action: "fetchCollections"
       });
 
-      // Initialize collection query service
-      logger.info("Initializing collection query service", null, {
+      // Get factory addresses
+      const erc721FactoryAddr = await userHubService.getERC721Factory();
+      const erc1155FactoryAddr = await userHubService.getERC1155Factory();
+      
+      // Get factory contracts
+      const erc721Factory = await collectionService.getERC721FactoryContract();
+      const erc1155Factory = await collectionService.getERC1155FactoryContract();
+
+      // Get created collections from events
+      const erc721Filter = erc721Factory.filters.CollectionCreated();
+      const erc1155Filter = erc1155Factory.filters.CollectionCreated();
+      
+      const [erc721Events, erc1155Events] = await Promise.all([
+        erc721Factory.queryFilter(erc721Filter),
+        erc1155Factory.queryFilter(erc1155Filter)
+      ]);
+
+      // Process collections
+      const collectionPromises = [
+        ...erc721Events.map(async (event) => {
+          const collectionAddress = (event as any).args?.[0];
+          if (!collectionAddress) return null;
+          return fetchCollectionData(collectionAddress, "ERC721");
+        }),
+        ...erc1155Events.map(async (event) => {
+          const collectionAddress = (event as any).args?.[0];
+          if (!collectionAddress) return null;
+          return fetchCollectionData(collectionAddress, "ERC1155");
+        })
+      ];
+
+      const collectionData = (await Promise.all(collectionPromises))
+        .filter(c => c !== null) as Collection[];
+
+      // Sort collections
+      const sorted = sortCollections(collectionData, sortBy);
+      setCollections(sorted);
+      
+      logger.success(`Fetched ${sorted.length} collections`, null, {
         component: "CollectionsPage",
-        action: "loadCollections",
+        action: "fetchCollections"
       });
-      await collectionQueryService.initialize(provider);
-
-      // Get all collections from blockchain
-      logger.info("Loading collections from blockchain", null, {
-        component: "CollectionsPage",
-        action: "loadCollections",
-      });
-      const blockchainCollections =
-        await collectionQueryService.getAllCollections();
-
-      logger.success(
-        `Found ${blockchainCollections.length} collections from blockchain`,
-        { count: blockchainCollections.length },
-        { component: "CollectionsPage", action: "loadCollections" }
-      );
-
-      // Debug: Check if collections are valid
-      const validCollections = blockchainCollections.filter(
-        (c) => c && c.address && c.name
-      );
-      logger.success(
-        `Valid collections: ${validCollections.length}`,
-        { validCount: validCollections.length },
-        { component: "CollectionsPage", action: "loadCollections" }
-      );
-
-      setCollections(blockchainCollections);
-
-      if (blockchainCollections.length === 0) {
-        // Check if contracts are deployed
-        const addresses = marketplaceHubService.getAddresses();
-        const contractsDeployed = addresses.erc721Factory !== ZERO_ADDRESS;
-
-        if (!contractsDeployed) {
-          setError(
-            "Marketplace contracts not deployed. Please deploy the contracts using 'zuno-marketplace-contracts' repository or switch to a network with deployed contracts."
-          );
-        } else {
-          setError(
-            "No collections found on blockchain. Try creating a collection first."
-          );
-        }
-      }
     } catch (error) {
-      logger.error("Error loading collections", error, {
+      logger.error("Failed to fetch collections", error, {
         component: "CollectionsPage",
-        action: "loadCollections",
+        action: "fetchCollections"
       });
-
-      // Provide more helpful error messages
-      let errorMessage = "Failed to load collections from blockchain";
-      if (error instanceof Error) {
-        if (error.message.includes("MarketplaceHub not configured")) {
-          errorMessage = `Network Configuration Error: ${error.message}`;
-        } else if (error.message.includes("No contract deployed")) {
-          errorMessage = `Contract Deployment Error: ${error.message}`;
-        } else if (error.message.includes("Hub not initialized")) {
-          errorMessage = `Service Initialization Error: ${error.message}`;
-        } else {
-          errorMessage = `Error: ${error.message}`;
-        }
-      }
-
-      setError(errorMessage);
       setCollections([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter and sort collections
-  const filteredAndSortedCollections = useMemo(() => {
-    const filtered = collections.filter((collection) => {
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesName = collection.name.toLowerCase().includes(query);
-        const matchesSymbol = collection.symbol.toLowerCase().includes(query);
-        const matchesDescription = collection.description
-          ?.toLowerCase()
-          .includes(query);
+  const fetchCollectionData = async (
+    collectionAddress: string,
+    tokenType: "ERC721" | "ERC1155"
+  ): Promise<Collection | null> => {
+    try {
+      // Get collection contract
+      const contract = new ethers.Contract(
+        collectionAddress,
+        ["function name() view returns (string)",
+         "function symbol() view returns (string)",
+         "function owner() view returns (address)",
+         "function totalSupply() view returns (uint256)"],
+        await collectionService.getProvider()
+      );
 
-        if (!matchesName && !matchesSymbol && !matchesDescription) {
-          return false;
-        }
+      const [name, symbol, owner] = await Promise.all([
+        contract.name(),
+        contract.symbol(),
+        contract.owner()
+      ]);
+
+      // Get metadata
+      const metadata = await nftMetadataService.getCollectionMetadata(collectionAddress);
+
+      // Get collection stats from history tracker
+      let stats;
+      try {
+        const historyTracker = await listingHistoryTrackerService.getHistoryTrackerContract();
+        const collectionStats = await historyTracker.collectionStats(collectionAddress);
+        
+        stats = {
+          totalSupply: 0, // Will update below
+          floorPrice: collectionStats.floorPrice,
+          totalVolume: collectionStats.totalVolume,
+          totalSales: Number(collectionStats.totalSales),
+          averagePrice: collectionStats.averagePrice,
+          activeListings: Number(collectionStats.activeListings)
+        };
+
+        // Try to get total supply
+        try {
+          const supply = await contract.totalSupply();
+          stats.totalSupply = Number(supply);
+        } catch {}
+      } catch (error) {
+        logger.warn("Failed to fetch collection stats", error, {
+          component: "CollectionsPage",
+          action: "fetchCollectionData",
+          collection: collectionAddress
+        });
       }
 
-      // Type/Verification filter
-      if (filterBy === "verified" && !collection.verified) {
-        return false;
-      }
-      if (filterBy === "ERC721" && collection.type !== "ERC721") {
-        return false;
-      }
-      if (filterBy === "ERC1155" && collection.type !== "ERC1155") {
-        return false;
-      }
+      // Check verification status
+      const isVerified = await collectionService.isCollectionVerified(collectionAddress);
 
-      return true;
-    });
+      return {
+        address: collectionAddress,
+        name,
+        symbol,
+        owner,
+        tokenType,
+        isVerified,
+        metadata: metadata ? {
+          description: metadata.description,
+          image: metadata.image,
+          website: metadata.external_link,
+          twitter: (metadata as any).twitter_username || (metadata as any).twitter
+        } : undefined,
+        stats
+      };
+    } catch (error) {
+      logger.warn("Failed to fetch collection data", error, {
+        component: "CollectionsPage",
+        action: "fetchCollectionData",
+        collection: collectionAddress
+      });
+      return null;
+    }
+  };
 
-    // Sort collections
-    filtered.sort((a, b) => {
+  const sortCollections = (collections: Collection[], sortBy: string): Collection[] => {
+    return [...collections].sort((a, b) => {
       switch (sortBy) {
-        case "volume_desc":
-          return (
-            parseFloat(b.stats?.totalVolume || "0") -
-            parseFloat(a.stats?.totalVolume || "0")
-          );
-        case "volume_asc":
-          return (
-            parseFloat(a.stats?.totalVolume || "0") -
-            parseFloat(b.stats?.totalVolume || "0")
-          );
-        case "floor_desc":
-          return (
-            parseFloat(b.stats?.floorPrice || "0") -
-            parseFloat(a.stats?.floorPrice || "0")
-          );
-        case "floor_asc":
-          return (
-            parseFloat(a.stats?.floorPrice || "0") -
-            parseFloat(b.stats?.floorPrice || "0")
-          );
-        case "newest":
-          return (b.createdAt || 0) - (a.createdAt || 0);
-        case "oldest":
-          return (a.createdAt || 0) - (b.createdAt || 0);
-        case "name_asc":
-          return a.name.localeCompare(b.name);
-        case "name_desc":
-          return b.name.localeCompare(a.name);
+        case "volume":
+          return Number(b.stats?.totalVolume || 0n) - Number(a.stats?.totalVolume || 0n);
+        case "floor":
+          return Number(b.stats?.floorPrice || 0n) - Number(a.stats?.floorPrice || 0n);
+        case "sales":
+          return (b.stats?.totalSales || 0) - (a.stats?.totalSales || 0);
         default:
           return 0;
       }
     });
+  };
 
-    logger.debug(
-      "Filtered collections",
-      { filtered },
-      { component: "CollectionsPage", action: "filterCollections" }
-    );
-    return filtered;
-  }, [collections, searchQuery, sortBy, filterBy]);
+  const handleRequestVerification = async () => {
+    if (!selectedCollection || !isConnected) return;
+
+    try {
+      setVerifying(true);
+      logger.info("Requesting collection verification", {
+        collection: selectedCollection.address
+      }, {
+        component: "CollectionsPage",
+        action: "handleRequestVerification"
+      });
+
+      const verificationFee = ethers.parseEther("0.01"); // Example fee
+      
+      const txHash = await collectionService.requestVerification(
+        selectedCollection.address,
+        {
+          description: verificationData.description,
+          website: verificationData.website,
+          twitter: verificationData.twitter
+        }
+      );
+
+      // Transaction hash is returned directly
+      toast.success("Verification request submitted!");
+      setVerifyDialogOpen(false);
+      setSelectedCollection(null);
+      
+      // Reset form
+      setVerificationData({
+        website: "",
+        twitter: "",
+        description: ""
+      });
+    } catch (error: any) {
+      logger.error("Failed to request verification", error, {
+        component: "CollectionsPage",
+        action: "handleRequestVerification"
+      });
+      toast.error(error.message || "Failed to submit verification request");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const filteredCollections = collections.filter(collection => {
+    const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         collection.symbol.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesVerified = !filterVerified || collection.isVerified;
+    return matchesSearch && matchesVerified;
+  });
+
+  const CollectionCard = ({ collection }: { collection: Collection }) => (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+      <div className="relative aspect-square bg-gray-100">
+        {collection.metadata?.image ? (
+          <img
+            src={collection.metadata.image}
+            alt={collection.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="w-12 h-12 text-gray-400" />
+          </div>
+        )}
+        {collection.isVerified && (
+          <div className="absolute top-2 right-2">
+            <Badge className="bg-blue-500">
+              <ShieldCheck className="w-3 h-3 mr-1" />
+              Verified
+            </Badge>
+          </div>
+        )}
+        <Badge 
+          variant="secondary" 
+          className="absolute top-2 left-2"
+        >
+          {collection.tokenType}
+        </Badge>
+      </div>
+      
+      <CardContent className="p-4">
+        <h3 className="font-semibold text-lg mb-2">{collection.name}</h3>
+        <p className="text-sm text-gray-500 mb-4">{collection.symbol}</p>
+        
+        {collection.stats && (
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div>
+              <p className="text-xs text-gray-500">Floor Price</p>
+              <p className="font-medium">
+                {collection.stats.floorPrice > 0n
+                  ? `${formatEther(collection.stats.floorPrice)} ETH`
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Volume</p>
+              <p className="font-medium">
+                {formatEther(collection.stats.totalVolume)} ETH
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Items</p>
+              <p className="font-medium">{collection.stats.totalSupply || "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Sales</p>
+              <p className="font-medium">{collection.stats.totalSales}</p>
+            </div>
+          </div>
+        )}
+        
+        <div className="flex gap-2">
+          <Link href={`/collections/${collection.address}`} className="flex-1">
+            <Button variant="outline" className="w-full">
+              View Collection
+            </Button>
+          </Link>
+          {!collection.isVerified && collection.owner === address && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                setSelectedCollection(collection);
+                setVerifyDialogOpen(true);
+              }}
+            >
+              <ShieldCheck className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <MainLayout>
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Collections</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Discover amazing NFT collections from creators worldwide
-            </p>
+            <h1 className="text-3xl font-bold mb-2">NFT Collections</h1>
+            <p className="text-gray-600">Explore and create NFT collections</p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Button asChild className="w-full sm:w-auto">
-              <Link href="/collections/create">
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Create Collection</span>
-                <span className="sm:hidden">Create</span>
-              </Link>
+          
+          <Link href="/collections/create">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Collection
+            </Button>
+          </Link>
+        </div>
+        
+        {/* Filters */}
+        <div className="flex gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search collections..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          
+          <select
+            className="px-4 py-2 border rounded-md"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+          >
+            <option value="volume">Sort by Volume</option>
+            <option value="floor">Sort by Floor Price</option>
+            <option value="sales">Sort by Sales</option>
+          </select>
+          
+          <Button
+            variant={filterVerified ? "default" : "outline"}
+            onClick={() => setFilterVerified(!filterVerified)}
+          >
+            <ShieldCheck className="w-4 h-4 mr-2" />
+            Verified Only
+          </Button>
+          
+          <div className="flex gap-2">
+            <Button
+              variant={viewMode === "grid" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+            >
+              <Grid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "outline"}
+              size="icon"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="w-4 h-4" />
             </Button>
           </div>
         </div>
-
-        {/* Search and Filters */}
-        <div className="flex flex-col gap-3 sm:gap-4">
-          {/* Search Bar */}
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search collections..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full"
-            />
-          </div>
-
-          {/* Filters Row */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {/* Filter */}
-            <Select value={filterBy} onValueChange={setFilterBy}>
-              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by..." />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px]">
-                <TrendingUp className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Sort by..." />
-              </SelectTrigger>
-              <SelectContent>
-                {sortOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* View Mode */}
-            <div className="flex items-center gap-1 border rounded-md ml-auto">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                className="px-2 sm:px-3"
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-                className="px-2 sm:px-3"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Summary */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {loading
-              ? "Loading collections from blockchain..."
-              : `${filteredAndSortedCollections.length} collections found`}
-            {!loading && collections.length > 0 && (
-              <span className="ml-2 text-green-600">
-                ✅ Live from blockchain
-              </span>
-            )}
-          </p>
-
-          {(searchQuery || filterBy !== "all") && (
-            <div className="flex items-center gap-2">
-              {searchQuery && (
-                <Badge variant="secondary" className="gap-1">
-                  Search: {searchQuery}
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="ml-1 hover:bg-muted rounded-full"
-                  >
-                    ×
-                  </button>
-                </Badge>
-              )}
-              {filterBy !== "all" && (
-                <Badge variant="secondary" className="gap-1">
-                  Filter:{" "}
-                  {filterOptions.find((f) => f.value === filterBy)?.label}
-                  <button
-                    onClick={() => setFilterBy("all")}
-                    className="ml-1 hover:bg-muted rounded-full"
-                  >
-                    ×
-                  </button>
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Error State */}
-      {error && (
-        <div className="text-center py-12">
-          <div className="text-yellow-600 mb-4">⚠️</div>
-          <h3 className="text-lg font-semibold mb-2">{error}</h3>
-          <Button onClick={loadCollections} variant="outline">
-            Try Again
-          </Button>
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin" />
         </div>
+      ) : filteredCollections.length > 0 ? (
+        viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCollections.map(collection => (
+              <CollectionCard key={collection.address} collection={collection} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredCollections.map(collection => (
+              <Card key={collection.address}>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-6">
+                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      {collection.metadata?.image ? (
+                        <img
+                          src={collection.metadata.image}
+                          alt={collection.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-8 h-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-lg">{collection.name}</h3>
+                        {collection.isVerified && (
+                          <Badge className="bg-blue-500">
+                            <ShieldCheck className="w-3 h-3 mr-1" />
+                            Verified
+                          </Badge>
+                        )}
+                        <Badge variant="secondary">{collection.tokenType}</Badge>
+                      </div>
+                      <p className="text-sm text-gray-500 mb-2">{collection.symbol}</p>
+                      {collection.metadata?.description && (
+                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                          {collection.metadata.description}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {collection.stats && (
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500">Floor</p>
+                          <p className="font-medium">
+                            {collection.stats.floorPrice > 0n
+                              ? `${formatEther(collection.stats.floorPrice)} ETH`
+                              : "—"}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500">Volume</p>
+                          <p className="font-medium">
+                            {formatEther(collection.stats.totalVolume)} ETH
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500">Items</p>
+                          <p className="font-medium">{collection.stats.totalSupply || "—"}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500">Sales</p>
+                          <p className="font-medium">{collection.stats.totalSales}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex gap-2">
+                      <Link href={`/collections/${collection.address}`}>
+                        <Button variant="outline">View</Button>
+                      </Link>
+                      {!collection.isVerified && collection.owner === address && (
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedCollection(collection);
+                            setVerifyDialogOpen(true);
+                          }}
+                        >
+                          Verify
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : (
+        <Card className="p-8 text-center">
+          <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+          <p className="text-gray-500">No collections found</p>
+        </Card>
       )}
 
-      {/* Collections Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-3">
-              <Skeleton className="h-40 sm:h-48 w-full rounded-lg" />
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-4 w-1/2" />
-              <div className="flex gap-2">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-16" />
+      {/* Verification Dialog */}
+      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Verification</DialogTitle>
+            <DialogDescription>
+              Submit your collection for verification to get the verified badge
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedCollection && (
+            <div className="space-y-4">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Verification fee: 0.01 ETH
+                </AlertDescription>
+              </Alert>
+              
+              <div>
+                <Label htmlFor="website">Website</Label>
+                <Input
+                  id="website"
+                  placeholder="https://..."
+                  value={verificationData.website}
+                  onChange={(e) => setVerificationData({...verificationData, website: e.target.value})}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="twitter">Twitter</Label>
+                <Input
+                  id="twitter"
+                  placeholder="@username"
+                  value={verificationData.twitter}
+                  onChange={(e) => setVerificationData({...verificationData, twitter: e.target.value})}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <textarea
+                  id="description"
+                  className="w-full p-2 border rounded-md"
+                  rows={4}
+                  placeholder="Describe your collection..."
+                  value={verificationData.description}
+                  onChange={(e) => setVerificationData({...verificationData, description: e.target.value})}
+                />
               </div>
             </div>
-          ))}
-        </div>
-      ) : filteredAndSortedCollections.length > 0 ? (
-        <CollectionsGrid
-          collections={filteredAndSortedCollections}
-          viewMode={viewMode}
-        />
-      ) : (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">
-              {collections.length === 0
-                ? "No collections available"
-                : "No collections found"}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {collections.length === 0
-                ? "No collections have been created on this blockchain yet. Be the first to create one!"
-                : "Try adjusting your search or filter criteria"}
-            </p>
-            {collections.length === 0 ? (
-              <Button asChild>
-                <Link href="/collections/create">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Collection
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery("");
-                  setFilterBy("all");
-                }}
-              >
-                Clear Filters
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-    </MainLayout>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVerifyDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleRequestVerification} disabled={verifying || !isConnected}>
+              {verifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Submit for Verification
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
