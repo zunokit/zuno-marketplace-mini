@@ -15,12 +15,7 @@ import {
   CollectionError,
   MintError,
 } from "@/types";
-import {
-  ERC721Collection_ABI,
-  ERC1155Collection_ABI,
-  ERC721CollectionFactory_ABI,
-  ERC1155CollectionFactory_ABI,
-} from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 import { TransactionService } from "./TransactionService";
 import { EventService } from "./EventService";
 import { logger } from "@/lib/utils/logger";
@@ -109,10 +104,11 @@ export class CollectionService {
       }
 
       // Get the appropriate factory ABI
-      const factoryAbi =
+      const factoryAbi = await getContractABI(
         params.tokenType === TokenType.ERC721
-          ? ERC721CollectionFactory_ABI
-          : ERC1155CollectionFactory_ABI;
+          ? "ERC721CollectionFactory"
+          : "ERC1155CollectionFactory"
+      );
 
       const factory = new ethers.Contract(
         factoryAddress,
@@ -237,10 +233,11 @@ export class CollectionService {
         throw new CollectionError("Provider not initialized", "NO_PROVIDER");
       }
 
-      const abi =
+      const abi = await getContractABI(
         tokenType === TokenType.ERC721
-          ? ERC721Collection_ABI
-          : ERC1155Collection_ABI;
+          ? "ERC721Collection"
+          : "ERC1155Collection"
+      );
       const contract = new ethers.Contract(address, abi, this.provider);
 
       // Fetch all data in parallel
@@ -313,10 +310,11 @@ export class CollectionService {
         throw new CollectionError("Provider not initialized", "NO_PROVIDER");
       }
 
-      const abi =
+      const abi = await getContractABI(
         tokenType === TokenType.ERC721
-          ? ERC721Collection_ABI
-          : ERC1155Collection_ABI;
+          ? "ERC721Collection"
+          : "ERC1155Collection"
+      );
       const contract = new ethers.Contract(
         collectionAddress,
         abi,
@@ -394,10 +392,11 @@ export class CollectionService {
       }
 
       const tokenType = await this.detectTokenType(params.collection);
-      const abi =
+      const abi = await getContractABI(
         tokenType === TokenType.ERC721
-          ? ERC721Collection_ABI
-          : ERC1155Collection_ABI;
+          ? "ERC721Collection"
+          : "ERC1155Collection"
+      );
       const contract = new ethers.Contract(params.collection, abi, this.signer);
 
       // Get mint price
@@ -471,7 +470,7 @@ export class CollectionService {
         return results[results.length - 1]; // Return last transaction hash
       } else {
         // For ERC1155, use batch mint if available
-        const abi = ERC1155Collection_ABI;
+        const abi = await getContractABI("ERC1155Collection");
         const contract = new ethers.Contract(
           params.collection,
           abi,
@@ -513,10 +512,11 @@ export class CollectionService {
       }
 
       const tokenType = await this.detectTokenType(collection);
-      const abi =
+      const abi = await getContractABI(
         tokenType === TokenType.ERC721
-          ? ERC721Collection_ABI
-          : ERC1155Collection_ABI;
+          ? "ERC721Collection"
+          : "ERC1155Collection"
+      );
       const contract = new ethers.Contract(collection, abi, this.signer);
 
       const tx = await contract.setApprovalForAll(operator, approved);
@@ -550,10 +550,11 @@ export class CollectionService {
       }
 
       const tokenType = await this.detectTokenType(collection);
-      const abi =
+      const abi = await getContractABI(
         tokenType === TokenType.ERC721
-          ? ERC721Collection_ABI
-          : ERC1155Collection_ABI;
+          ? "ERC721Collection"
+          : "ERC1155Collection"
+      );
       const contract = new ethers.Contract(collection, abi, this.provider);
 
       return await contract.isApprovedForAll(owner, operator);
@@ -573,9 +574,10 @@ export class CollectionService {
       }
 
       // Try ERC721 first
+      const erc721Abi = await getContractABI("ERC721Collection");
       const erc721Contract = new ethers.Contract(
         collection,
-        ERC721Collection_ABI,
+        erc721Abi,
         this.provider
       );
       try {
@@ -583,9 +585,10 @@ export class CollectionService {
         return TokenType.ERC721;
       } catch {
         // Not ERC721, try ERC1155
+        const erc1155Abi = await getContractABI("ERC1155Collection");
         const erc1155Contract = new ethers.Contract(
           collection,
-          ERC1155Collection_ABI,
+          erc1155Abi,
           this.provider
         );
         await erc1155Contract.uri(0); // ERC1155 specific function

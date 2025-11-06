@@ -5,9 +5,9 @@
  */
 
 import { ethers } from "ethers";
-import { marketplaceHubService } from "./MarketplaceHubService";
 import { logger } from "@/lib/utils/logger";
-import { BundleManager_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
+import { userHubService } from "@/lib/services/contracts/UserHubService";
 
 export interface BundleItem {
   collection: string;
@@ -51,6 +51,45 @@ export class BundleService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
   private bundleManagerAddress: string | null = null;
+  
+  /**
+   * Get bundle manager contract for direct access
+   */
+  async getBundleManagerContract(): Promise<ethers.Contract> {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+    if (!this.bundleManagerAddress) {
+      throw new Error("Bundle manager not initialized");
+    }
+
+    const abi = await getContractABI("BundleManager");
+    return new ethers.Contract(
+      this.bundleManagerAddress,
+      abi,
+      this.signer
+    );
+  }
+  
+  /**
+   * Get signer for direct contract interaction
+   */
+  getSigner(): ethers.Signer {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+    return this.signer;
+  }
+  
+  /**
+   * Get provider
+   */
+  getProvider(): ethers.Provider {
+    if (!this.provider) {
+      throw new Error("Provider not initialized");
+    }
+    return this.provider;
+  }
 
   /**
    * Initialize bundle service
@@ -63,7 +102,7 @@ export class BundleService {
     this.signer = signer || null;
 
     // Get bundle manager address from hub
-    const addresses = marketplaceHubService.getAddresses();
+    const addresses = userHubService.getAddresses();
     this.bundleManagerAddress = addresses.bundleManager;
 
     logger.success(
@@ -73,31 +112,14 @@ export class BundleService {
     );
   }
 
-  /**
-   * Get the bundle manager contract instance
-   */
-  private getBundleManagerContract(): ethers.Contract {
-    if (!this.signer) {
-      throw new Error("Signer not available - connect wallet first");
-    }
 
-    if (!this.bundleManagerAddress) {
-      throw new Error("BundleManager address not loaded from hub");
-    }
-
-    return new ethers.Contract(
-      this.bundleManagerAddress,
-      BundleManager_ABI,
-      this.signer
-    );
-  }
 
   /**
    * Creates a new bundle
    */
   async createBundle(params: CreateBundleParams): Promise<string> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
 
       const bundleItems = params.items.map((item) => ({
         collection: item.collection,
@@ -152,7 +174,7 @@ export class BundleService {
     newDiscount: number
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
       const priceInWei = ethers.parseEther(newPrice);
 
       const tx = await contract.updateBundlePrice(
@@ -171,25 +193,7 @@ export class BundleService {
     }
   }
 
-  /**
-   * Removes an item from a bundle
-   */
-  async removeItemFromBundle(
-    bundleId: string,
-    itemIndex: number
-  ): Promise<ethers.ContractTransactionResponse> {
-    try {
-      const contract = this.getBundleManagerContract();
-      const tx = await contract.removeItemFromBundle(bundleId, itemIndex);
-      return tx;
-    } catch (error) {
-      logger.error("Error removing item from bundle", error, {
-        component: "BundleService",
-        action: "removeItemFromBundle",
-      });
-      throw this.formatTransactionError(error);
-    }
-  }
+
 
   /**
    * Gets bundle details
@@ -205,9 +209,10 @@ export class BundleService {
         throw new Error("BundleManager address not configured");
       }
 
+      const abi = await getContractABI("BundleManager");
       const contract = new ethers.Contract(
         address,
-        BundleManager_ABI,
+        abi,
         this.provider
       );
 
@@ -253,7 +258,7 @@ export class BundleService {
    */
   async getUserBundles(userAddress: string): Promise<BundleInfo[]> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
       const bundleIds = await contract.getUserBundles(userAddress);
       return Promise.all(
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
@@ -275,7 +280,7 @@ export class BundleService {
     price: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
 
       const tx = await contract.purchaseBundle(bundleId, {
         value: ethers.parseEther(price),
@@ -298,7 +303,7 @@ export class BundleService {
     bundleId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
       const tx = await contract.cancelBundle(bundleId);
       return tx;
     } catch (error) {
@@ -315,7 +320,7 @@ export class BundleService {
    */
   async getActiveBundles(): Promise<BundleInfo[]> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
       const bundleIds = await contract.getActiveBundles();
       return Promise.all(
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
@@ -334,7 +339,7 @@ export class BundleService {
    */
   async getBundlesByCollection(collection: string): Promise<BundleInfo[]> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
       const bundleIds = await contract.getBundlesByCollection(collection);
       return Promise.all(
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
@@ -353,7 +358,7 @@ export class BundleService {
    */
   async getUserPurchasedBundles(userAddress: string): Promise<BundleInfo[]> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
       const bundleIds = await contract.getUserPurchasedBundles(userAddress);
       return Promise.all(
         bundleIds.map((id: bigint) => this.getBundle(id.toString()))
@@ -372,7 +377,7 @@ export class BundleService {
    */
   async isBundleAvailable(bundleId: string): Promise<boolean> {
     try {
-      const contract = this.getBundleManagerContract();
+      const contract = await this.getBundleManagerContract();
       return await contract.isBundleAvailable(bundleId);
     } catch (error) {
       logger.error("Error checking bundle availability", error, {
@@ -382,6 +387,7 @@ export class BundleService {
       return false;
     }
   }
+
 
   /**
    * Get bundle status from status code

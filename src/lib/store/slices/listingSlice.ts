@@ -40,8 +40,44 @@ export const fetchActiveListings = createAsyncThunk(
   "listing/fetchActiveListings",
   async (_, { rejectWithValue }) => {
     try {
-      // TODO: Implement with service layer
-      return [];
+      const { exchangeService } = await import("@/lib/services/contracts");
+      const { nftMetadataService } = await import("@/lib/services/NFTMetadataService");
+
+      // Fetch active listings from ERC721 and ERC1155 exchanges
+      const erc721Listings = await exchangeService.getAllActiveListings("ERC721", 50, 0);
+      const erc1155Listings = await exchangeService.getAllActiveListings("ERC1155", 50, 0);
+
+      // Combine and enrich with metadata
+      const allListings = [...erc721Listings, ...erc1155Listings];
+
+      // Fetch metadata for each NFT
+      const enrichedListings = await Promise.all(
+        allListings.map(async (listing) => {
+          try {
+            const metadata = await nftMetadataService.getNFTMetadata(
+              listing.tokenContract,
+              listing.tokenId
+            );
+
+            return {
+              ...listing,
+              nft: {
+                name: metadata?.name,
+                image: metadata?.image,
+                collection: {
+                  name: metadata?.collectionName,
+                  verified: false, // TODO: Implement verification check
+                },
+              },
+            };
+          } catch (error) {
+            // Return listing without metadata if fetch fails
+            return listing;
+          }
+        })
+      );
+
+      return enrichedListings;
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Unknown error"

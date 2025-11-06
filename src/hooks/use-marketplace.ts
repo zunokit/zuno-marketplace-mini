@@ -331,10 +331,7 @@ export const useMarketplace = () => {
         const address = userAddress || wallet.account;
         if (!address) return [];
 
-        const listings = await exchangeService.getUserListings(
-          address,
-          "ERC721"
-        );
+        const listings = await exchangeService.getUserListings(address);
 
         return listings;
       } catch (error) {
@@ -348,6 +345,13 @@ export const useMarketplace = () => {
     [wallet.account]
   );
 
+  /**
+   * Fetch active listings
+   */
+  const fetchListings = useCallback(() => {
+    dispatch(fetchActiveListings());
+  }, [dispatch]);
+
   // Note: Event listeners are now handled by RealTimeEventsService
   // in the individual pages (offers, bundles, auctions)
 
@@ -358,5 +362,6 @@ export const useMarketplace = () => {
     cancelListing,
     updateListingPrice,
     getUserListings,
+    fetchActiveListings: fetchListings,
   };
 };

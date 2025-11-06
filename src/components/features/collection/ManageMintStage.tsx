@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { logger } from "@/lib/utils/logger";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/providers/WalletProvider";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,7 +33,7 @@ export function ManageMintStage({
   currentStage,
   onStageUpdate,
 }: ManageMintStageProps) {
-  const { address } = useAccount();
+  const { account: address } = useWallet();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);

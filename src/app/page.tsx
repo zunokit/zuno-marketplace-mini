@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,9 +10,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { FeaturedNFTs } from "@/components/features/nft/FeaturedNFTs";
 import { TrendingCollections } from "@/components/features/collection/TrendingCollections";
+import { useHomeData } from "@/hooks/use-home-data";
 import {
   ArrowRight,
   TrendingUp,
@@ -21,122 +25,57 @@ import {
   Activity,
   Volume2,
   Settings,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 
-// Demo data for landing page showcase
-const featuredNFTs = [
-  {
-    id: "1",
-    tokenId: "1234",
-    contractAddress: "0x123...",
-    name: "Cosmic Warrior #1234",
-    image: "https://picsum.photos/400/400?random=1",
-    price: "2.5",
-    currency: "ETH",
-    owner: "0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c",
-    collection: {
-      name: "Cosmic Warriors",
-      verified: true,
-    },
-    rarity: "rare" as const,
-    isListed: true,
-  },
-  {
-    id: "2",
-    tokenId: "5678",
-    contractAddress: "0x456...",
-    name: "Digital Dreams #5678",
-    image: "https://picsum.photos/400/400?random=2",
-    price: "1.8",
-    currency: "ETH",
-    owner: "0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c",
-    collection: {
-      name: "Digital Dreams",
-      verified: false,
-    },
-    rarity: "epic" as const,
-    isListed: true,
-  },
-  {
-    id: "3",
-    tokenId: "9012",
-    contractAddress: "0x789...",
-    name: "Neon Nights #9012",
-    image: "https://picsum.photos/400/400?random=3",
-    price: "0.8",
-    currency: "ETH",
-    owner: "0x964f57ed8cc7e9d5f6c0e9d6c4d5b3a1f9e7d0c6c",
-    isListed: true,
-  },
-];
-
-const trendingCollections = [
-  {
-    address: "0x123...",
-    name: "Cosmic Warriors",
-    symbol: "CW",
-    image: "https://picsum.photos/100/100?random=4",
-    creator: "0x742d35cc6bb5c57e4f6a8c5c3d4b2a0f8e6d9b5c",
-    verified: true,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 10000,
-      totalOwners: 5432,
-      floorPrice: "1.2",
-      totalVolume: "12500.5",
-      listed: 234,
-    },
-  },
-  {
-    address: "0x456...",
-    name: "Digital Dreams",
-    symbol: "DD",
-    image: "https://picsum.photos/100/100?random=5",
-    creator: "0x853e46dc7bb6d8c4f5b9d8c5c3d4b2a0f8e6d9b5c",
-    verified: false,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 5000,
-      totalOwners: 2876,
-      floorPrice: "0.8",
-      totalVolume: "8750.2",
-      listed: 156,
-    },
-  },
-];
-
-const stats = [
-  {
-    title: "Total Volume",
-    value: "1.2M ETH",
-    description: "All time trading volume",
-    icon: Volume2,
-    trend: "+12.5%",
-  },
-  {
-    title: "Active Users",
-    value: "150K+",
-    description: "Monthly active traders",
-    icon: Users,
-    trend: "+8.2%",
-  },
-  {
-    title: "Collections",
-    value: "25K+",
-    description: "Verified collections",
-    icon: Palette,
-    trend: "+15.1%",
-  },
-  {
-    title: "Live Auctions",
-    value: "1.8K",
-    description: "Currently active",
-    icon: Gavel,
-    trend: "+3.7%",
-  },
-];
+// No fallback data - all data must come from contracts
 
 export default function Home() {
+  const {
+    stats,
+    featuredNFTs,
+    trendingCollections,
+    isLoading,
+    error,
+    refetch,
+  } = useHomeData();
+
+  // Only use contract data - no fallbacks
+  const displayStats = [
+    {
+      title: "Total Volume",
+      value: stats.totalVolume,
+      description: "All time trading volume",
+      icon: Volume2,
+      trend: stats.trends.volume,
+    },
+    {
+      title: "Active Users",
+      value: stats.activeUsers,
+      description: "Monthly active traders",
+      icon: Users,
+      trend: stats.trends.users,
+    },
+    {
+      title: "Collections",
+      value: stats.collections,
+      description: "Verified collections",
+      icon: Palette,
+      trend: stats.trends.collections,
+    },
+    {
+      title: "Live Auctions",
+      value: stats.liveAuctions,
+      description: "Currently active",
+      icon: Gavel,
+      trend: stats.trends.auctions,
+    },
+  ];
+
+  const displayFeaturedNFTs = featuredNFTs;
+  const displayTrendingCollections = trendingCollections;
+
   return (
     <MainLayout>
       {/* Hero Section */}
@@ -181,31 +120,85 @@ export default function Home() {
 
       {/* Stats Section */}
       <section className="py-8 sm:py-12 md:py-16">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
+              Marketplace Statistics
+            </h2>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Real-time data from the blockchain
+            </p>
+          </div>
+          {error && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refetch}
+              className="w-full sm:w-auto"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+          )}
+        </div>
+
+        {error && (
+          <div className="mb-6 p-4 border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950 rounded-lg">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                Unable to load contract data
+              </span>
+            </div>
+            <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+              {error}. Please ensure contracts are deployed and wallet is
+              connected.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-          {stats.map((stat) => (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-                <stat.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl sm:text-2xl font-bold">
-                  {stat.value}
-                </div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
-                  <p className="text-xs text-muted-foreground">
-                    {stat.description}
-                  </p>
-                  <Badge variant="secondary" className="text-xs w-fit">
-                    <TrendingUp className="mr-1 h-3 w-3" />
-                    {stat.trend}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {isLoading
+            ? // Loading skeletons
+              Array.from({ length: 4 }).map((_, index) => (
+                <Card key={index}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-4" />
+                  </CardHeader>
+                  <CardContent>
+                    <Skeleton className="h-8 w-16 mb-2" />
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-5 w-12" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            : displayStats.map((stat) => (
+                <Card key={stat.title}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+                      {stat.title}
+                    </CardTitle>
+                    <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl sm:text-2xl font-bold">
+                      {stat.value}
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-2 gap-1">
+                      <p className="text-xs text-muted-foreground">
+                        {stat.description}
+                      </p>
+                      <Badge variant="secondary" className="text-xs w-fit">
+                        <TrendingUp className="mr-1 h-3 w-3" />
+                        {stat.trend}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
         </div>
       </section>
 
@@ -217,7 +210,7 @@ export default function Home() {
               Featured NFTs
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Handpicked by our curators
+              Latest listings from the marketplace
             </p>
           </div>
           <Button variant="outline" asChild className="w-full sm:w-auto">
@@ -229,7 +222,38 @@ export default function Home() {
           </Button>
         </div>
 
-        <FeaturedNFTs nfts={featuredNFTs} />
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Card key={index}>
+                <Skeleton className="h-64 w-full rounded-t-lg" />
+                <CardContent className="p-4">
+                  <Skeleton className="h-4 w-3/4 mb-2" />
+                  <Skeleton className="h-3 w-1/2 mb-4" />
+                  <div className="flex justify-between items-center">
+                    <Skeleton className="h-6 w-16" />
+                    <Skeleton className="h-8 w-20" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : displayFeaturedNFTs.length > 0 ? (
+          <FeaturedNFTs nfts={displayFeaturedNFTs} />
+        ) : (
+          <div className="text-center py-12">
+            <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Palette className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No NFTs Available</h3>
+            <p className="text-muted-foreground mb-4">
+              No NFTs are currently listed on the marketplace.
+            </p>
+            <Button asChild>
+              <Link href="/collections/create">Create Collection</Link>
+            </Button>
+          </div>
+        )}
       </section>
 
       {/* Trending Collections */}
@@ -240,7 +264,7 @@ export default function Home() {
               Trending Collections
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground">
-              Most popular collections this week
+              Top collections by trading volume
             </p>
           </div>
           <Button variant="outline" asChild className="w-full sm:w-auto">
@@ -252,7 +276,50 @@ export default function Home() {
           </Button>
         </div>
 
-        <TrendingCollections collections={trendingCollections} />
+        {isLoading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {Array.from({ length: 2 }).map((_, index) => (
+              <Card key={index}>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4 mb-4">
+                    <Skeleton className="h-16 w-16 rounded-lg" />
+                    <div className="flex-1">
+                      <Skeleton className="h-5 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Skeleton className="h-3 w-16 mb-1" />
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                    <div>
+                      <Skeleton className="h-3 w-16 mb-1" />
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : displayTrendingCollections.length > 0 ? (
+          <TrendingCollections collections={displayTrendingCollections} />
+        ) : (
+          <div className="text-center py-12">
+            <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Users className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">
+              No Collections Available
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              No collections have been created yet on the marketplace.
+            </p>
+            <Button asChild>
+              <Link href="/collections/create">Create First Collection</Link>
+            </Button>
+          </div>
+        )}
       </section>
 
       {/* How It Works */}

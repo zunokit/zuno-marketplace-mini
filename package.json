@@ -10,10 +10,7 @@
     "lint:fix": "eslint --fix",
     "dev:testnet": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111 npm run dev",
     "dev:local": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337 npm run dev",
-    "type-check": "tsc --noEmit",
-    "extract-abis": "node scripts/extract-abis.js",
-    "extract-abis:help": "node scripts/extract-abis.js --help",
-    "test:all": "node scripts/test-all.js"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -45,6 +42,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@reduxjs/toolkit": "^2.9.0",
+    "@tanstack/react-query": "^5.90.5",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

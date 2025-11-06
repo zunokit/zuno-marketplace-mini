@@ -5,9 +5,9 @@
  */
 
 import { ethers } from "ethers";
-import { marketplaceHubService } from "./MarketplaceHubService";
+import { userHubService } from "./UserHubService";
 import { logger } from "@/lib/utils/logger";
-import { OfferManager_ABI } from "@/lib/contracts/abis";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 export interface NFTOfferParams {
   collection: string;
@@ -48,6 +48,35 @@ export class OfferService {
   private provider: ethers.Provider | null = null;
   private signer: ethers.Signer | null = null;
   private offerManagerAddress: string | null = null;
+  
+  /**
+   * Get offer manager contract for direct interaction
+   */
+  async getOfferManagerContract(): Promise<ethers.Contract> {
+    if (!this.signer) {
+      throw new Error("Signer not available - connect wallet first");
+    }
+    if (!this.offerManagerAddress) {
+      throw new Error("Offer manager not initialized");
+    }
+
+    const abi = await getContractABI("OfferManager");
+    return new ethers.Contract(
+      this.offerManagerAddress,
+      abi,
+      this.signer
+    );
+  }
+  
+  /**
+   * Get offer manager address
+   */
+  getOfferManagerAddress(): string {
+    if (!this.offerManagerAddress) {
+      throw new Error("Offer manager not initialized");
+    }
+    return this.offerManagerAddress;
+  }
 
   /**
    * Initialize offer service
@@ -60,7 +89,7 @@ export class OfferService {
     this.signer = signer || null;
 
     // Get offer manager address from hub
-    const addresses = marketplaceHubService.getAddresses();
+    const addresses = userHubService.getAddresses();
     this.offerManagerAddress = addresses.offerManager;
 
     logger.success(
@@ -70,31 +99,14 @@ export class OfferService {
     );
   }
 
-  /**
-   * Get the offer manager contract instance
-   */
-  private getOfferManagerContract(): ethers.Contract {
-    if (!this.signer) {
-      throw new Error("Signer not available - connect wallet first");
-    }
 
-    if (!this.offerManagerAddress) {
-      throw new Error("OfferManager address not loaded from hub");
-    }
-
-    return new ethers.Contract(
-      this.offerManagerAddress,
-      OfferManager_ABI,
-      this.signer
-    );
-  }
 
   /**
    * Creates an offer for a specific NFT
    */
   async createNFTOffer(params: NFTOfferParams): Promise<string> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const priceInWei = ethers.parseEther(params.price);
 
       const tx = await contract.createNFTOffer(
@@ -134,7 +146,7 @@ export class OfferService {
    */
   async createCollectionOffer(params: CollectionOfferParams): Promise<string> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const priceInWei = ethers.parseEther(params.price);
 
       const tx = await contract.createCollectionOffer(
@@ -174,7 +186,7 @@ export class OfferService {
    */
   async createTraitOffer(params: TraitOfferParams): Promise<string> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const priceInWei = ethers.parseEther(params.price);
 
       const tx = await contract.createTraitOffer(
@@ -217,7 +229,7 @@ export class OfferService {
     offerId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const tx = await contract.acceptOffer(offerId);
       return tx;
     } catch (error) {
@@ -236,7 +248,7 @@ export class OfferService {
     offerId: string
   ): Promise<ethers.ContractTransactionResponse> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const tx = await contract.cancelOffer(offerId);
       return tx;
     } catch (error) {
@@ -261,9 +273,10 @@ export class OfferService {
         throw new Error("OfferManager address not loaded from hub");
       }
 
+      const abi = await getContractABI("OfferManager");
       const contract = new ethers.Contract(
         this.offerManagerAddress,
-        OfferManager_ABI,
+        abi,
         this.provider
       );
 
@@ -298,7 +311,7 @@ export class OfferService {
     tokenId: string
   ): Promise<OfferInfo[]> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const offerIds = await contract.getNFTOffers(collection, tokenId);
       return Promise.all(
         offerIds.map((id: bigint) => this.getOffer(id.toString()))
@@ -317,7 +330,7 @@ export class OfferService {
    */
   async getUserOffers(userAddress: string): Promise<OfferInfo[]> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const offerIds = await contract.getUserOffers(userAddress);
       return Promise.all(
         offerIds.map((id: bigint) => this.getOffer(id.toString()))
@@ -336,7 +349,7 @@ export class OfferService {
    */
   async getActiveOffers(): Promise<OfferInfo[]> {
     try {
-      const contract = this.getOfferManagerContract();
+      const contract = await this.getOfferManagerContract();
       const offerTypeCodes = [0, 1, 2]; // NFT, COLLECTION, TRAIT
 
       const idsByType: string[][] = await Promise.all(

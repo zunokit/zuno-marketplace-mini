@@ -6,8 +6,8 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
-import { AdvancedFeeManager_ABI } from "@/lib/contracts/abis";
+import { userHubService } from "./UserHubService";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -98,8 +98,8 @@ export class FeeManagerService {
 
     try {
       // Try to get fee manager address from hub's fee registry
-      const hub = marketplaceHubService.getHub();
-      const feeRegistryAddress = await hub.getFeeRegistry();
+      const hub = userHubService.getHub();
+      const feeRegistryAddress = userHubService.getFeeRegistry();
       
       // Note: FeeRegistry should provide FeeManager address
       // For now, we'll need to get it from FeeRegistry contract
@@ -115,12 +115,14 @@ export class FeeManagerService {
   /**
    * Get fee manager contract instance
    */
-  private getFeeManagerContract(readOnly: boolean = false): ethers.Contract {
+  private async getFeeManagerContract(readOnly: boolean = false): Promise<ethers.Contract> {
+    const abi = await getContractABI("AdvancedFeeManager");
+
     if (readOnly && this.provider) {
       if (!this.feeManagerAddress) {
         throw new Error("FeeManager address not configured");
       }
-      return new ethers.Contract(this.feeManagerAddress, AdvancedFeeManager_ABI, this.provider);
+      return new ethers.Contract(this.feeManagerAddress, abi, this.provider);
     }
 
     if (!this.signer) {
@@ -131,7 +133,7 @@ export class FeeManagerService {
       throw new Error("FeeManager address not configured");
     }
 
-    return new ethers.Contract(this.feeManagerAddress, AdvancedFeeManager_ABI, this.signer);
+    return new ethers.Contract(this.feeManagerAddress, abi, this.signer);
   }
 
   // ============================================================================
@@ -151,7 +153,7 @@ export class FeeManagerService {
     salePrice: bigint,
     isMaker: boolean
   ): Promise<FeeCalculation> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
 
     const [finalFee, appliedDiscount] = await contract.calculateFees(
       user,
@@ -178,7 +180,7 @@ export class FeeManagerService {
     finalFeeRate: bigint;
     totalDiscount: bigint;
   }> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
 
     const result = await contract.getEffectiveFeeRate(user, collection, isMaker);
 
@@ -197,7 +199,7 @@ export class FeeManagerService {
    * Get user's current fee tier
    */
   async getUserFeeTier(user: string): Promise<FeeTier> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const tier = await contract.getUserFeeTier(user);
 
     return {
@@ -211,7 +213,7 @@ export class FeeManagerService {
    * Get user's volume data
    */
   async getUserVolumeData(user: string): Promise<UserVolumeData> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const data = await contract.getUserVolumeData(user);
 
     return {
@@ -226,7 +228,7 @@ export class FeeManagerService {
    * Check if user is eligible for tier upgrade
    */
   async checkTierUpgradeEligibility(user: string): Promise<TierUpgradeInfo> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const result = await contract.checkTierUpgradeEligibility(user);
 
     return {
@@ -245,7 +247,7 @@ export class FeeManagerService {
    * Get user's VIP status
    */
   async getUserVIPStatus(user: string): Promise<VIPStatus> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const vip = await contract.getUserVIPStatus(user);
 
     return {
@@ -263,7 +265,7 @@ export class FeeManagerService {
     user: string,
     vipData: VIPStatus
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.updateVIPStatus(user, vipData);
     await tx.wait();
@@ -279,7 +281,7 @@ export class FeeManagerService {
    * Get collection-specific fee override
    */
   async getCollectionFeeOverride(collection: string): Promise<CollectionFeeOverride> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const override = await contract.getCollectionFeeOverride(collection);
 
     return {
@@ -299,7 +301,7 @@ export class FeeManagerService {
     collection: string,
     feeOverride: CollectionFeeOverride
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.setCollectionFeeOverride(collection, feeOverride);
     await tx.wait();
@@ -315,7 +317,7 @@ export class FeeManagerService {
    * Get base fee configuration
    */
   async getBaseFeeConfig(): Promise<FeeConfig> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const config = await contract.getBaseFeeConfig();
 
     return {
@@ -334,7 +336,7 @@ export class FeeManagerService {
   async updateBaseFeeConfig(
     newConfig: FeeConfig
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.updateBaseFeeConfig(newConfig);
     await tx.wait();
@@ -350,7 +352,7 @@ export class FeeManagerService {
    * Get fee tier configuration
    */
   async getFeeTierConfig(tierId: number): Promise<FeeTierConfig> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const config = await contract.getFeeTierConfig(tierId);
 
     return {
@@ -365,7 +367,7 @@ export class FeeManagerService {
    * Get all fee tier configurations
    */
   async getAllFeeTierConfigs(): Promise<FeeTierConfig[]> {
-    const contract = this.getFeeManagerContract(true);
+    const contract = await this.getFeeManagerContract(true);
     const configs = await contract.getAllFeeTierConfigs();
 
     return configs.map((config: any) => ({
@@ -383,7 +385,7 @@ export class FeeManagerService {
     tierId: number,
     tierConfig: FeeTierConfig
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.updateFeeTier(tierId, tierConfig);
     await tx.wait();
@@ -402,7 +404,7 @@ export class FeeManagerService {
     user: string,
     tradeVolume: bigint
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.updateUserVolume(user, tradeVolume);
     await tx.wait();
@@ -417,7 +419,7 @@ export class FeeManagerService {
     users: string[],
     volumes: bigint[]
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.batchUpdateUserVolumes(users, volumes);
     await tx.wait();
@@ -431,7 +433,7 @@ export class FeeManagerService {
   async updateFeeRecipient(
     newRecipient: string
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.updateFeeRecipient(newRecipient);
     await tx.wait();
@@ -443,7 +445,7 @@ export class FeeManagerService {
    * Emergency pause (emergency role only)
    */
   async emergencyPause(): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.emergencyPause();
     await tx.wait();
@@ -455,7 +457,7 @@ export class FeeManagerService {
    * Unpause (admin only)
    */
   async unpause(): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getFeeManagerContract();
+    const contract = await this.getFeeManagerContract();
 
     const tx = await contract.unpause();
     await tx.wait();

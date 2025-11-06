@@ -6,8 +6,8 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { marketplaceHubService } from "./MarketplaceHubService";
-import { ListingValidator_ABI } from "@/lib/contracts/abis";
+import { userHubService } from "./UserHubService";
+import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -91,14 +91,16 @@ export class ListingValidatorService {
   /**
    * Get validator contract instance
    */
-  private getValidatorContract(readOnly: boolean = false): ethers.Contract {
+  private async getValidatorContract(readOnly: boolean = false): Promise<ethers.Contract> {
+    const abi = await getContractABI("ListingValidator");
+
     if (readOnly && this.provider) {
       if (!this.validatorAddress) {
         throw new Error("ListingValidator address not configured");
       }
       return new ethers.Contract(
         this.validatorAddress,
-        ListingValidator_ABI,
+        abi,
         this.provider
       );
     }
@@ -113,7 +115,7 @@ export class ListingValidatorService {
 
     return new ethers.Contract(
       this.validatorAddress,
-      ListingValidator_ABI,
+      abi,
       this.signer
     );
   }
@@ -128,7 +130,7 @@ export class ListingValidatorService {
    * @param user User address
    */
   async validateListing(listing: any, user: string): Promise<ValidationResult> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
 
     const result = await contract.validateListing(listing, user);
 
@@ -151,7 +153,7 @@ export class ListingValidatorService {
     newListing: any,
     user: string
   ): Promise<ValidationResult> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
 
     const result = await contract.validateListingUpdate(
       oldListing,
@@ -209,7 +211,7 @@ export class ListingValidatorService {
    * Get validation settings for a collection
    */
   async getCollectionSettings(collection: string): Promise<ValidationSettings> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
     const settings = await contract.collectionSettings(collection);
 
     return {
@@ -229,7 +231,7 @@ export class ListingValidatorService {
    * Get global validation settings
    */
   async getGlobalSettings(): Promise<ValidationSettings> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
     const settings = await contract.globalSettings();
 
     return {
@@ -252,7 +254,7 @@ export class ListingValidatorService {
     collection: string,
     settings: ValidationSettings
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getValidatorContract();
+    const contract = await this.getValidatorContract();
 
     const tx = await contract.setValidationSettings(collection, settings);
     await tx.wait();
@@ -266,7 +268,7 @@ export class ListingValidatorService {
   async setGlobalSettings(
     settings: ValidationSettings
   ): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getValidatorContract();
+    const contract = await this.getValidatorContract();
 
     const tx = await contract.setGlobalValidationSettings(settings);
     await tx.wait();
@@ -282,7 +284,7 @@ export class ListingValidatorService {
    * Get user cooldown info
    */
   async getUserCooldown(user: string): Promise<UserCooldown> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
     const cooldown = await contract.userCooldowns(user);
 
     return {
@@ -297,7 +299,7 @@ export class ListingValidatorService {
    * Get spam tracker for user
    */
   async getSpamTracker(user: string): Promise<SpamTracker> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
     const tracker = await contract.spamTrackers(user);
 
     return {
@@ -312,7 +314,7 @@ export class ListingValidatorService {
    * Get listing quality score
    */
   async getListingQualityScore(listingId: string): Promise<bigint> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
     return await contract.listingQualityScores(listingId);
   }
 
@@ -320,7 +322,7 @@ export class ListingValidatorService {
    * Get total validated listings
    */
   async getTotalValidatedListings(): Promise<bigint> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
     return await contract.totalValidatedListings();
   }
 
@@ -403,7 +405,7 @@ export class ListingValidatorService {
    * Pause validator
    */
   async pause(): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getValidatorContract();
+    const contract = await this.getValidatorContract();
 
     const tx = await contract.pause();
     await tx.wait();
@@ -415,7 +417,7 @@ export class ListingValidatorService {
    * Unpause validator
    */
   async unpause(): Promise<ethers.ContractTransactionResponse> {
-    const contract = this.getValidatorContract();
+    const contract = await this.getValidatorContract();
 
     const tx = await contract.unpause();
     await tx.wait();
@@ -427,7 +429,7 @@ export class ListingValidatorService {
    * Check if validator is paused
    */
   async isPaused(): Promise<boolean> {
-    const contract = this.getValidatorContract(true);
+    const contract = await this.getValidatorContract(true);
     return await contract.paused();
   }
 

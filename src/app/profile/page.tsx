@@ -21,7 +21,7 @@ import {
   Activity,
   TrendingUp,
 } from "lucide-react";
-import { useWallet } from "@/hooks/use-wallet";
+import { useWallet } from "@/providers/WalletProvider";
 import Link from "next/link";
 
 // User data helper

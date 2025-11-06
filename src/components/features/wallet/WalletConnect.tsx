@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, ExternalLink, Copy, Power } from "lucide-react";
-import { useWallet } from "@/hooks/use-wallet";
+import { useWallet } from "@/providers/WalletProvider";
 import { toast } from "sonner";
 
 export function WalletConnect() {
@@ -30,7 +30,6 @@ export function WalletConnect() {
     error,
     connect,
     disconnect,
-    updateBalance,
   } = useWallet();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -81,9 +80,9 @@ export function WalletConnect() {
         <DialogTrigger asChild>
           <Button variant="outline" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
-            {formatAddress(account)}
+            {account && formatAddress(account)}
             <Badge variant="secondary" className="ml-1">
-              {formatBalance(balance)} ETH
+              {balance && formatBalance(balance)} ETH
             </Badge>
           </Button>
         </DialogTrigger>
@@ -125,14 +124,9 @@ export function WalletConnect() {
 
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Balance:</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {formatBalance(balance)} ETH
-                  </span>
-                  <Button size="sm" variant="ghost" onClick={updateBalance}>
-                    Refresh
-                  </Button>
-                </div>
+                <span className="font-medium">
+                  {balance && formatBalance(balance)} ETH
+                </span>
               </div>
 
               <Button
@@ -191,7 +185,7 @@ export function WalletConnect() {
 
           {error && (
             <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-destructive">{typeof error === 'string' ? error : error.message}</p>
             </div>
           )}
 

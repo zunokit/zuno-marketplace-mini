@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMarketplace } from "@/hooks/use-marketplace";
-import { useWallet } from "@/hooks/use-wallet";
+import { useWallet } from "@/providers/WalletProvider";
 
 interface FilterOptions {
   priceMin: string;
@@ -64,11 +64,24 @@ const statusOptions = [
 ];
 
 export function MarketplaceBrowser() {
-  const { items: listings, loading, error } = useMarketplace();
+  const {
+    items: listings,
+    loading,
+    error,
+    fetchActiveListings,
+    buyListing,
+    cancelListing,
+    updateListingPrice,
+  } = useMarketplace();
   const { account } = useWallet();
 
   // UI State
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  // Fetch listings on mount
+  useEffect(() => {
+    fetchActiveListings();
+  }, [fetchActiveListings]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [filters, setFilters] = useState<FilterOptions>({
@@ -407,37 +420,93 @@ export function MarketplaceBrowser() {
               key={listing.id}
               listing={listing}
               isOwner={listing.seller === account}
-              onBuy={() => {
-                // Handle buy logic
-                logger.info(
-                  "Buy listing",
-                  { listingId: listing.id },
-                  { component: "MarketplaceBrowser", action: "buyListing" }
-                );
+              onBuy={async () => {
+                try {
+                  logger.info(
+                    "Initiating NFT purchase",
+                    {
+                      listingId: listing.id,
+                      tokenContract: listing.tokenContract,
+                      tokenId: listing.tokenId,
+                      price: listing.price,
+                    },
+                    { component: "MarketplaceBrowser", action: "buyListing" }
+                  );
+
+                  await buyListing(
+                    listing.tokenContract,
+                    listing.tokenId,
+                    listing.amount || "1",
+                    listing.tokenType || "ERC721"
+                  );
+                } catch (error) {
+                  logger.error(
+                    "Failed to purchase NFT",
+                    error,
+                    { component: "MarketplaceBrowser", action: "buyListing" }
+                  );
+                }
               }}
-              onEdit={() => {
-                // Handle edit logic
-                logger.info(
-                  "Edit listing",
-                  { listingId: listing.id },
-                  { component: "MarketplaceBrowser", action: "editListing" }
-                );
+              onEdit={async () => {
+                try {
+                  const newPrice = window.prompt(
+                    "Enter new price (in ETH):",
+                    listing.price
+                  );
+                  if (newPrice && newPrice !== listing.price) {
+                    logger.info(
+                      "Updating listing price",
+                      {
+                        listingId: listing.id,
+                        oldPrice: listing.price,
+                        newPrice,
+                      },
+                      { component: "MarketplaceBrowser", action: "editListing" }
+                    );
+
+                    await updateListingPrice(listing.id, newPrice);
+                  }
+                } catch (error) {
+                  logger.error(
+                    "Failed to update listing price",
+                    error,
+                    { component: "MarketplaceBrowser", action: "editListing" }
+                  );
+                }
               }}
-              onCancel={() => {
-                // Handle cancel logic
-                logger.info(
-                  "Cancel listing",
-                  { listingId: listing.id },
-                  { component: "MarketplaceBrowser", action: "cancelListing" }
-                );
+              onCancel={async () => {
+                try {
+                  logger.info(
+                    "Cancelling listing",
+                    {
+                      listingId: listing.id,
+                      tokenContract: listing.tokenContract,
+                      tokenId: listing.tokenId,
+                    },
+                    { component: "MarketplaceBrowser", action: "cancelListing" }
+                  );
+
+                  await cancelListing(
+                    listing.tokenContract,
+                    listing.tokenId,
+                    listing.tokenType || "ERC721"
+                  );
+                } catch (error) {
+                  logger.error(
+                    "Failed to cancel listing",
+                    error,
+                    { component: "MarketplaceBrowser", action: "cancelListing" }
+                  );
+                }
               }}
               onView={() => {
-                // Handle view logic
                 logger.info(
-                  "View listing",
+                  "View listing details",
                   { listingId: listing.id },
                   { component: "MarketplaceBrowser", action: "viewListing" }
                 );
+                // Navigate to NFT detail page
+                window.location.href = `/nft/${listing.tokenContract}/${listing.tokenId}`;
               }}
             />
           ))}
