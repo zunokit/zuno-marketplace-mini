@@ -36,13 +36,10 @@ export class EventService {
     const subscriptionIds: string[] = [];
 
     // Import the appropriate ABI
-    const { ERC721Collection_ABI, ERC1155Collection_ABI } = await import(
-      "@/lib/contracts/abis"
-    );
-    const abi =
-      tokenType === TokenType.ERC721
-        ? ERC721Collection_ABI
-        : ERC1155Collection_ABI;
+    const { getContractABI } = await import("@/lib/contracts/abi-manager");
+    const contractName =
+      tokenType === TokenType.ERC721 ? "ERC721Collection" : "ERC1155Collection";
+    const abi = await getContractABI(contractName as any);
     const contract = new ethers.Contract(address, abi, this.provider);
 
     // Default events to subscribe to
