@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { userHubService } from "../core/UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { getContractABI } from "@/lib/contracts/abi-manager";
+import type { ContractLog, RawContractListing } from "@/types/contract-types";
 
 export interface ListingParams {
   contractAddress: string;
@@ -549,7 +550,7 @@ export class ExchangeService {
       );
       
       const receipt = await tx.wait();
-      const event = receipt.logs.find((log: any) => 
+      const event = receipt?.logs.find((log: ContractLog) =>
         log.eventName === "NFTListed"
       );
       
@@ -591,9 +592,9 @@ export class ExchangeService {
       );
       
       const receipt = await tx.wait();
-      const listingIds = receipt.logs
-        .filter((log: any) => log.eventName === "NFTListed")
-        .map((log: any) => log.args?.listingId);
+      const listingIds = receipt?.logs
+        .filter((log: ContractLog) => log.eventName === "NFTListed")
+        .map((log: ContractLog) => log.args?.listingId as string);
       
       logger.success("Batch NFT listing successful", {
         count: listingIds.length,
@@ -711,13 +712,13 @@ export class ExchangeService {
       ]);
 
       // Format and combine listings
-      const formattedERC721 = erc721Listings.map((l: any) => ({
+      const formattedERC721 = erc721Listings.map((l: RawContractListing) => ({
         ...l,
         tokenType: "ERC721" as const,
         amount: 1n,
       }));
 
-      const formattedERC1155 = erc1155Listings.map((l: any) => ({
+      const formattedERC1155 = erc1155Listings.map((l: RawContractListing) => ({
         ...l,
         tokenType: "ERC1155" as const,
       }));

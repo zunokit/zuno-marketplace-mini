@@ -8,29 +8,17 @@ import { ethers } from "ethers";
 import { userHubService } from "../core/UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { getContractABI } from "@/lib/contracts/abi-manager";
+import type { EventListener, MarketplaceEventHandlers, ContractEvent } from "@/types/contract-types";
 
 export interface EventSubscription {
   id: string;
   contract: ethers.Contract;
   eventName: string;
-  filter: any;
-  handler: (event: any) => void;
+  filter: ethers.DeferredTopicFilter | ethers.ContractEventName | null;
+  handler: (event: ContractEvent | unknown[]) => void;
 }
 
-export interface EventHandler {
-  onListingCreated?: (event: any) => void;
-  onListingPurchased?: (event: any) => void;
-  onListingCancelled?: (event: any) => void;
-  onOfferCreated?: (event: any) => void;
-  onOfferAccepted?: (event: any) => void;
-  onOfferCancelled?: (event: any) => void;
-  onAuctionCreated?: (event: any) => void;
-  onBidPlaced?: (event: any) => void;
-  onAuctionEnded?: (event: any) => void;
-  onBundleCreated?: (event: any) => void;
-  onBundlePurchased?: (event: any) => void;
-  onBundleCancelled?: (event: any) => void;
-}
+export type EventHandler = MarketplaceEventHandlers;
 
 export class RealTimeEventsService {
   private subscriptions: Map<string, EventSubscription> = new Map();

@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { userHubService } from "../core/UserHubService";
 import { getContractABI } from "@/lib/contracts/abi-manager";
+import type { RawTransactionRecord, RawPricePoint } from "@/types/contract-types";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -200,7 +201,7 @@ export class ListingHistoryTrackerService {
 
     const records = await contract.getNFTHistory(collection, tokenId, limit);
 
-    return records.map((r: any) => ({
+    return records.map((r: RawTransactionRecord) => ({
       txType: r.txType,
       collection: r.collection,
       tokenId: r.tokenId,
@@ -261,7 +262,7 @@ export class ListingHistoryTrackerService {
 
     const points = await contract.getCollectionPriceHistory(collection, limit);
 
-    return points.map((p: any) => ({
+    return points.map((p: RawPricePoint) => ({
       price: p.price,
       timestamp: p.timestamp,
       source: p.source,

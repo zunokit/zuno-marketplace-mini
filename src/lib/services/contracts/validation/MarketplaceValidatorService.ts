@@ -559,21 +559,28 @@ export class MarketplaceValidatorService {
   /**
    * Format transaction error for user-friendly messages
    */
-  private formatTransactionError(error: any): Error {
-    if (error.code === "ACTION_REJECTED") {
-      return new Error("Transaction was rejected by user");
+  private formatTransactionError(error: unknown): Error {
+    if (typeof error === "object" && error !== null) {
+      const err = error as { code?: string; message?: string };
+
+      if (err.code === "ACTION_REJECTED") {
+        return new Error("Transaction was rejected by user");
+      }
+      if (err.message?.includes("Ownable: caller is not the owner")) {
+        return new Error("Admin role required for this operation");
+      }
+      if (err.message?.includes("NFT not available")) {
+        return new Error("NFT is already listed or in auction");
+      }
+      if (err.message?.includes("execution reverted")) {
+        const revertReason = err.message.split("execution reverted: ")[1];
+        return new Error(revertReason || "Transaction failed");
+      }
+      if (err.message) {
+        return new Error(err.message);
+      }
     }
-    if (error.message?.includes("Ownable: caller is not the owner")) {
-      return new Error("Admin role required for this operation");
-    }
-    if (error.message?.includes("NFT not available")) {
-      return new Error("NFT is already listed or in auction");
-    }
-    if (error.message?.includes("execution reverted")) {
-      const revertReason = error.message.split("execution reverted: ")[1];
-      return new Error(revertReason || "Transaction failed");
-    }
-    return new Error(error.message || "Transaction failed");
+    return new Error("Transaction failed");
   }
 }
 
