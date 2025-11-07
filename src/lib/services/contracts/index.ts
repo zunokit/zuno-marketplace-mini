@@ -11,6 +11,7 @@
  * - utils/      - AddressManager, CollectionQueryService, RealTimeEvents
  */
 
+import { ethers } from "ethers";
 import { userHubService } from "./core/UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { exchangeService } from "./trading/ExchangeService";
@@ -216,7 +217,16 @@ export { userNFTService } from "../UserNFTService";
 export type { UserNFT } from "../UserNFTService";
 
 /**
- * Initialize all services
+ * Initialize all contract services
+ *
+ * Initializes the UserHub service first (which loads all contract addresses),
+ * then initializes all other services. Services are initialized in parallel
+ * for better performance. Optional services that may not have addresses
+ * configured are initialized separately and won't cause initialization to fail.
+ *
+ * @param provider - Ethers provider instance (JsonRpcProvider, BrowserProvider, etc.)
+ * @param signer - Optional ethers signer for write operations
+ * @throws {Error} Only if UserHub initialization fails
  *
  * @example
  * ```ts
@@ -230,8 +240,8 @@ export type { UserNFT } from "../UserNFTService";
  * ```
  */
 export async function initializeServices(
-  provider: any,
-  signer?: any
+  provider: ethers.Provider,
+  signer?: ethers.Signer
 ): Promise<void> {
   try {
     // Initialize UserHub first (it loads all addresses)

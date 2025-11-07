@@ -42,7 +42,14 @@ export class Web3Utils {
       }
 
       // Initialize all contract services with Hub pattern
-      await initializeServices(this.provider, this.signer);
+      if (this.provider) {
+        await initializeServices(this.provider, this.signer || undefined);
+      } else {
+        logger.warn("Provider not initialized, skipping service initialization", null, {
+          component: "Web3Utils",
+          action: "initializeProvider",
+        });
+      }
 
       logger.success("Web3 and contract services initialized", null, {
         component: "Web3Utils",
