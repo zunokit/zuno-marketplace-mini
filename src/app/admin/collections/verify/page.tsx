@@ -41,7 +41,7 @@ import {
   collectionVerifierService,
   CollectionVerification,
   VerificationStatus,
-} from "@/lib/services/contracts/CollectionVerifierService";
+} from "@/lib/services/contracts";
 import { Shield, CheckCircle, XCircle, Clock } from "lucide-react";
 
 export default function CollectionVerificationPage() {

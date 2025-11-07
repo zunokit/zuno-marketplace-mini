@@ -6,7 +6,7 @@
 
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { userHubService } from "./UserHubService";
+import { userHubService } from "../core/UserHubService";
 import { getContractABI } from "@/lib/contracts/abi-manager";
 
 // ============================================================================

@@ -46,7 +46,7 @@ import { toast } from "sonner";
 import {
   collectionQueryService,
   CollectionData,
-} from "@/lib/services/contracts/CollectionQueryService";
+} from "@/lib/services/contracts";
 
 interface CollectionDisplayData {
   address: string;

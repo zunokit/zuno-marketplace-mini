@@ -22,7 +22,7 @@ import {
   listingHistoryTrackerService,
   GlobalStats,
   ListingHistoryTrackerService,
-} from "@/lib/services/contracts/ListingHistoryTrackerService";
+} from "@/lib/services/contracts";
 import {
   TrendingUp,
   DollarSign,
