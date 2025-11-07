@@ -56,8 +56,8 @@ export function CreateOfferForm() {
     setTxHash(null);
     try {
       const receipt = await makeNFTOffer(values);
-      if (receipt?.hash) {
-        setTxHash(receipt.hash);
+      if (receipt) {
+        setTxHash(receipt); // receipt is now offerId string
         nftForm.reset();
       }
     } catch (error) {
@@ -73,8 +73,8 @@ export function CreateOfferForm() {
     setTxHash(null);
     try {
       const receipt = await makeCollectionOffer(values);
-      if (receipt?.hash) {
-        setTxHash(receipt.hash);
+      if (receipt) {
+        setTxHash(receipt); // receipt is now offerId string
         collectionForm.reset();
       }
     } catch (error) {
@@ -90,8 +90,8 @@ export function CreateOfferForm() {
     setTxHash(null);
     try {
       const receipt = await makeTraitOffer(values);
-      if (receipt?.hash) {
-        setTxHash(receipt.hash);
+      if (receipt) {
+        setTxHash(receipt); // receipt is now offerId string
         traitForm.reset();
       }
     } catch (error) {
