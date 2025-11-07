@@ -11,7 +11,7 @@ import {
   fetchActiveListings,
 } from "@/lib/store/slices/listingSlice";
 import { addNotification } from "@/lib/store/slices/notificationSlice";
-import { exchangeService } from "@/lib/services/contracts/ExchangeService";
+import { exchangeService } from "@/lib/services/contracts";
 import { web3Utils } from "@/lib/utils/web3";
 
 export const useMarketplace = () => {

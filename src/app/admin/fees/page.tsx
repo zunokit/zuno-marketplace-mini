@@ -33,7 +33,7 @@ import {
   feeManagerService,
   FeeConfig,
   FeeTierConfig,
-} from "@/lib/services/contracts/FeeManagerService";
+} from "@/lib/services/contracts";
 import { DollarSign, TrendingUp, Edit, Users, Star } from "lucide-react";
 
 export default function FeeManagementPage() {

@@ -6,8 +6,8 @@
 import { useState, useCallback, useEffect } from "react";
 import { ethers } from "ethers";
 import { useWallet } from "@/providers/WalletProvider";
-import { userHubService } from "@/lib/services/contracts/UserHubService";
-import { collectionService } from "@/lib/services/contracts/CollectionService";
+import { userHubService } from "@/lib/services/contracts";
+import { collectionService } from "@/lib/services/contracts";
 import { transactionService } from "@/lib/services/blockchain/TransactionService";
 import { eventService } from "@/lib/services/blockchain/EventService";
 import {

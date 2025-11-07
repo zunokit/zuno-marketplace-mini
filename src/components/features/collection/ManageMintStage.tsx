@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Play, AlertCircle, CheckCircle } from "lucide-react";
-import { collectionService } from "@/lib/services/contracts/CollectionService";
+import { collectionService } from "@/lib/services/contracts";
 import { useToast } from "@/hooks/use-toast";
 import { ethers } from "ethers";
 

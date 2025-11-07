@@ -35,7 +35,7 @@ import {
   TimelockService,
   PendingAction,
   ActionStatus,
-} from "@/lib/services/contracts/TimelockService";
+} from "@/lib/services/contracts";
 import { Clock, Play, X, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function TimelockManagementPage() {

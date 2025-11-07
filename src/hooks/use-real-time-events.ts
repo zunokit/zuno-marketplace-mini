@@ -12,7 +12,7 @@ import { logger } from "@/lib/utils/logger";
 import {
   realTimeEventsService,
   EventHandler,
-} from "@/lib/services/contracts/RealTimeEvents";
+} from "@/lib/services/contracts";
 
 export interface UseRealTimeEventsOptions {
   enabled?: boolean;
