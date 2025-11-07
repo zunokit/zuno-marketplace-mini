@@ -11,7 +11,7 @@
  */
 
 import { ethers } from "ethers";
-import { getHubAddressFromManager } from "@/lib/services/contracts/AddressManager";
+import { getHubAddressFromManager } from "@/lib/services/contracts/utils/AddressManager";
 import { getContractABI } from "@/lib/contracts/abi-manager";
 import { ZERO_ADDRESS } from "@/lib/constants";
 import { logger } from "@/lib/utils/logger";

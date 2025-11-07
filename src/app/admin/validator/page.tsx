@@ -25,7 +25,7 @@ import { useAppSelector } from "@/lib/store/hooks";
 import {
   listingValidatorService,
   ValidationSettings,
-} from "@/lib/services/contracts/ListingValidatorService";
+} from "@/lib/services/contracts";
 import {
   Shield,
   Settings,

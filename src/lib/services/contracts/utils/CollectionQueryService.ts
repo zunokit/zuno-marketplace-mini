@@ -4,10 +4,10 @@
  */
 
 import { ethers } from "ethers";
-import { userHubService } from "./UserHubService";
+import { userHubService } from "../core/UserHubService";
 import { logger } from "@/lib/utils/logger";
-import { listingHistoryTrackerService } from "./ListingHistoryTrackerService";
-import { exchangeService } from "./ExchangeService";
+import { listingHistoryTrackerService } from "../validation/ListingHistoryTrackerService";
+import { exchangeService } from "../trading/ExchangeService";
 import { getContractABI } from "@/lib/contracts/abi-manager";
 import { DEAD_ADDRESS, ZERO_ADDRESS } from "@/lib/constants";
 

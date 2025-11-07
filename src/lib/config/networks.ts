@@ -4,7 +4,7 @@
  * Contract addresses are fetched dynamically from API
  */
 
-import { getHubAddressFromManager } from "@/lib/services/contracts/AddressManager";
+import { getHubAddressFromManager } from "@/lib/services/contracts/utils/AddressManager";
 
 export interface NetworkConfig {
   chainId: number;

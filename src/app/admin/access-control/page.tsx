@@ -41,7 +41,7 @@ import {
   accessControlService,
   AccessControlService,
   RolePermissions,
-} from "@/lib/services/contracts/AccessControlService";
+} from "@/lib/services/contracts";
 import { Shield, UserPlus, UserMinus, Users, Key } from "lucide-react";
 
 interface RoleMember {

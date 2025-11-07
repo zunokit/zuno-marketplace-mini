@@ -7,7 +7,7 @@
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { getContractABI } from "@/lib/contracts/abi-manager";
-import { userHubService } from "@/lib/services/contracts/UserHubService";
+import { userHubService } from "@/lib/services/contracts/core/UserHubService";
 
 export interface BundleItem {
   collection: string;
