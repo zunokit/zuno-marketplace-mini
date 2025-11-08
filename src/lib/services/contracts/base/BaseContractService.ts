@@ -13,7 +13,7 @@
  */
 
 import { ethers } from "ethers";
-import { getContractABI } from "@/lib/contracts/abi-manager";
+import { getContractABI, ContractName } from "@/lib/contracts/abi-manager";
 import { logger } from "@/lib/utils/logger";
 
 export abstract class BaseContractService {
@@ -31,7 +31,7 @@ export abstract class BaseContractService {
    * Default ABI name for this service's primary contract
    * Must be implemented by derived classes
    */
-  abstract readonly defaultAbiName: string;
+  abstract readonly defaultAbiName: ContractName;
 
   /**
    * Fetch and set the contract address for this service
@@ -86,7 +86,7 @@ export abstract class BaseContractService {
    * @throws Error if signer is not available
    */
   protected async getContract(
-    abiName?: string,
+    abiName?: ContractName,
     address?: string
   ): Promise<ethers.Contract> {
     const signer = this.getSigner();
@@ -104,7 +104,7 @@ export abstract class BaseContractService {
    * @returns Contract instance with provider
    */
   protected async getContractReadOnly(
-    abiName?: string,
+    abiName?: ContractName,
     address?: string
   ): Promise<ethers.Contract> {
     const provider = this.getProvider();
