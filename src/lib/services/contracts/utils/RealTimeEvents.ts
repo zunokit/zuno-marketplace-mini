@@ -8,29 +8,17 @@ import { ethers } from "ethers";
 import { userHubService } from "../core/UserHubService";
 import { logger } from "@/lib/utils/logger";
 import { getContractABI } from "@/lib/contracts/abi-manager";
+import type { EventListener, MarketplaceEventHandlers, ContractEvent } from "@/types/contract-types";
 
 export interface EventSubscription {
   id: string;
   contract: ethers.Contract;
   eventName: string;
-  filter: any;
-  handler: (event: any) => void;
+  filter: ethers.DeferredTopicFilter | ethers.ContractEventName | null;
+  handler: (event: ContractEvent) => void;
 }
 
-export interface EventHandler {
-  onListingCreated?: (event: any) => void;
-  onListingPurchased?: (event: any) => void;
-  onListingCancelled?: (event: any) => void;
-  onOfferCreated?: (event: any) => void;
-  onOfferAccepted?: (event: any) => void;
-  onOfferCancelled?: (event: any) => void;
-  onAuctionCreated?: (event: any) => void;
-  onBidPlaced?: (event: any) => void;
-  onAuctionEnded?: (event: any) => void;
-  onBundleCreated?: (event: any) => void;
-  onBundlePurchased?: (event: any) => void;
-  onBundleCancelled?: (event: any) => void;
-}
+export type EventHandler = MarketplaceEventHandlers;
 
 export class RealTimeEventsService {
   private subscriptions: Map<string, EventSubscription> = new Map();
@@ -80,11 +68,11 @@ export class RealTimeEventsService {
       // ListingCreated event
       if (handlers.onListingCreated) {
         exchange.on("NFTListed", (...args) => {
-          logger.info("NFTListed event", args, {
+          logger.info("NFTListed event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleNFTListed",
           });
-          handlers.onListingCreated!(args);
+          handlers.onListingCreated!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("NFTListed", {
@@ -99,11 +87,11 @@ export class RealTimeEventsService {
       // ListingPurchased event
       if (handlers.onListingPurchased) {
         exchange.on("NFTSold", (...args) => {
-          logger.info("NFTSold event", args, {
+          logger.info("NFTSold event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleNFTSold",
           });
-          handlers.onListingPurchased!(args);
+          handlers.onListingPurchased!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("NFTSold", {
@@ -118,11 +106,11 @@ export class RealTimeEventsService {
       // ListingCancelled event
       if (handlers.onListingCancelled) {
         exchange.on("ListingCancelled", (...args) => {
-          logger.info("ListingCancelled event", args, {
+          logger.info("ListingCancelled event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleListingCancelled",
           });
-          handlers.onListingCancelled!(args);
+          handlers.onListingCancelled!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("ListingCancelled", {
@@ -161,11 +149,11 @@ export class RealTimeEventsService {
       // OfferCreated event
       if (handlers.onOfferCreated) {
         offerManager.on("OfferMade", (...args) => {
-          logger.info("OfferMade event", args, {
+          logger.info("OfferMade event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleOfferMade",
           });
-          handlers.onOfferCreated!(args);
+          handlers.onOfferCreated!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("OfferMade", {
@@ -180,11 +168,11 @@ export class RealTimeEventsService {
       // OfferAccepted event
       if (handlers.onOfferAccepted) {
         offerManager.on("OfferAccepted", (...args) => {
-          logger.info("OfferAccepted event", args, {
+          logger.info("OfferAccepted event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleOfferAccepted",
           });
-          handlers.onOfferAccepted!(args);
+          handlers.onOfferAccepted!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("OfferAccepted", {
@@ -199,11 +187,11 @@ export class RealTimeEventsService {
       // OfferCancelled event
       if (handlers.onOfferCancelled) {
         offerManager.on("OfferCancelled", (...args) => {
-          logger.info("OfferCancelled event", args, {
+          logger.info("OfferCancelled event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleOfferCancelled",
           });
-          handlers.onOfferCancelled!(args);
+          handlers.onOfferCancelled!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("OfferCancelled", {
@@ -242,11 +230,11 @@ export class RealTimeEventsService {
       // AuctionCreated event
       if (handlers.onAuctionCreated) {
         englishAuction.on("AuctionCreated", (...args) => {
-          logger.info("AuctionCreated event", args, {
+          logger.info("AuctionCreated event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleAuctionCreated",
           });
-          handlers.onAuctionCreated!(args);
+          handlers.onAuctionCreated!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("AuctionCreated", {
@@ -261,11 +249,11 @@ export class RealTimeEventsService {
       // BidPlaced event
       if (handlers.onBidPlaced) {
         englishAuction.on("BidPlaced", (...args) => {
-          logger.info("BidPlaced event", args, {
+          logger.info("BidPlaced event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleBidPlaced",
           });
-          handlers.onBidPlaced!(args);
+          handlers.onBidPlaced!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("BidPlaced", {
@@ -280,11 +268,11 @@ export class RealTimeEventsService {
       // AuctionEnded event
       if (handlers.onAuctionEnded) {
         englishAuction.on("AuctionEnded", (...args) => {
-          logger.info("AuctionEnded event", args, {
+          logger.info("AuctionEnded event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleAuctionEnded",
           });
-          handlers.onAuctionEnded!(args);
+          handlers.onAuctionEnded!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("AuctionEnded", {
@@ -323,11 +311,11 @@ export class RealTimeEventsService {
       // BundleCreated event
       if (handlers.onBundleCreated) {
         bundleManager.on("BundleCreated", (...args) => {
-          logger.info("BundleCreated event", args, {
+          logger.info("BundleCreated event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleBundleCreated",
           });
-          handlers.onBundleCreated!(args);
+          handlers.onBundleCreated!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("BundleCreated", {
@@ -342,11 +330,11 @@ export class RealTimeEventsService {
       // BundlePurchased event
       if (handlers.onBundlePurchased) {
         bundleManager.on("BundlePurchased", (...args) => {
-          logger.info("BundlePurchased event", args, {
+          logger.info("BundlePurchased event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleBundlePurchased",
           });
-          handlers.onBundlePurchased!(args);
+          handlers.onBundlePurchased!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("BundlePurchased", {
@@ -361,11 +349,11 @@ export class RealTimeEventsService {
       // BundleCancelled event
       if (handlers.onBundleCancelled) {
         bundleManager.on("BundleCancelled", (...args) => {
-          logger.info("BundleCancelled event", args, {
+          logger.info("BundleCancelled event", { event: args }, {
             component: "RealTimeEventsService",
             action: "handleBundleCancelled",
           });
-          handlers.onBundleCancelled!(args);
+          handlers.onBundleCancelled!(args[args.length - 1] as ContractEvent);
         });
 
         this.subscriptions.set("BundleCancelled", {

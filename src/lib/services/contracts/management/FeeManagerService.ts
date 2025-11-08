@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { userHubService } from "../core/UserHubService";
 import { getContractABI } from "@/lib/contracts/abi-manager";
+import type { RawFeeConfig } from "@/types/contract-types";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -370,10 +371,10 @@ export class FeeManagerService {
     const contract = await this.getFeeManagerContract(true);
     const configs = await contract.getAllFeeTierConfigs();
 
-    return configs.map((config: any) => ({
-      volumeThreshold: config.volumeThreshold,
-      discountBps: config.discountBps,
-      tierName: config.tierName,
+    return configs.map((config: RawFeeConfig) => ({
+      volumeThreshold: config.minVolume,
+      discountBps: config.discountedFee,
+      tierName: config.name,
       isActive: config.isActive
     }));
   }
