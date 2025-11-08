@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { getContractABI } from "@/lib/contracts/abi-manager";
 import { userHubService } from "@/lib/services/contracts/core/UserHubService";
+import type { ContractLog, RawBundleItem } from "@/types/contract-types";
 
 export interface BundleItem {
   collection: string;
@@ -141,7 +142,7 @@ export class BundleService {
       );
 
       const receipt = await tx.wait();
-      const event = receipt.logs.find((log: any) => {
+      const event = receipt?.logs.find((log: ContractLog) => {
         try {
           const parsed = contract.interface.parseLog(log);
           return parsed?.name === "BundleCreated";
@@ -236,7 +237,7 @@ export class BundleService {
         buyer: metadata.buyer,
         description: metadata.description,
         imageUrl: metadata.imageUrl,
-        items: items.map((item: any) => ({
+        items: items.map((item: RawBundleItem) => ({
           collection: item.collection,
           tokenId: item.tokenId.toString(),
           amount: item.amount.toString(),
@@ -407,18 +408,25 @@ export class BundleService {
   /**
    * Format transaction error for user-friendly messages
    */
-  private formatTransactionError(error: any): Error {
-    if (error.code === "ACTION_REJECTED") {
-      return new Error("Transaction was rejected by user");
+  private formatTransactionError(error: unknown): Error {
+    if (typeof error === "object" && error !== null) {
+      const err = error as { code?: string; message?: string };
+
+      if (err.code === "ACTION_REJECTED") {
+        return new Error("Transaction was rejected by user");
+      }
+      if (err.code === "INSUFFICIENT_FUNDS") {
+        return new Error("Insufficient funds to complete transaction");
+      }
+      if (err.message?.includes("execution reverted")) {
+        const revertReason = err.message.split("execution reverted: ")[1];
+        return new Error(revertReason || "Transaction failed");
+      }
+      if (err.message) {
+        return new Error(err.message);
+      }
     }
-    if (error.code === "INSUFFICIENT_FUNDS") {
-      return new Error("Insufficient funds to complete transaction");
-    }
-    if (error.message?.includes("execution reverted")) {
-      const revertReason = error.message.split("execution reverted: ")[1];
-      return new Error(revertReason || "Transaction failed");
-    }
-    return new Error(error.message || "Transaction failed");
+    return new Error("Transaction failed");
   }
 }
 
