@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { userHubService } from "../core/UserHubService";
 import { getContractABI } from "@/lib/contracts/abi-manager";
+import type { RawRoyaltyRecipient } from "@/types/contract-types";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -163,7 +164,7 @@ export class RoyaltyManagerService {
     const contract = await this.getRoyaltyManagerContract(true);
     const recipients = await contract.royaltyRecipients(collection);
 
-    return recipients.map((r: any) => ({
+    return recipients.map((r: RawRoyaltyRecipient) => ({
       recipient: r.recipient,
       basisPoints: r.basisPoints,
       role: r.role,

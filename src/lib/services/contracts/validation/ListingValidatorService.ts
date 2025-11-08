@@ -8,6 +8,7 @@ import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
 import { userHubService } from "../core/UserHubService";
 import { getContractABI } from "@/lib/contracts/abi-manager";
+import type { ValidatableListing } from "@/types/contract-types";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -129,7 +130,7 @@ export class ListingValidatorService {
    * @param listing Listing parameters
    * @param user User address
    */
-  async validateListing(listing: any, user: string): Promise<ValidationResult> {
+  async validateListing(listing: ValidatableListing, user: string): Promise<ValidationResult> {
     const contract = await this.getValidatorContract(true);
 
     const result = await contract.validateListing(listing, user);
@@ -149,8 +150,8 @@ export class ListingValidatorService {
    * @param user User address
    */
   async validateListingUpdate(
-    oldListing: any,
-    newListing: any,
+    oldListing: ValidatableListing,
+    newListing: ValidatableListing,
     user: string
   ): Promise<ValidationResult> {
     const contract = await this.getValidatorContract(true);
