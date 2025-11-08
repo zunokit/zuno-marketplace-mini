@@ -137,6 +137,40 @@ The project uses a custom logger utility instead of `console.log` statements:
 - **Production Ready**: Automatic error monitoring integration (Sentry ready)
 - **Development/Production Modes**: Different logging behavior per environment
 
+### 7. Service Architecture Patterns (Refactored)
+
+The codebase has been refactored to follow modern service architecture patterns:
+
+**BaseContractService Pattern**:
+- All services extend `BaseContractService` abstract class
+- Standardizes initialization, provider/signer management, contract instantiation
+- Eliminates 1,400+ lines of duplicate code across 20+ services
+- Located in `src/lib/services/contracts/base/BaseContractService.ts`
+
+**Utility Libraries**:
+- `ContractValidator` - Input validation for addresses, prices, token IDs, durations
+- `ContractErrorFormatter` - Converts ethers.js errors to user-friendly messages
+- `CryptoFormatter` - Standardizes formatting for prices, fees, percentages, timestamps
+- `StatusMapper` - Maps numeric contract status codes to human-readable strings
+- `BatchQueries` - Performance optimization utilities for parallel operations
+- `PerformanceMonitor` - Tracks and analyzes service performance
+
+**Type Safety**:
+- Comprehensive type definitions in `src/types/contract-types.ts`
+- Zero `any` types - strict TypeScript enforcement
+- Type guards for runtime type checking
+
+**Validation Layers**:
+- `ContractValidator` - Low-level input validation
+- `ServiceValidator` - High-level business logic validation
+- Pre-transaction validation prevents failed transactions
+
+**Documentation**:
+- JSDoc standards in `docs/JSDOC-STANDARDS.md`
+- Testing guide in `docs/TESTING-GUIDE.md`
+- Complete refactoring summary in `docs/REFACTORING-SUMMARY.md`
+- Migration guides for updating existing services
+
 **Logger Usage**:
 
 ```typescript
@@ -237,6 +271,32 @@ const fees = await marketplaceHubService.calculateFees(
 
 // Pattern 3: Check permissions
 const hasRole = await accessControlService.hasRole(role, userAddress);
+
+// Pattern 4: Use validators before calling services
+import { ContractValidator } from '@/lib/utils/validators';
+ContractValidator.validateAddress(nftAddress, "NFT Address");
+ContractValidator.validatePrice(price, "Listing Price");
+
+// Pattern 5: Format contract data for display
+import { CryptoFormatter } from '@/lib/utils/crypto-formatter';
+import { StatusMapper } from '@/lib/utils/status-mappers';
+const displayPrice = CryptoFormatter.formatPrice(priceInWei, 4, true); // "1.2345 ETH"
+const status = StatusMapper.mapListingStatus(statusCode); // "ACTIVE"
+
+// Pattern 6: Handle errors gracefully
+import { ContractErrorFormatter } from '@/lib/utils/contract-errors';
+try {
+  await exchangeService.listNFT({ ... });
+} catch (error) {
+  const userError = ContractErrorFormatter.format(error);
+  throw userError; // User-friendly error message
+}
+
+// Pattern 7: Batch queries for performance
+import { BatchQueries } from '@/lib/utils/batch-queries';
+const results = await BatchQueries.executeParallel(
+  listings.map(id => () => exchangeService.getListing(id))
+);
 ```
 
 ### Adding a New Feature
@@ -249,8 +309,36 @@ const hasRole = await accessControlService.hasRole(role, userAddress);
 
 ### Testing
 
-The project doesn't have formal tests yet. When testing manually:
+**Testing Guide**: See `docs/TESTING-GUIDE.md` for comprehensive testing documentation.
 
+**Testing Framework**:
+- **Unit Tests**: Vitest for service and utility testing
+- **Integration Tests**: Testing complete user flows with mocked contracts
+- **E2E Tests**: Playwright for browser automation
+- **Coverage Target**: 80%+ for critical paths
+
+**Quick Testing Examples**:
+
+```typescript
+// Unit test - validators
+import { ContractValidator } from '@/lib/utils/validators';
+describe('ContractValidator', () => {
+  it('should validate Ethereum addresses', () => {
+    expect(() => ContractValidator.validateAddress('0x123')).toThrow();
+    expect(() => ContractValidator.validateAddress('0x' + '1'.repeat(40))).not.toThrow();
+  });
+});
+
+// Integration test - service operations
+import { exchangeService } from '@/lib/services/contracts';
+it('should create and retrieve a listing', async () => {
+  const listingId = await exchangeService.listNFT({ ... });
+  const listing = await exchangeService.getListing(listingId);
+  expect(listing.seller).toBe(userAddress);
+});
+```
+
+**Manual Testing**:
 - Use Local Mode with Anvil for contract integration testing
 - Verify transactions on Sepolia before mainnet deployment
 
@@ -391,20 +479,36 @@ src/
 │   │   └── addresses.ts   # Contract address configuration
 │   ├── services/
 │   │   ├── contracts/     # Contract service classes (13 services)
+│   │   │   ├── base/      # BaseContractService abstract class
+│   │   │   ├── core/      # Core services (Hub, Exchange, Auction)
+│   │   │   ├── utils/     # Utility services (Validator, Tracker)
+│   │   │   └── validators/ # ServiceValidator for business logic
 │   │   ├── blockchain/    # Blockchain utilities
 │   │   ├── web3/          # Web3 provider
 │   │   └── env-storage.service.ts  # Environment localStorage service
 │   ├── hooks/             # Custom React hooks
 │   ├── store/             # Redux store and slices
 │   ├── utils/             # Utility functions
-│   │   ├── env-config.ts # Environment configuration manager
-│   │   └── logger.ts     # Production-ready logger utility
+│   │   ├── contract-errors.ts    # Error formatting
+│   │   ├── crypto-formatter.ts   # Price/fee formatting
+│   │   ├── status-mappers.ts     # Status code mapping
+│   │   ├── validators.ts         # Input validation
+│   │   ├── batch-queries.ts      # Performance utilities
+│   │   ├── performance-monitor.ts # Performance tracking
+│   │   ├── env-config.ts         # Environment configuration manager
+│   │   └── logger.ts             # Production-ready logger utility
 │   ├── constants/         # App constants
 │   └── config/            # Configuration
 ├── types/                  # TypeScript type definitions
 │   ├── index.ts           # Main type exports
+│   ├── contract-types.ts  # Contract interaction types
 │   ├── env-config.ts      # Environment configuration types
 │   └── events.ts          # Event-related types
+├── docs/                   # Documentation
+│   ├── JSDOC-STANDARDS.md      # JSDoc templates and standards
+│   ├── TESTING-GUIDE.md        # Testing guide and examples
+│   ├── REFACTORING-SUMMARY.md  # Complete refactoring overview
+│   └── PHASE-4-MIGRATION-GUIDE.md  # Service migration guide
 └── styles/                # Global styles
 ```
 
