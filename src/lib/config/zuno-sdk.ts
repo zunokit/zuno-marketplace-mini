@@ -6,6 +6,7 @@
  */
 
 import { ZunoSDK, ZunoSDKConfig } from 'zuno-marketplace-sdk';
+import { logger } from '@/lib/utils/logger';
 
 /**
  * Default SDK configuration
@@ -102,21 +103,18 @@ export const localSDK = createSDKForNetwork(31337);
 export async function initializeSDK(sdkInstance: ZunoSDK = sdk): Promise<void> {
   try {
     // Prefetch common ABIs for better performance
-    await sdkInstance.prefetchABIs([
-      'UserHub',
-      'ERC721NFTExchange',
-      'ERC1155NFTExchange',
-      'ERC721Collection',
-      'ERC1155Collection',
-      'ERC721CollectionFactory',
-      'ERC1155CollectionFactory',
-      'EnglishAuction',
-      'DutchAuction',
-    ]);
+    // Note: SDK v1.0.1 changed prefetchABIs API - no longer takes arguments
+    await sdkInstance.prefetchABIs();
 
-    console.log('Zuno SDK initialized successfully');
+    logger.success('Zuno SDK initialized successfully', undefined, {
+      component: 'ZunoSDK',
+      action: 'initializeSDK'
+    });
   } catch (error) {
-    console.error('Failed to initialize Zuno SDK:', error);
+    logger.error('Failed to initialize Zuno SDK', error, {
+      component: 'ZunoSDK',
+      action: 'initializeSDK'
+    });
     throw error;
   }
 }

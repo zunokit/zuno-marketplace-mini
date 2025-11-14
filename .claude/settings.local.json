@@ -23,7 +23,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git branch:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npm install)",
+      "Bash(npm run type-check)",
+      "Bash(findstr:*)",
+      "Bash(ls -la \"E:\\zuno-marketplace-sdk\\src\"\" | grep -E \"^d \")"
     ],
     "deny": [],
     "ask": []

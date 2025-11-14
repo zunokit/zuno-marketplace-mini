@@ -2,6 +2,7 @@
 import StoreProvider from "@/lib/store/StoreProvider";
 import { ZunoProvider } from "zuno-marketplace-sdk/react";
 import { validateSDKConfig } from "@/lib/config/zuno-sdk";
+import { logger } from "@/lib/utils/logger";
 
 export default function AppProvider({
   children,
@@ -12,7 +13,10 @@ export default function AppProvider({
   const validation = validateSDKConfig();
 
   if (!validation.isValid) {
-    console.error("Zuno SDK Configuration Error:", validation.errors);
+    logger.error("Zuno SDK Configuration Error", validation.errors, {
+      component: "AppProvider",
+      action: "validateSDKConfig"
+    });
     // In production, you might want to render a more user-friendly error page
     return (
       <div className="min-h-screen flex items-center justify-center">

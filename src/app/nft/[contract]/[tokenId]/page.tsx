@@ -5,10 +5,9 @@ import { useParams } from "next/navigation";
 import { useWallet } from "@/providers/WalletProvider";
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { 
-  exchangeService, 
-  auctionService, 
-  offerService,
+import {
+  exchangeService,
+  auctionService,
   listingHistoryTrackerService,
   nftMetadataService,
   userHubService,
@@ -22,10 +21,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  ShoppingCart, 
-  Gavel, 
-  HandshakeIcon, 
+import {
+  ShoppingCart,
+  Gavel,
   History,
   ExternalLink,
   Copy,
@@ -78,14 +76,6 @@ interface AuctionInfo {
   isActive: boolean;
 }
 
-interface OfferInfo {
-  offerId: string;
-  offerer: string;
-  amount: bigint;
-  expirationTime: bigint;
-  isActive: boolean;
-}
-
 interface PriceHistory {
   price: bigint;
   timestamp: bigint;
@@ -100,14 +90,12 @@ export default function NFTDetailPage() {
   const [nftDetails, setNftDetails] = useState<NFTDetails | null>(null);
   const [listing, setListing] = useState<ListingInfo | null>(null);
   const [auction, setAuction] = useState<AuctionInfo | null>(null);
-  const [offers, setOffers] = useState<OfferInfo[]>([]);
   const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   
   // Form states
   const [bidAmount, setBidAmount] = useState("");
-  const [offerAmount, setOfferAmount] = useState("");
   const [listingPrice, setListingPrice] = useState("");
   const [listingDuration, setListingDuration] = useState("7");
 
@@ -213,29 +201,6 @@ export default function NFTDetailPage() {
         setListing(null);
       }
 
-      // Fetch offers
-      try {
-        const offerManager = await offerService.getOfferManagerContract();
-        const nftOffers = await offerManager.getNFTOffers(contractAddress, tokenId);
-        
-        const formattedOffers: OfferInfo[] = nftOffers
-          .filter((offer: any) => offer.isActive)
-          .map((offer: any) => ({
-            offerId: offer.offerId,
-            offerer: offer.offerer,
-            amount: offer.amount,
-            expirationTime: offer.expirationTime,
-            isActive: offer.isActive
-          }));
-        
-        setOffers(formattedOffers);
-      } catch (error) {
-        logger.warn("Failed to fetch offers", error, {
-          component: "NFTDetailPage",
-          action: "fetchNFTData"
-        });
-        setOffers([]);
-      }
 
       // Fetch price history
       try {
@@ -314,68 +279,6 @@ export default function NFTDetailPage() {
     }
   };
 
-  const handleMakeOffer = async () => {
-    if (!offerAmount) return;
-
-    try {
-      logger.info("Making offer", { amount: offerAmount }, {
-        component: "NFTDetailPage",
-        action: "handleMakeOffer"
-      });
-
-      const offerManager = await offerService.getOfferManagerContract();
-      const duration = 7 * 24 * 60 * 60; // 7 days in seconds
-      
-      await offerManager.createNFTOffer(
-        contractAddress,
-        tokenId,
-        parseEther(offerAmount),
-        duration,
-        { value: parseEther(offerAmount) }
-      );
-
-      toast.success("Offer submitted successfully!");
-      setOfferAmount("");
-      await fetchNFTData();
-    } catch (error) {
-      logger.error("Failed to make offer", error, {
-        component: "NFTDetailPage",
-        action: "handleMakeOffer"
-      });
-      toast.error("Failed to submit offer");
-    }
-  };
-
-  const handleAcceptOffer = async (offerId: string) => {
-    try {
-      logger.info("Accepting offer", { offerId }, {
-        component: "NFTDetailPage",
-        action: "handleAcceptOffer"
-      });
-
-      // First approve the NFT
-      const nftContract = new ethers.Contract(
-        contractAddress,
-        ["function approve(address to, uint256 tokenId)"],
-        await exchangeService.getSigner()
-      );
-      
-      const offerManagerAddress = await offerService.getOfferManagerAddress();
-      await nftContract.approve(offerManagerAddress, tokenId);
-      
-      // Then accept the offer
-      const offerManager = await offerService.getOfferManagerContract();
-      await offerManager.acceptNFTOffer(offerId);
-      toast.success("Offer accepted!");
-      await fetchNFTData();
-    } catch (error) {
-      logger.error("Failed to accept offer", error, {
-        component: "NFTDetailPage",
-        action: "handleAcceptOffer"
-      });
-      toast.error("Failed to accept offer");
-    }
-  };
 
   const handleCreateListing = async () => {
     if (!listingPrice || !listingDuration) return;
@@ -451,7 +354,6 @@ export default function NFTDetailPage() {
 
   const isOwner = address?.toLowerCase() === nftDetails.owner.toLowerCase();
   const canBuy = listing?.isActive && !isOwner && isConnected;
-  const canMakeOffer = !isOwner && isConnected;
   const canList = isOwner && !listing?.isActive;
 
   return (
@@ -603,25 +505,6 @@ export default function NFTDetailPage() {
                 </div>
               )}
 
-              {canMakeOffer && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Make an Offer</label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder="Enter offer amount in ETH"
-                      value={offerAmount}
-                      onChange={(e) => setOfferAmount(e.target.value)}
-                      step="0.01"
-                    />
-                    <Button onClick={handleMakeOffer} variant="outline">
-                      <HandshakeIcon className="w-4 h-4 mr-2" />
-                      Offer
-                    </Button>
-                  </div>
-                </div>
-              )}
-
               {canList && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Create Listing</label>
@@ -651,48 +534,10 @@ export default function NFTDetailPage() {
 
           {/* Tabs for Additional Info */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="offers">Offers</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="history">History</TabsTrigger>
               <TabsTrigger value="details">Details</TabsTrigger>
             </TabsList>
-
-            <TabsContent value="offers" className="mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Active Offers</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {offers.length > 0 ? (
-                    <div className="space-y-3">
-                      {offers.map((offer) => (
-                        <div key={offer.offerId} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-semibold">{formatEther(offer.amount)} ETH</p>
-                            <p className="text-sm text-gray-500">
-                              From {formatAddress(offer.offerer)}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {calculateTimeLeft(offer.expirationTime)}
-                            </p>
-                          </div>
-                          {isOwner && offer.isActive && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptOffer(offer.offerId)}
-                            >
-                              Accept
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-center text-gray-500 py-4">No active offers</p>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="history" className="mt-4">
               <Card>

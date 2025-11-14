@@ -4,10 +4,9 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@/providers/WalletProvider";
 import { ethers } from "ethers";
 import { logger } from "@/lib/utils/logger";
-import { 
+import {
   exchangeService,
   auctionService,
-  bundleService,
   collectionService,
   nftMetadataService,
   userHubService
@@ -24,12 +23,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { 
-  ShoppingCart, 
-  Gavel, 
-  Package, 
-  Plus,
-  X,
+import {
+  ShoppingCart,
+  Gavel,
   Upload,
   AlertCircle,
   Info,
@@ -37,8 +33,7 @@ import {
   DollarSign,
   Hash,
   Image as ImageIcon,
-  Loader2,
-  CheckCircle
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -55,24 +50,20 @@ interface NFTAsset {
   };
 }
 
-interface BundleItem extends NFTAsset {
-  id: string;
-}
-
 export default function CreateListingPage() {
   const router = useRouter();
   const { account: address, isConnected } = useWallet();
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"listing" | "auction" | "bundle">("listing");
-  
+  const [activeTab, setActiveTab] = useState<"listing" | "auction">("listing");
+
   // Listing States
   const [listingType, setListingType] = useState<"fixed" | "auction">("fixed");
   const [selectedNFT, setSelectedNFT] = useState<NFTAsset | null>(null);
   const [listingPrice, setListingPrice] = useState("");
   const [listingDuration, setListingDuration] = useState("7");
   const [listingAmount, setListingAmount] = useState("1");
-  
-  // Auction States  
+
+  // Auction States
   const [auctionType, setAuctionType] = useState<"english" | "dutch">("english");
   const [startingPrice, setStartingPrice] = useState("");
   const [reservePrice, setReservePrice] = useState("");
@@ -81,13 +72,6 @@ export default function CreateListingPage() {
   const [bidIncrement, setBidIncrement] = useState("0.01");
   const [enableBuyNow, setEnableBuyNow] = useState(false);
   const [buyNowPrice, setBuyNowPrice] = useState("");
-  
-  // Bundle States
-  const [bundleItems, setBundleItems] = useState<BundleItem[]>([]);
-  const [bundlePrice, setBundlePrice] = useState("");
-  const [bundleDescription, setBundleDescription] = useState("");
-  const [bundleDuration, setBundleDuration] = useState("7");
-  const [bundleDiscount, setBundleDiscount] = useState("10");
   
   // User's NFTs
   const [userNFTs, setUserNFTs] = useState<NFTAsset[]>([]);
@@ -289,76 +273,6 @@ export default function CreateListingPage() {
     }
   };
 
-  const handleCreateBundle = async () => {
-    if (bundleItems.length < 2 || !bundlePrice || !bundleDuration) {
-      toast.error("Please add at least 2 items and fill in all fields");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      logger.info("Creating bundle", {
-        items: bundleItems,
-        price: bundlePrice,
-        duration: bundleDuration
-      }, {
-        component: "CreateListingPage",
-        action: "handleCreateBundle"
-      });
-
-      await bundleService.createBundle({
-        items: bundleItems.map(item => ({
-          collection: item.contractAddress,
-          tokenId: item.tokenId,
-          amount: item.amount || "1",
-          tokenType: item.tokenType
-        })),
-        totalPrice: bundlePrice,
-        discountPercentage: parseInt(bundleDiscount),
-        duration: parseInt(bundleDuration) * 86400,
-        description: bundleDescription,
-        imageUrl: ""
-      });
-
-      toast.success("Bundle created successfully!");
-      router.push("/marketplace?tab=bundles");
-    } catch (error) {
-      logger.error("Failed to create bundle", error, {
-        component: "CreateListingPage",
-        action: "handleCreateBundle"
-      });
-      toast.error("Failed to create bundle");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addToBundleBundle = (nft: NFTAsset) => {
-    if (bundleItems.some(item => 
-      item.contractAddress === nft.contractAddress && 
-      item.tokenId === nft.tokenId
-    )) {
-      toast.error("This NFT is already in the bundle");
-      return;
-    }
-
-    setBundleItems([...bundleItems, {
-      ...nft,
-      id: `${nft.contractAddress}-${nft.tokenId}-${Date.now()}`
-    }]);
-    toast.success("Added to bundle");
-  };
-
-  const removeFromBundle = (itemId: string) => {
-    setBundleItems(bundleItems.filter(item => item.id !== itemId));
-  };
-
-  const calculateBundleValue = () => {
-    // In a real implementation, this would fetch current floor prices
-    const estimatedValue = bundleItems.length * 0.5;
-    const discountedPrice = estimatedValue * (1 - parseInt(bundleDiscount) / 100);
-    return discountedPrice.toFixed(3);
-  };
 
   if (!isConnected) {
     return (
@@ -376,11 +290,11 @@ export default function CreateListingPage() {
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Create Listing</h1>
-        <p className="text-gray-600">List your NFTs for sale, create auctions, or bundle multiple items</p>
+        <p className="text-gray-600">List your NFTs for sale or create auctions</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="listing">
             <ShoppingCart className="w-4 h-4 mr-2" />
             Fixed Price
@@ -388,10 +302,6 @@ export default function CreateListingPage() {
           <TabsTrigger value="auction">
             <Gavel className="w-4 h-4 mr-2" />
             Auction
-          </TabsTrigger>
-          <TabsTrigger value="bundle">
-            <Package className="w-4 h-4 mr-2" />
-            Bundle
           </TabsTrigger>
         </TabsList>
 
@@ -709,170 +619,6 @@ export default function CreateListingPage() {
                     )}
                   </Button>
                 </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Bundle */}
-        <TabsContent value="bundle" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Create Bundle</CardTitle>
-              <CardDescription>
-                Bundle multiple NFTs together and offer them at a discounted price
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Bundle Items */}
-              <div>
-                <Label>Bundle Items ({bundleItems.length})</Label>
-                {bundleItems.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    {bundleItems.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between p-2 border rounded">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 bg-gray-100 rounded" />
-                          <div>
-                            <p className="text-sm font-medium">
-                              {item.metadata?.name || `Token #${item.tokenId}`}
-                            </p>
-                            <p className="text-xs text-gray-500">{item.tokenType}</p>
-                          </div>
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeFromBundle(item.id)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Add NFTs to Bundle */}
-              <div>
-                <Label>Add NFTs to Bundle</Label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-                  {userNFTs.map((nft) => {
-                    const isInBundle = bundleItems.some(item => 
-                      item.contractAddress === nft.contractAddress && 
-                      item.tokenId === nft.tokenId
-                    );
-                    return (
-                      <Card
-                        key={`${nft.contractAddress}-${nft.tokenId}`}
-                        className={`cursor-pointer transition-all ${
-                          isInBundle ? "opacity-50" : "hover:shadow-md"
-                        }`}
-                        onClick={() => !isInBundle && addToBundleBundle(nft)}
-                      >
-                        <CardContent className="p-3">
-                          <div className="aspect-square bg-gray-100 rounded mb-2 relative">
-                            <div className="w-full h-full flex items-center justify-center">
-                              <ImageIcon className="w-8 h-8 text-gray-400" />
-                            </div>
-                            {isInBundle && (
-                              <div className="absolute inset-0 bg-black bg-opacity-50 rounded flex items-center justify-center">
-                                <CheckCircle className="w-6 h-6 text-white" />
-                              </div>
-                            )}
-                          </div>
-                          <p className="text-sm font-medium truncate">
-                            {nft.metadata?.name || `Token #${nft.tokenId}`}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {bundleItems.length >= 2 && (
-                <>
-                  <div>
-                    <Label>Bundle Description</Label>
-                    <Textarea
-                      placeholder="Describe your bundle..."
-                      value={bundleDescription}
-                      onChange={(e) => setBundleDescription(e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Bundle Price (ETH)</Label>
-                      <Input
-                        type="number"
-                        placeholder="0.0"
-                        value={bundlePrice}
-                        onChange={(e) => setBundlePrice(e.target.value)}
-                        step="0.001"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Suggested: {calculateBundleValue()} ETH
-                      </p>
-                    </div>
-                    <div>
-                      <Label>Discount %</Label>
-                      <Input
-                        type="number"
-                        placeholder="10"
-                        value={bundleDiscount}
-                        onChange={(e) => setBundleDiscount(e.target.value)}
-                        min="0"
-                        max="50"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label>Bundle Duration</Label>
-                    <Select value={bundleDuration} onValueChange={setBundleDuration}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3">3 Days</SelectItem>
-                        <SelectItem value="7">7 Days</SelectItem>
-                        <SelectItem value="14">14 Days</SelectItem>
-                        <SelectItem value="30">30 Days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button 
-                    onClick={handleCreateBundle} 
-                    disabled={loading || bundleItems.length < 2 || !bundlePrice}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creating Bundle...
-                      </>
-                    ) : (
-                      <>
-                        <Package className="w-4 h-4 mr-2" />
-                        Create Bundle
-                      </>
-                    )}
-                  </Button>
-                </>
-              )}
-
-              {bundleItems.length < 2 && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Add at least 2 NFTs to create a bundle
-                  </AlertDescription>
-                </Alert>
               )}
             </CardContent>
           </Card>

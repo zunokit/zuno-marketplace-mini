@@ -6,7 +6,17 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
-import { useExchange, useAuction, useCollection } from "zuno-marketplace-sdk/react";
+import {
+  useExchange,
+  useAuction,
+  useCollection,
+  // Query hooks - SDK v1.0.1
+  useListings,
+  useListing,
+  useAuctionDetails,
+  useCollectionInfo
+} from "zuno-marketplace-sdk/react";
+import { logger } from "@/lib/utils/logger";
 
 // Types for marketplace operations
 export interface NFTListing {
@@ -67,12 +77,14 @@ export function useMarketplace() {
     return exchange.listNFT.mutateAsync(params);
   }, [exchange]);
 
-  const buyNFT = useCallback(async (listingId: string, maxPrice?: string) => {
-    return exchange.buyNFT.mutateAsync({ listingId, maxPrice });
+  const buyNFT = useCallback(async (listingId: string, value?: string) => {
+    // SDK v1.0.1: BuyNFTParams has 'value' not 'maxPrice'
+    return exchange.buyNFT.mutateAsync({ listingId, value });
   }, [exchange]);
 
   const cancelListing = useCallback(async (listingId: string) => {
-    return exchange.cancelListing.mutateAsync(listingId);
+    // SDK v1.0.1: cancelListing expects object not string
+    return exchange.cancelListing.mutateAsync({ listingId });
   }, [exchange]);
 
   // Auction operations
@@ -86,14 +98,16 @@ export function useMarketplace() {
     endPrice?: string; // For Dutch auctions
   }) => {
     if (params.auctionType === 'english') {
+      // SDK v1.0.2: uses 'collectionAddress' (standardized naming)
       return auction.createEnglishAuction.mutateAsync({
         collectionAddress: params.collectionAddress,
         tokenId: params.tokenId,
-        startingPrice: params.startingPrice,
+        startingBid: params.startingPrice, // SDK uses 'startingBid'
         reservePrice: params.reservePrice,
         duration: params.duration,
       });
     } else {
+      // SDK v1.0.2: uses 'collectionAddress' (standardized naming)
       return auction.createDutchAuction.mutateAsync({
         collectionAddress: params.collectionAddress,
         tokenId: params.tokenId,
@@ -105,7 +119,8 @@ export function useMarketplace() {
   }, [auction]);
 
   const placeBid = useCallback(async (auctionId: string, bidAmount: string) => {
-    return auction.placeBid.mutateAsync({ auctionId, bidAmount });
+    // SDK v1.0.2: uses 'amount' parameter
+    return auction.placeBid.mutateAsync({ auctionId, amount: bidAmount });
   }, [auction]);
 
   // Collection operations
@@ -119,9 +134,19 @@ export function useMarketplace() {
     royaltyFee?: number;
   }) => {
     if (params.collectionType === 'ERC721') {
-      return collection.createERC721Collection.mutateAsync(params);
+      // SDK v1.0.2: method is 'createERC721' (not 'createERC721Collection')
+      // SDK v1.0.2: uses 'baseUri' (lowercase i) not 'baseURI'
+      return collection.createERC721.mutateAsync({
+        name: params.name,
+        symbol: params.symbol,
+        baseUri: params.baseURI || '',
+        maxSupply: params.maxSupply || 10000,
+      });
     } else {
-      return collection.createERC1155Collection.mutateAsync(params);
+      // SDK v1.0.2: method is 'createERC1155' (not 'createERC1155Collection')
+      return collection.createERC1155.mutateAsync({
+        uri: params.baseURI || '',
+      });
     }
   }, [collection]);
 
@@ -131,52 +156,47 @@ export function useMarketplace() {
     recipient: string;
     tokenId?: string;
     amount?: string; // For ERC1155
-    tokenURI?: string;
     value?: string;
   }) => {
     if (params.collectionType === 'ERC721') {
+      // SDK v1.0.2: MintERC721Params doesn't have tokenURI parameter
       return collection.mintERC721.mutateAsync({
         collectionAddress: params.collectionAddress,
         recipient: params.recipient,
-        tokenURI: params.tokenURI,
         value: params.value,
       });
     } else {
+      // SDK v1.0.2: amount must be number not string, no 'value' param
       return collection.mintERC1155.mutateAsync({
         collectionAddress: params.collectionAddress,
         recipient: params.recipient,
         tokenId: params.tokenId || '1',
-        amount: params.amount || '1',
-        tokenURI: params.tokenURI,
-        value: params.value,
+        amount: parseInt(params.amount || '1'),
+        // Note: MintERC1155Params doesn't have 'value' field
       });
     }
   }, [collection]);
 
   // Data fetching with filters
+  // NOTE: SDK v1.0.2 uses separate query hooks (useListings, useAuctionDetails, useCollectionInfo)
+  // These methods are kept for backward compatibility but should use SDK query hooks directly
   const fetchListings = useCallback(async () => {
-    const filterParams = {
-      ...(filters.minPrice && { minPrice: filters.minPrice }),
-      ...(filters.maxPrice && { maxPrice: filters.maxPrice }),
-      ...(filters.collection && { collection: filters.collection }),
-      ...(filters.seller && { seller: filters.seller }),
-    };
-
-    return exchange.getListings(filterParams);
-  }, [exchange, filters]);
+    // This is a placeholder - consumers should use useListings() hook directly
+    // Example: const { data } = useListings(collectionAddress, page, pageSize)
+    throw new Error('Use useListings() hook directly from SDK instead of fetchListings()');
+  }, [filters]);
 
   const fetchAuctions = useCallback(async () => {
-    return auction.getAuctions({
-      ...(filters.collection && { collection: filters.collection }),
-      ...(filters.seller && { seller: filters.seller }),
-    });
-  }, [auction, filters]);
+    // This is a placeholder - consumers should use useAuctionDetails() hook directly
+    // Example: const { data } = useAuctionDetails(auctionId)
+    throw new Error('Use useAuctionDetails() hook directly from SDK instead of fetchAuctions()');
+  }, [filters]);
 
   const fetchCollections = useCallback(async () => {
-    return collection.getCollections({
-      ...(filters.seller && { owner: filters.seller }),
-    });
-  }, [collection, filters]);
+    // This is a placeholder - consumers should use useCollectionInfo() hook directly
+    // Example: const { data } = useCollectionInfo(address)
+    throw new Error('Use useCollectionInfo() hook directly from SDK instead of fetchCollections()');
+  }, [filters]);
 
   // Computed values
   const isLoading = useMemo(() => {
@@ -187,8 +207,8 @@ export function useMarketplace() {
       auction.createEnglishAuction.isPending ||
       auction.createDutchAuction.isPending ||
       auction.placeBid.isPending ||
-      collection.createERC721Collection.isPending ||
-      collection.createERC1155Collection.isPending ||
+      collection.createERC721.isPending ||  // Fixed: createERC721 not createERC721Collection
+      collection.createERC1155.isPending ||  // Fixed: createERC1155 not createERC1155Collection
       collection.mintERC721.isPending ||
       collection.mintERC1155.isPending
     );
@@ -199,8 +219,8 @@ export function useMarketplace() {
     auction.createEnglishAuction.isPending,
     auction.createDutchAuction.isPending,
     auction.placeBid.isPending,
-    collection.createERC721Collection.isPending,
-    collection.createERC1155Collection.isPending,
+    collection.createERC721.isPending,  // Fixed
+    collection.createERC1155.isPending,  // Fixed
     collection.mintERC721.isPending,
     collection.mintERC1155.isPending,
   ]);
@@ -214,8 +234,8 @@ export function useMarketplace() {
       auction.createEnglishAuction.error ||
       auction.createDutchAuction.error ||
       auction.placeBid.error ||
-      collection.createERC721Collection.error ||
-      collection.createERC1155Collection.error ||
+      collection.createERC721.error ||  // Fixed
+      collection.createERC1155.error ||  // Fixed
       collection.mintERC721.error ||
       collection.mintERC1155.error
     );
@@ -226,8 +246,8 @@ export function useMarketplace() {
     auction.createEnglishAuction.error,
     auction.createDutchAuction.error,
     auction.placeBid.error,
-    collection.createERC721Collection.error,
-    collection.createERC1155Collection.error,
+    collection.createERC721.error,  // Fixed
+    collection.createERC1155.error,  // Fixed
     collection.mintERC721.error,
     collection.mintERC1155.error,
   ]);
@@ -285,29 +305,31 @@ export function useUserMarketplace(userAddress: string) {
 
     setIsLoading(true);
     try {
-      // Fetch user's active listings
-      const listings = await marketplace.sdk.exchange.getListings({
-        seller: userAddress,
-      });
-      setUserListings(listings);
+      // SDK v1.0.2: Core modules don't have getListings/getAuctions/getCollections methods
+      // These are only available as React hooks (useListings, useAuctionDetails, useCollectionInfo)
+      // TODO: Refactor this to use SDK query hooks directly in components
 
-      // Fetch user's active auctions
-      const auctions = await marketplace.sdk.auction.getAuctions({
-        seller: userAddress,
-      });
-      setUserAuctions(auctions);
+      // Temporarily setting empty arrays - consumers should use SDK query hooks
+      setUserListings([]);
+      setUserAuctions([]);
+      setUserCollections([]);
 
-      // Fetch user's collections
-      const collections = await marketplace.sdk.collection.getCollections({
-        owner: userAddress,
+      logger.error('Failed to fetch user marketplace data', new Error('Not implemented'), {
+        component: 'useMarketplace',
+        action: 'fetchUserData',
+        userAddress,
+        note: 'Use useListings(), useAuctionDetails(), useCollectionInfo() hooks directly from SDK'
       });
-      setUserCollections(collections);
     } catch (error) {
-      console.error('Failed to fetch user marketplace data:', error);
+      logger.error('Failed to fetch user marketplace data', error, {
+        component: 'useMarketplace',
+        action: 'fetchUserData',
+        userAddress
+      });
     } finally {
       setIsLoading(false);
     }
-  }, [marketplace.sdk, userAddress]);
+  }, [userAddress]);
 
   // Calculate user stats
   const userStats = useMemo(() => {
@@ -326,44 +348,10 @@ export function useUserMarketplace(userAddress: string) {
     userListings,
     userAuctions,
     userCollections,
-    isLoading,
+    isLoadingUserData: isLoading,  // User data loading state (renamed to avoid conflict)
     userStats,
     fetchUserData,
     // Re-export marketplace methods
     ...marketplace,
-  };
-}
-
-/**
- * Hook for real-time marketplace updates
- * This would typically use WebSockets or event listeners
- */
-export function useMarketplaceRealtime() {
-  const [updates, setUpdates] = useState<any[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
-
-  // This is a placeholder for real-time functionality
-  // In a real implementation, you'd:
-  // 1. Connect to WebSocket/EventSource
-  // 2. Listen for contract events
-  // 3. Update state based on events
-
-  const subscribeToEvents = useCallback((events: string[]) => {
-    // Placeholder: Subscribe to blockchain events
-    console.log('Subscribing to events:', events);
-    setIsConnected(true);
-  }, []);
-
-  const unsubscribeFromEvents = useCallback(() => {
-    // Placeholder: Unsubscribe from events
-    console.log('Unsubscribing from events');
-    setIsConnected(false);
-  }, []);
-
-  return {
-    updates,
-    isConnected,
-    subscribeToEvents,
-    unsubscribeFromEvents,
   };
 }
