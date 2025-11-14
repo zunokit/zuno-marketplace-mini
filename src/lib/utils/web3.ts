@@ -4,9 +4,7 @@
  */
 
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
-import { initializeServices } from "@/lib/services/contracts";
 import { envConfigManager } from "@/lib/utils/env-config";
-import { ProviderFactory } from "@/lib/services/web3/provider-factory";
 import { logger } from "./logger";
 
 export class Web3Utils {
@@ -14,14 +12,15 @@ export class Web3Utils {
   private signer: ethers.Signer | null = null;
 
   /**
-   * Initialize provider and all contract services
+   * Initialize provider
+   * Note: SDK services are automatically initialized by ZunoProvider
    */
   async initializeProvider(): Promise<void> {
     try {
       // Check for MetaMask or other Web3 provider
       if (typeof window !== "undefined" && window.ethereum) {
         try {
-          this.provider = ProviderFactory.createBrowserProvider();
+          this.provider = new ethers.BrowserProvider(window.ethereum);
           await this.provider.send("eth_requestAccounts", []);
           this.signer = await this.provider.getSigner();
         } catch (error) {
@@ -41,17 +40,7 @@ export class Web3Utils {
         this.initializeFallbackProvider();
       }
 
-      // Initialize all contract services with Hub pattern
-      if (this.provider) {
-        await initializeServices(this.provider, this.signer || undefined);
-      } else {
-        logger.warn("Provider not initialized, skipping service initialization", null, {
-          component: "Web3Utils",
-          action: "initializeProvider",
-        });
-      }
-
-      logger.success("Web3 and contract services initialized", null, {
+      logger.info("Web3 provider initialized - SDK services handled by ZunoProvider", null, {
         component: "Web3Utils",
         action: "initializeProvider",
       });
@@ -130,7 +119,7 @@ export class Web3Utils {
     }
 
     try {
-      this.provider = ProviderFactory.createBrowserProvider();
+      this.provider = new ethers.BrowserProvider(window.ethereum);
       await this.provider.send("eth_requestAccounts", []);
       this.signer = await this.provider.getSigner();
       logger.success("MetaMask connected for transactions", null, {

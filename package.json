@@ -68,7 +68,8 @@
     "tailwind-merge": "^3.3.1",
     "vaul": "^1.1.2",
     "wagmi": "^2.18.0",
-    "zod": "^4.1.11"
+    "zod": "^4.1.11",
+    "zuno-marketplace-sdk": "^1.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -17,8 +17,6 @@ import { ethers } from "ethers";
 import { toast } from "sonner";
 import { logger } from "@/lib/utils/logger";
 import { envConfigManager } from "@/lib/utils/env-config";
-import { ProviderFactory } from "@/lib/services/web3/provider-factory";
-import { initializeServices } from "@/lib/services/contracts";
 
 // ============================================================================
 // Types & Interfaces
@@ -225,7 +223,7 @@ class WalletService {
       throw new Error("No Web3 wallet detected. Please install MetaMask.");
     }
 
-    return ProviderFactory.createBrowserProvider();
+    return new ethers.BrowserProvider(window.ethereum);
   }
 
   static async requestConnection(
@@ -410,10 +408,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       WalletStorage.save(connectionData.account, connectionData.chainId);
 
-      // Initialize all contract services
-      logger.startTimer("services-init");
-      await initializeServices(provider, connectionData.signer);
-      logger.endTimer("services-init", "Contract services initialized");
+      // SDK services are automatically initialized by ZunoProvider
+      logger.info("Wallet connected - SDK services ready");
 
       toast.success(`Connected to ${connectionData.account.slice(0, 6)}...${connectionData.account.slice(-4)}`);
 
@@ -503,13 +499,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           payload: connectionData,
         });
 
-        // Initialize contract services on auto-reconnect
-        try {
-          await initializeServices(connectionData.provider, connectionData.signer);
-          logger.info("Auto-reconnected to wallet with services initialized");
-        } catch (error) {
-          logger.error("Failed to initialize services on auto-reconnect", error);
-        }
+        // SDK services are automatically initialized by ZunoProvider
+        logger.info("Auto-reconnected to wallet with SDK services ready");
       }
     };
 

@@ -60,18 +60,6 @@ const navigationItems = [
     icon: Gavel,
     description: "Participate in auctions",
   },
-  {
-    title: "Bundles",
-    href: "/bundles",
-    icon: Package,
-    description: "Buy NFT bundles",
-  },
-  {
-    title: "Analytics",
-    href: "/analytics",
-    icon: TrendingUp,
-    description: "View market analytics",
-  },
 ];
 
 export function Header() {
@@ -143,15 +131,7 @@ export function Header() {
                     <Gavel className="h-4 w-4" />
                     <span>Create Auction</span>
                   </Link>
-                  <Link
-                    href="/bundles/create"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <Package className="h-4 w-4" />
-                    <span>Create Bundle</span>
-                  </Link>
-                </div>
+                  </div>
 
                 {/* User Section in Mobile */}
                 {wallet.isConnected && (
@@ -244,13 +224,7 @@ export function Header() {
                     Create Auction
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/bundles/create" className="flex items-center">
-                    <Package className="mr-2 h-4 w-4" />
-                    Create Bundle
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+                </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </nav>
