@@ -19,7 +19,7 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 
 ### 2. Service Layer Architecture
 
-- **13 service classes** wrapping 23 smart contracts
+- **16 service classes** wrapping 23 smart contracts
 - All services initialize through `initializeServices(provider, signer)`
 - Services auto-discover contract addresses via MarketplaceHubService
 - Each service is a singleton instance (e.g., `marketplaceHubService`, `exchangeService`)
@@ -33,15 +33,42 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 - `BundleService` - NFT bundles
 - `OfferService` - NFT and collection offers
 - `CollectionService` - Create/mint/manage collections
+- `CollectionQueryService` - Event-based collection discovery and querying
 - `FeeManagerService` - Fee tiers, VIP status, volume discounts
 - `RoyaltyManagerService` - ERC2981 royalty management
 - `AccessControlService` - Role-based permissions
 - `EmergencyManagerService` - Emergency pause/blacklist
+- `TimelockService` - Time-locked admin operations (48-hour default delay)
 - `ListingValidatorService` - Pre-transaction validation
 - `ListingHistoryTrackerService` - Analytics and stats
 - `CollectionVerifierService` - Collection verification
+- `RealTimeEventsService` - Real-time blockchain event subscriptions
 
 See `docs/SERVICE_ARCHITECTURE.md` for complete service documentation.
+
+**Recently Added Services**:
+
+- **CollectionQueryService**: Discovers collections from blockchain using factory events. Scans last 10k blocks, caches results, provides collection stats (floor price, volume, owners). Filters out implementation contracts.
+  ```typescript
+  import { collectionQueryService } from '@/lib/services/contracts';
+  const collections = await collectionQueryService.getAllCollections();
+  const info = await collectionQueryService.getCollectionInfo(address, 'ERC721');
+  ```
+
+- **TimelockService**: Manages time-locked admin operations with 48-hour default delay. Schedule, execute, and cancel actions. Essential for secure governance.
+  ```typescript
+  import { timelockService } from '@/lib/services/contracts';
+  await timelockService.scheduleFeeUpdate(newFee, '0x...', delay);
+  const pending = await timelockService.getPendingActions();
+  ```
+
+- **RealTimeEventsService**: Provides real-time blockchain event subscriptions for listings, offers, auctions, and bundles. Auto-cleanup on component unmount.
+  ```typescript
+  import { realTimeEventsService } from '@/lib/services/contracts';
+  realTimeEventsService.subscribeToListingEvents((event) => {
+    logger.info('New listing event', event, { component: 'Marketplace' });
+  });
+  ```
 
 ### 3. Contract ABI Management
 
@@ -79,11 +106,12 @@ npm run dev:testnet  # Uses Sepolia (chain ID 11155111)
 
 The app includes a Settings Modal for runtime configuration management:
 
-- **Location**: Click ⚙️ Settings button in header
+- **Location**: Click ⚙️ Settings button (draggable, bottom-right by default)
 - **Storage**: `localStorage` with key `zuno-marketplace-env-config`
 - **Priority**: localStorage > process.env
-- **Features**: Import/paste/export .env files, validation, reset to defaults
+- **Features**: Import/paste/export .env files, validation, reset to defaults, RPC URL configuration
 - **Use Cases**: Deployed apps, quick network switching, team collaboration
+- **UI Enhancement**: Draggable settings button with position persistence (uses Framer Motion)
 
 **Configuration Manager API**:
 
@@ -98,14 +126,23 @@ envConfigManager.setConfig({
   NEXT_PUBLIC_DEFAULT_CHAIN_ID: "31337",
   NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL: "0x...",
   NEXT_PUBLIC_RPC_URL_LOCAL: "http://127.0.0.1:8545",
+  NEXT_PUBLIC_RPC_URL_SEPOLIA: "https://sepolia.infura.io/v3/YOUR-KEY",
+  NEXT_PUBLIC_RPC_URL_MAINNET: "https://mainnet.infura.io/v3/YOUR-KEY",
 });
 
-// Get RPC URL for specific chain
-const rpcUrl = envConfigManager.getRpcUrl(31337);
+// Get RPC URL for specific chain (with fallback to public RPCs)
+const rpcUrl = envConfigManager.getRpcUrl(31337); // Returns configured or default RPC
+const sepoliaRpc = envConfigManager.getRpcUrl(11155111);
+const mainnetRpc = envConfigManager.getRpcUrl(1);
 
 // Clear config (removes localStorage + reloads page)
 envConfigManager.clearConfig();
 ```
+
+**Supported RPC Configuration**:
+- `NEXT_PUBLIC_RPC_URL_LOCAL` - Local network (Anvil/Hardhat)
+- `NEXT_PUBLIC_RPC_URL_SEPOLIA` - Sepolia testnet
+- `NEXT_PUBLIC_RPC_URL_MAINNET` - Ethereum mainnet
 
 ### 6. Production-Ready Logging System
 
@@ -155,6 +192,59 @@ logger.setGlobalContext({ userId: "0x123...", sessionId: "abc..." });
 - ✅ Error monitoring integration (Sentry ready)
 - ✅ Log history and filtering
 - ✅ ESLint enforcement (no-console rule)
+
+### 7. Custom Hooks
+
+The project includes several custom React hooks for common patterns:
+
+**Event Management**:
+```typescript
+import { useRealTimeEvents } from '@/hooks/use-real-time-events';
+
+// Subscribe to real-time blockchain events
+const { events, isListening } = useRealTimeEvents({
+  enableListingEvents: true,
+  enableOfferEvents: true,
+  onListingEvent: (event) => logger.info('Listing event', event),
+});
+```
+
+**Draggable UI**:
+```typescript
+import { useDraggablePosition } from '@/hooks/use-draggable-position';
+
+// Manage draggable component position with persistence
+const { position, handleDragEnd, isDragging } = useDraggablePosition(
+  'settings-button',  // localStorage key
+  { x: 20, y: 20 }   // default position
+);
+```
+
+**Other Hooks**:
+- `use-wallet` - Wallet connection and account management
+- `use-web3` - Web3 provider and signer access
+- `use-collection` - Collection operations and queries
+- `use-marketplace` - Marketplace listing operations
+- `use-toast` - Toast notifications (shadcn/ui wrapper)
+- `use-mobile` - Responsive breakpoint detection
+
+### 8. UI Components
+
+The project uses **shadcn/ui** with 49 pre-built components:
+
+**Form Components**: form, input, textarea, select, checkbox, radio-group, switch, slider
+**Overlay Components**: dialog, sheet, drawer, popover, dropdown-menu, context-menu, hover-card, tooltip
+**Navigation**: navigation-menu, menubar, breadcrumb, pagination, tabs
+**Feedback**: alert, toast (sonner), progress, skeleton
+**Layout**: card, separator, scroll-area, resizable, sidebar, accordion, collapsible
+**Data**: table, chart, calendar, carousel
+**Custom**: mode-toggle (dark/light), GlobalLoading, NotificationCenter, DraggableSettingsButton
+
+All components support:
+- ✅ Dark mode via next-themes
+- ✅ Accessibility (Radix UI primitives)
+- ✅ TypeScript
+- ✅ Tailwind CSS v4 styling
 
 ## Common Development Tasks
 
@@ -367,44 +457,116 @@ NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL=0x...  # From contract deployment
 
 ```
 src/
-├── app/                    # Next.js App Router pages
+├── app/                    # Next.js App Router pages (18 routes)
 │   ├── marketplace/       # Marketplace listings
 │   ├── collections/       # Collection browsing/creation
+│   │   ├── [id]/         # Dynamic collection detail
+│   │   └── create/       # Collection creation
 │   ├── auctions/          # Auction pages
 │   ├── bundles/           # Bundle trading
 │   ├── offers/            # Offer management
-│   ├── admin/             # Admin dashboard
+│   ├── admin/             # Admin dashboard (8 sub-routes)
+│   │   ├── access-control/  # Role management
+│   │   ├── collections/verify/ # Collection verification
+│   │   ├── emergency/    # Emergency controls
+│   │   ├── fees/         # Fee management
+│   │   ├── royalties/    # Royalty configuration
+│   │   ├── timelock/     # Timelock operations
+│   │   ├── users/        # User management
+│   │   └── validator/    # Listing validation
 │   ├── analytics/         # Analytics dashboard
+│   ├── activity/          # Activity tracking
+│   ├── nft/create/        # NFT creation
+│   ├── profile/           # User profile
 │   └── app-provider.tsx   # Client-side app wrapper with providers
 ├── components/
-│   ├── common/            # Shared components (Header, Footer, etc.)
+│   ├── common/            # Shared components
+│   │   ├── layout/       # Layout components (Header, Footer, Sidebar, MainLayout)
+│   │   └── DraggableSettingsButton.tsx  # Draggable settings UI
 │   ├── features/          # Feature-specific components
 │   │   ├── env-config/   # Runtime environment configuration modal
-│   │   ├── collection/   # Collection management
-│   │   ├── marketplace/  # Marketplace features
-│   │   └── nft/          # NFT features
-│   └── ui/                # shadcn/ui components
+│   │   ├── collection/   # Collection management (7 components including ActivityTracking)
+│   │   ├── marketplace/  # Marketplace features (2 components)
+│   │   ├── nft/          # NFT features (4 components)
+│   │   └── wallet/       # Wallet connection
+│   └── ui/                # shadcn/ui components (49 components)
+├── hooks/                  # Custom React hooks (8 hooks)
+│   ├── use-collection.ts
+│   ├── use-draggable-position.ts  # Draggable UI positioning
+│   ├── use-marketplace.ts
+│   ├── use-mobile.ts
+│   ├── use-real-time-events.ts    # Event subscription management
+│   ├── use-toast.ts
+│   ├── use-wallet.ts
+│   └── use-web3.ts
 ├── lib/
 │   ├── contracts/
-│   │   ├── abis/          # Auto-generated contract ABIs
+│   │   ├── abis/          # Auto-generated contract ABIs (23 contracts)
 │   │   └── addresses.ts   # Contract address configuration
 │   ├── services/
-│   │   ├── contracts/     # Contract service classes (13 services)
-│   │   ├── blockchain/    # Blockchain utilities
-│   │   ├── web3/          # Web3 provider
+│   │   ├── contracts/     # Contract service classes (16 services)
+│   │   │   ├── MarketplaceHubService.ts
+│   │   │   ├── ExchangeService.ts
+│   │   │   ├── AuctionService.ts
+│   │   │   ├── BundleService.ts
+│   │   │   ├── OfferService.ts
+│   │   │   ├── CollectionService.ts
+│   │   │   ├── CollectionQueryService.ts  # ⭐ Event-based discovery
+│   │   │   ├── FeeManagerService.ts
+│   │   │   ├── RoyaltyManagerService.ts
+│   │   │   ├── AccessControlService.ts
+│   │   │   ├── EmergencyManagerService.ts
+│   │   │   ├── TimelockService.ts         # ⭐ Time-locked ops
+│   │   │   ├── ListingValidatorService.ts
+│   │   │   ├── ListingHistoryTrackerService.ts
+│   │   │   ├── CollectionVerifierService.ts
+│   │   │   ├── RealTimeEvents.ts          # ⭐ Event subscriptions
+│   │   │   └── index.ts
+│   │   ├── blockchain/    # Blockchain utilities (3 services)
+│   │   │   ├── CollectionService.ts
+│   │   │   ├── EventService.ts
+│   │   │   └── TransactionService.ts
+│   │   ├── web3/          # Web3 provider (2 services)
+│   │   │   ├── Web3Provider.ts
+│   │   │   └── provider-factory.ts
 │   │   └── env-storage.service.ts  # Environment localStorage service
-│   ├── hooks/             # Custom React hooks
-│   ├── store/             # Redux store and slices
-│   ├── utils/             # Utility functions
+│   ├── store/             # Redux store and slices (10 slices)
+│   │   ├── slices/
+│   │   │   ├── walletSlice.ts
+│   │   │   ├── collectionsSlice.ts
+│   │   │   ├── nftsSlice.ts
+│   │   │   ├── auctionsSlice.ts
+│   │   │   ├── listingSlice.ts
+│   │   │   ├── offersSlice.ts
+│   │   │   ├── feesSlice.ts
+│   │   │   ├── notificationSlice.ts
+│   │   │   ├── securitySlice.ts
+│   │   │   └── accessControlSlice.ts
+│   │   ├── StoreProvider.tsx
+│   │   ├── hooks.ts
+│   │   └── index.ts
+│   ├── utils/             # Utility functions (7 files)
+│   │   ├── contract.ts
 │   │   ├── env-config.ts # Environment configuration manager
-│   │   └── logger.ts     # Production-ready logger utility
+│   │   ├── index.ts      # cn() utility (tailwind-merge + clsx)
+│   │   ├── interceptor.ts
+│   │   ├── logger.ts     # Production-ready logger utility
+│   │   ├── uuid.ts
+│   │   └── web3.ts
 │   ├── constants/         # App constants
+│   │   └── index.ts
 │   └── config/            # Configuration
-├── types/                  # TypeScript type definitions
-│   ├── index.ts           # Main type exports
-│   ├── env-config.ts      # Environment configuration types
-│   └── events.ts          # Event-related types
-└── styles/                # Global styles
+│       ├── env.ts        # Environment with runtime priority
+│       └── networks.ts   # Network configurations
+├── providers/             # Context providers
+│   └── WalletProvider.tsx
+├── types/                 # TypeScript type definitions (5 files)
+│   ├── index.ts          # Main type exports (378 lines)
+│   ├── collection.ts     # Collection-specific types
+│   ├── contract.ts       # Contract types
+│   ├── env-config.ts     # Environment configuration types
+│   └── events.ts         # Event-related types
+└── styles/               # Global styles
 ```
 
 ## Troubleshooting
