@@ -19,7 +19,7 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 
 ### 2. Service Layer Architecture
 
-- **13 service classes** wrapping 23 smart contracts
+- **15 service classes** wrapping 23 smart contracts
 - All services initialize through `initializeServices(provider, signer)`
 - Services auto-discover contract addresses via MarketplaceHubService
 - Each service is a singleton instance (e.g., `marketplaceHubService`, `exchangeService`)
@@ -40,6 +40,10 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 - `ListingValidatorService` - Pre-transaction validation
 - `ListingHistoryTrackerService` - Analytics and stats
 - `CollectionVerifierService` - Collection verification
+- `TimelockService` - Time-locked admin operations for security
+- `CollectionQueryService` - Query and fetch collection data from blockchain
+
+**Note**: 13 services auto-initialize via `initializeServices()`, while `CollectionQueryService` is a query-only service initialized separately.
 
 See `docs/SERVICE_ARCHITECTURE.md` for complete service documentation.
 
@@ -403,7 +407,9 @@ src/
 ├── types/                  # TypeScript type definitions
 │   ├── index.ts           # Main type exports
 │   ├── env-config.ts      # Environment configuration types
-│   └── events.ts          # Event-related types
+│   ├── events.ts          # Event-related types
+│   ├── contract.ts        # Contract-related types
+│   └── collection.ts      # Collection-related types
 └── styles/                # Global styles
 ```
 
