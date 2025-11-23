@@ -14,6 +14,7 @@ const config = [
       "node_modules/**",
       "node_modules/.pnpm/**",
       ".claude/**",
+      "next-env.d.ts",
     ],
   },
   ...compat.config({

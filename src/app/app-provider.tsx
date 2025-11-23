@@ -1,7 +1,7 @@
 "use client";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { ZunoProvider } from "zuno-marketplace-sdk/react";
-import { validateSDKConfig } from "@/lib/config/zuno-sdk";
+import { defaultConfig, validateSDKConfig } from "@/lib/config/zuno-sdk";
 import { logger } from "@/lib/utils/logger";
 
 export default function AppProvider({
@@ -41,24 +41,7 @@ export default function AppProvider({
   }
 
   return (
-    <ZunoProvider
-      config={{
-        apiKey: process.env.NEXT_PUBLIC_ZUNO_API_KEY!,
-        network: (process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID
-          ? parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID)
-          : 31337) as number,
-        apiUrl: process.env.NEXT_PUBLIC_ZUNO_API_URL!,
-        cache: {
-          ttl: 300000, // 5 minutes
-          gcTime: 600000, // 10 minutes
-        },
-        retryPolicy: {
-          maxRetries: 3,
-          backoff: 'exponential',
-        },
-        debug: process.env.NODE_ENV === 'development',
-      }}
-    >
+    <ZunoProvider config={defaultConfig}>
       <StoreProvider>
         {children}
       </StoreProvider>
