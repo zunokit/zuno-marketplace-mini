@@ -561,13 +561,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 // Custom Hook
 // ============================================================================
 
+// Default context value for SSR/prerendering
+const defaultContextValue: WalletContextType = {
+  ...initialState,
+  connect: async () => {},
+  disconnect: () => {},
+  switchNetwork: async () => {},
+  refreshBalance: async () => {},
+};
+
 export function useWallet(): WalletContextType {
   const context = useContext(WalletContext);
-  
+
+  // Return default value during SSR/prerendering instead of throwing
   if (!context) {
-    throw new Error("useWallet must be used within WalletProvider");
+    return defaultContextValue;
   }
-  
+
   return context;
 }
 

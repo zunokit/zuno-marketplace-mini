@@ -1,4 +1,8 @@
 "use client";
+
+// Prevent static generation - requires wallet context
+export const dynamic = "force-dynamic";
+
 import { useState } from "react";
 import { logger } from "@/lib/utils/logger";
 import { MainLayout } from "@/components/common/layout/MainLayout";

@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { ZunoProvider } from "zuno-marketplace-sdk/react";
 import { defaultConfig, validateSDKConfig } from "@/lib/config/zuno-sdk";
@@ -7,7 +8,7 @@ import { logger } from "@/lib/utils/logger";
 export default function AppProvider({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   // Validate SDK configuration before initialization
   const validation = validateSDKConfig();
