@@ -1,6 +1,6 @@
 /**
  * Web3 Utilities
- * Centralized Web3/Ethereum utilities using MarketplaceHub pattern
+ * Centralized Web3/Ethereum utilities
  */
 
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
@@ -162,7 +162,7 @@ export class Web3Utils {
     try {
       const balance = await this.provider.getBalance(accountAddress);
       return ethers.formatEther(balance);
-    } catch (error) {
+    } catch {
       throw new Error("Failed to get balance");
     }
   }
@@ -194,8 +194,8 @@ export class Web3Utils {
         method: "wallet_switchEthereumChain",
         params: [{ chainId }],
       });
-    } catch (error: any) {
-      if (error.code === 4902) {
+    } catch (error) {
+      if ((error as { code?: number }).code === 4902) {
         throw new Error("Network not added to wallet");
       }
       throw new Error("Failed to switch network");
@@ -238,7 +238,7 @@ export class Web3Utils {
   /**
    * Get contract instance
    */
-  getContract(address: string, abi: any[]): ethers.Contract {
+  getContract(address: string, abi: ethers.InterfaceAbi): ethers.Contract {
     if (!this.provider) throw new Error("Provider not initialized");
     return new ethers.Contract(address, abi, this.signer || this.provider);
   }
@@ -253,7 +253,7 @@ export class Web3Utils {
     if (!this.provider) throw new Error("Provider not initialized");
     try {
       return await this.provider.waitForTransaction(txHash, confirmations);
-    } catch (error) {
+    } catch {
       throw new Error("Failed to wait for transaction");
     }
   }
@@ -270,7 +270,7 @@ export class Web3Utils {
         data,
         value: value || BigInt(0),
       });
-    } catch (error) {
+    } catch {
       throw new Error("Failed to estimate gas");
     }
   }
@@ -283,7 +283,7 @@ export class Web3Utils {
     try {
       const feeData = await this.provider.getFeeData();
       return feeData.gasPrice || BigInt(0);
-    } catch (error) {
+    } catch {
       throw new Error("Failed to get gas price");
     }
   }
@@ -303,6 +303,10 @@ export const web3Utils = new Web3Utils();
 // Window ethereum type declaration
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on: (event: string, callback: (...args: unknown[]) => void) => void;
+      removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
+    };
   }
 }

@@ -85,6 +85,7 @@ export function useDraggablePosition({
       });
       setPosition(getDefaultPosition());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, storageKey, buttonSize, margin]);
 
   // Handle window resize to keep element in viewport

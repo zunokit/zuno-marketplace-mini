@@ -22,7 +22,7 @@ export interface NFT {
   owner: string;
   creator: string;
   attributes?: NFTAttribute[];
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface NFTAttribute {
@@ -350,25 +350,25 @@ export interface CollectionFilters {
 export interface ContractError {
   code: string;
   message: string;
-  data?: any;
+  data?: unknown;
 }
 
 export class CollectionError extends Error {
-  constructor(message: string, public code: string, public details?: any) {
+  constructor(message: string, public code: string, public details?: unknown) {
     super(message);
     this.name = "CollectionError";
   }
 }
 
 export class MintError extends Error {
-  constructor(message: string, public code: string, public details?: any) {
+  constructor(message: string, public code: string, public details?: unknown) {
     super(message);
     this.name = "MintError";
   }
 }
 
 export class TransactionError extends Error {
-  constructor(message: string, public code: string, public details?: any) {
+  constructor(message: string, public code: string, public details?: unknown) {
     super(message);
     this.name = "TransactionError";
   }

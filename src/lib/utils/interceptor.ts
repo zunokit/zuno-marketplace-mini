@@ -1,8 +1,9 @@
 // src/utils/intercept-console.ts
+/* eslint-disable no-console */
 type ConsoleMethod = "log" | "warn" | "error" | "info" | "debug";
 
 // Lưu bản gốc
-const originalConsole: Record<ConsoleMethod, (...args: any[]) => void> = {
+const originalConsole: Record<ConsoleMethod, (...args: unknown[]) => void> = {
   log: console.log,
   warn: console.warn,
   error: console.error,
@@ -78,7 +79,7 @@ const IGNORED_PATTERNS = [
 ];
 
 // Hàm kiểm tra log có nên ẩn không
-function shouldIgnore(args: any[]): boolean {
+function shouldIgnore(args: unknown[]): boolean {
   return args.some(
     (a) => typeof a === "string" && IGNORED_PATTERNS.some((p) => a.includes(p))
   );
@@ -87,8 +88,7 @@ function shouldIgnore(args: any[]): boolean {
 // Ghi đè console method
 (["log", "warn", "error", "info", "debug"] as ConsoleMethod[]).forEach(
   (method) => {
-
-    console[method] = (...args: any[]) => {
+    console[method] = (...args: unknown[]) => {
       if (shouldIgnore(args)) return;
       // Nếu log có emoji (log custom) => hiển thị rõ ràng
       if (

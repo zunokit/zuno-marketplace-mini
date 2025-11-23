@@ -28,16 +28,11 @@ import {
   Store,
   Palette,
   Gavel,
-  Package,
-  TrendingUp,
   User,
   Settings,
   Bell,
   Menu,
-  X,
   Plus,
-  ChevronDown,
-  LogOut,
 } from "lucide-react";
 import { useAppSelector } from "@/lib/store/hooks";
 
@@ -67,7 +62,6 @@ export function Header() {
   const wallet = useAppSelector((state) => state.wallet);
   const notifications = useAppSelector((state) => state.notifications);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [createDropdownOpen, setCreateDropdownOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-x-hidden">

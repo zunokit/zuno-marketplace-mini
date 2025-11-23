@@ -10,9 +10,6 @@ export const ENV = {
     10
   ),
 
-  // Contract addresses
-  USER_HUB_LOCAL: process.env.NEXT_PUBLIC_USER_HUB_LOCAL || "",
-
   // RPC URLs
   RPC_URL_LOCAL: process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "",
   RPC_URL_SEPOLIA: process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA || "",

@@ -19,7 +19,6 @@ import {
   Gavel,
   Heart,
   Activity,
-  TrendingUp,
 } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
 import Link from "next/link";

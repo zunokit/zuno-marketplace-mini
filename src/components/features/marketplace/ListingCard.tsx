@@ -315,8 +315,8 @@ export function ListingCard({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Confirm Purchase</AlertDialogTitle>
                     <AlertDialogDescription>
-                      You are about to purchase "
-                      {listing.nft?.name || `#${listing.tokenId}`}" for{" "}
+                      You are about to purchase &quot;
+                      {listing.nft?.name || `#${listing.tokenId}`}&quot; for{" "}
                       <strong>{formatPrice(listing.price)} ETH</strong>. This
                       action cannot be undone.
                     </AlertDialogDescription>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useAuction, useAuctionDetails } from "zuno-marketplace-sdk/react";
+import { useAuction } from "zuno-marketplace-sdk/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Gavel } from "lucide-react";
 
 export default function AuctionsPage() {
-  const { createEnglishAuction, createDutchAuction } = useAuction();
+  const _auction = useAuction();
 
   return (
     <div className="container mx-auto px-4 py-8">

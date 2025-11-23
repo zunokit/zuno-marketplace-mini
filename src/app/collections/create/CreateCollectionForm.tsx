@@ -34,17 +34,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
-  Upload,
-  AlertCircle,
   CheckCircle2,
   Wallet,
   Image as ImageIcon,
-  Settings,
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -107,7 +103,7 @@ const CATEGORIES = [
 
 export default function CreateCollectionForm() {
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { createERC721, createERC1155 } = useCollection();
   const isLoading = createERC721.isPending || createERC1155.isPending;
   const [logoImage, setLogoImage] = useState<string>("");
@@ -233,7 +229,7 @@ export default function CreateCollectionForm() {
 
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);
-    } catch (error: any) {
+    } catch (error) {
       logger.error("Failed to create collection", error, {
         component: "CreateCollectionForm",
         action: "createCollection",
@@ -271,7 +267,7 @@ export default function CreateCollectionForm() {
         <CardContent>
           <Tabs
             value={tokenType}
-            onValueChange={(value) => setValue("tokenType", value as any)}
+            onValueChange={(value) => setValue("tokenType", value as "ERC721" | "ERC1155")}
           >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ERC721">

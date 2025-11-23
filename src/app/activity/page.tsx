@@ -51,8 +51,26 @@ export default function ActivityHistoryPage() {
   const { account, isConnected } = useAppSelector((state) => state.wallet);
 
   // Local state
-  const [activities, setActivities] = useState<any[]>([]);
-  const [filteredActivities, setFilteredActivities] = useState<any[]>([]);
+  const [_activities, setActivities] = useState<ActivityItem[]>([]);
+  const [filteredActivities, setFilteredActivities] = useState<ActivityItem[]>([]);
+
+  // Activity item type
+  interface ActivityItem {
+    id: string;
+    type: string;
+    nft: {
+      name: string;
+      image?: string;
+      collection: string;
+    };
+    amount: string;
+    currency: string;
+    status: string;
+    timestamp: string;
+    txHash: string;
+    from?: string;
+    to?: string;
+  }
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<string | "all">("all");
   const [timeRange, setTimeRange] = useState<
@@ -88,6 +106,7 @@ export default function ActivityHistoryPage() {
     if (account) {
       fetchUserActivity();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, filter, timeRange]);
 
   /**
@@ -228,7 +247,7 @@ export default function ActivityHistoryPage() {
   /**
    * Get activity description
    */
-  const getActivityDescription = (activity: any): string => {
+  const getActivityDescription = (activity: ActivityItem): string => {
     const { type, nft, amount, currency } = activity;
 
     switch (type) {
@@ -245,7 +264,7 @@ export default function ActivityHistoryPage() {
       case "mint":
         return `Minted ${nft.name}`;
       case "transfer":
-        return `Transferred ${nft.name} to ${formatAddress(activity.to)}`;
+        return `Transferred ${nft.name} to ${formatAddress(activity.to || null)}`;
       case "cancel":
         return `Cancelled listing for ${nft.name}`;
       default:
@@ -322,7 +341,7 @@ export default function ActivityHistoryPage() {
             {/* Activity Type Filter */}
             <div className="space-y-2">
               <Label htmlFor="activity-type">Activity Type</Label>
-              <Select value={filter} onValueChange={(v: any) => setFilter(v)}>
+              <Select value={filter} onValueChange={(v: string) => setFilter(v)}>
                 <SelectTrigger id="activity-type">
                   <SelectValue />
                 </SelectTrigger>
@@ -341,7 +360,7 @@ export default function ActivityHistoryPage() {
               <Label htmlFor="time-range">Time Range</Label>
               <Select
                 value={timeRange}
-                onValueChange={(v: any) => setTimeRange(v)}
+                onValueChange={(v: "7d" | "30d" | "90d" | "1y" | "all") => setTimeRange(v)}
               >
                 <SelectTrigger id="time-range">
                   <SelectValue />

@@ -2,7 +2,7 @@
  * Collection-related type definitions
  */
 
-import type { NFTType } from "./contract";
+export type NFTType = "ERC721" | "ERC1155";
 
 /**
  * Parameters for creating a new collection

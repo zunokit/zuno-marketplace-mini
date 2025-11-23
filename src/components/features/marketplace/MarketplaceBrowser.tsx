@@ -1,16 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { logger } from "@/lib/utils/logger";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -24,8 +16,6 @@ import { ListingCard } from "./ListingCard";
 import {
   Search,
   Filter,
-  SortAsc,
-  SortDesc,
   Grid3X3,
   List,
   RefreshCw,
@@ -34,43 +24,30 @@ import { cn } from "@/lib/utils";
 import { useExchange, useListings } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
 
-interface FilterOptions {
-  priceMin: string;
-  priceMax: string;
-  currency: string;
-  collection: string;
-  status: string;
-}
-
-interface SortOption {
-  value: string;
-  label: string;
-  icon?: any;
-}
+// ListingItem type is provided by the SDK via useListings hook
 
 export function MarketplaceBrowser() {
   const { buyNFT, cancelListing } = useExchange();
   const { data: listings, isLoading, refetch } = useListings("", 1, 50);
-  const { isConnected, address } = useAccount();
+  const { address } = useAccount();
 
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [sortBy, setSortBy] = useState("recent");
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
       await refetch();
     } catch (error) {
-      logger.error("Failed to refresh listings", error);
+      logger.error("Failed to refresh listings", error as Error);
     } finally {
       setRefreshing(false);
     }
   };
 
-  const filteredListings = listings?.items?.filter((listing: any) => {
+  const filteredListings = listings?.items?.filter((listing) => {
     if (searchQuery) {
       return listing.seller.toLowerCase().includes(searchQuery.toLowerCase());
     }
@@ -173,27 +150,54 @@ export function MarketplaceBrowser() {
               : "space-y-4"
           )}
         >
-          {filteredListings.map((listing: any) => (
-            <ListingCard
-              key={listing.id || listing.listingId}
-              listing={listing}
-              isOwner={listing.seller?.toLowerCase() === address?.toLowerCase()}
-              onBuy={() => {
-                if (listing.id || listing.listingId) {
-                  buyNFT.mutateAsync({
-                    listingId: listing.id || listing.listingId
-                  });
-                }
-              }}
-              onCancel={() => {
-                if (listing.id || listing.listingId) {
-                  cancelListing.mutateAsync({
-                    listingId: listing.id || listing.listingId
-                  });
-                }
-              }}
-            />
-          ))}
+          {filteredListings.map((listing) => {
+            // Adapt SDK listing to ListingCard props
+            // Use type assertion for SDK listing properties
+            const sdkListing = listing as unknown as {
+              id: string;
+              seller: string;
+              nftContract: string;
+              tokenId: string;
+              price: string;
+              status: string;
+              startTime: number;
+              endTime: number;
+              nft?: { name?: string; image?: string; collection?: { name?: string; verified?: boolean } };
+            };
+            const cardListing = {
+              id: sdkListing.id || '',
+              seller: sdkListing.seller,
+              tokenContract: sdkListing.nftContract || '',
+              tokenId: sdkListing.tokenId,
+              price: sdkListing.price,
+              currency: 'ETH',
+              status: sdkListing.status as "ACTIVE" | "SOLD" | "CANCELLED",
+              createdAt: sdkListing.startTime || Date.now(),
+              updatedAt: sdkListing.endTime || Date.now(),
+              nft: sdkListing.nft,
+            };
+            return (
+              <ListingCard
+                key={cardListing.id}
+                listing={cardListing}
+                isOwner={listing.seller?.toLowerCase() === address?.toLowerCase()}
+                onBuy={() => {
+                  if (cardListing.id) {
+                    buyNFT.mutateAsync({
+                      listingId: cardListing.id
+                    });
+                  }
+                }}
+                onCancel={() => {
+                  if (cardListing.id) {
+                    cancelListing.mutateAsync({
+                      listingId: cardListing.id
+                    });
+                  }
+                }}
+              />
+            );
+          })}
         </div>
       )}
     </div>

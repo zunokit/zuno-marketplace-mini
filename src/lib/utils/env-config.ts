@@ -7,7 +7,6 @@ import { logger } from "./logger";
 
 export interface EnvConfig {
   NEXT_PUBLIC_DEFAULT_CHAIN_ID?: string;
-  NEXT_PUBLIC_USER_HUB_LOCAL?: string;
   NEXT_PUBLIC_RPC_URL_LOCAL?: string;
   NEXT_PUBLIC_RPC_URL_SEPOLIA?: string;
   NEXT_PUBLIC_RPC_URL_MAINNET?: string;
@@ -56,7 +55,6 @@ class EnvConfigManager {
     // List of known config keys
     const keys = [
       "NEXT_PUBLIC_DEFAULT_CHAIN_ID",
-      "NEXT_PUBLIC_USER_HUB_LOCAL",
       "NEXT_PUBLIC_RPC_URL_LOCAL",
       "NEXT_PUBLIC_RPC_URL_SEPOLIA",
       "NEXT_PUBLIC_RPC_URL_MAINNET",

@@ -4,7 +4,6 @@
  * Contract addresses are fetched dynamically from API
  */
 
-import { getHubAddressFromManager } from "@/lib/services/contracts/utils/AddressManager";
 
 export interface NetworkConfig {
   chainId: number;
@@ -54,10 +53,6 @@ export function getDefaultChainId(): number {
 
 export function getNetworkConfig(chainId: number): NetworkConfig | undefined {
   return getNetworkConfigMap()[chainId];
-}
-
-export function getHubAddress(chainId: number): Promise<string> {
-  return getHubAddressFromManager(chainId);
 }
 
 export function isNetworkSupported(chainId: number): boolean {

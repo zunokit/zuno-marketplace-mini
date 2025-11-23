@@ -45,7 +45,6 @@ interface WalletContextType extends WalletState {
 // ============================================================================
 
 const STORAGE_KEY = "wallet_connection_v2";
-const RECONNECT_TIMEOUT = 3000;
 const MAX_RECONNECT_ATTEMPTS = 3;
 
 // ============================================================================
@@ -311,9 +310,9 @@ class WalletService {
       await provider.send("wallet_switchEthereumChain", [
         { chainId: hexChainId },
       ]);
-    } catch (error: any) {
+    } catch (error) {
       // Chain not added to wallet, try to add it
-      if (error.code === 4902) {
+      if ((error as { code?: number }).code === 4902) {
         throw new Error(
           `Chain ${targetChainId} not configured in wallet. Please add it manually.`
         );
@@ -346,13 +345,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       if (accounts[0] !== state.account) {
         // Account changed, update state and refresh balance
-        refreshBalance();
+        if (state.provider && accounts[0]) {
+          state.provider.getBalance(accounts[0]).then(balance => {
+            dispatch({
+              type: ActionType.UPDATE_BALANCE,
+              payload: ethers.formatEther(balance),
+            });
+          }).catch(err => {
+            logger.error("Failed to refresh balance on account change", err);
+          });
+        }
         if (state.chainId) {
           WalletStorage.save(accounts[0], state.chainId);
         }
       }
     },
-    [state.account, state.chainId]
+    [state.account, state.chainId, state.provider]
   );
 
   const handleChainChanged = useCallback((newChainIdHex: string) => {
@@ -417,9 +425,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         account: connectionData.account,
         chainId: connectionData.chainId,
       });
-    } catch (error: any) {
-      const errorMessage = error.message || "Failed to connect wallet";
-      dispatch({ type: ActionType.CONNECT_ERROR, payload: error });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
+      dispatch({ type: ActionType.CONNECT_ERROR, payload: error instanceof Error ? error : new Error(errorMessage) });
       toast.error(errorMessage);
       logger.error("Connection failed", error);
     }
@@ -441,8 +449,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       try {
         await WalletService.switchNetwork(state.provider, targetChainId);
         toast.success(`Switched to chain ${targetChainId}`);
-      } catch (error: any) {
-        toast.error(error.message || "Failed to switch network");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to switch network");
         throw error;
       }
     },
@@ -471,16 +479,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!window.ethereum) return;
 
-    const ethereum = window.ethereum as any;
+    const ethereum = window.ethereum;
 
-    ethereum.on("accountsChanged", handleAccountsChanged);
-    ethereum.on("chainChanged", handleChainChanged);
-    ethereum.on("disconnect", handleDisconnect);
+    const accountsHandler = (accounts: unknown) => handleAccountsChanged(accounts as string[]);
+    const chainHandler = (chainId: unknown) => handleChainChanged(chainId as string);
+    const disconnectHandler = () => handleDisconnect();
+
+    ethereum.on("accountsChanged", accountsHandler);
+    ethereum.on("chainChanged", chainHandler);
+    ethereum.on("disconnect", disconnectHandler);
 
     return () => {
-      ethereum.removeListener("accountsChanged", handleAccountsChanged);
-      ethereum.removeListener("chainChanged", handleChainChanged);
-      ethereum.removeListener("disconnect", handleDisconnect);
+      ethereum.removeListener("accountsChanged", accountsHandler);
+      ethereum.removeListener("chainChanged", chainHandler);
+      ethereum.removeListener("disconnect", disconnectHandler);
     };
   }, [handleAccountsChanged, handleChainChanged, handleDisconnect]);
 
@@ -511,6 +523,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       clearTimeout(timeoutId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // Refresh balance periodically

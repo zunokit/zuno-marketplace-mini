@@ -3,6 +3,8 @@
  * Structured logging with context, performance tracking, and monitoring integration
  */
 
+/* eslint-disable no-console */
+
 type LogLevel = "debug" | "info" | "warn" | "error" | "success";
 
 interface LogContext {
@@ -12,13 +14,13 @@ interface LogContext {
   component?: string;
   action?: string;
   duration?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface LogEntry {
   level: LogLevel;
   message: string;
-  data?: any;
+  data?: unknown;
   context?: LogContext;
   timestamp: Date;
   id: string;
@@ -51,7 +53,7 @@ class Logger {
   private log(
     level: LogLevel,
     message: string,
-    data?: any,
+    data?: unknown,
     context?: LogContext
   ) {
     const entry: LogEntry = {
@@ -102,19 +104,19 @@ class Logger {
     }
   }
 
-  debug(message: string, data?: any, context?: LogContext) {
+  debug(message: string, data?: unknown, context?: LogContext) {
     this.log("debug", message, data, context);
   }
 
-  info(message: string, data?: any, context?: LogContext) {
+  info(message: string, data?: unknown, context?: LogContext) {
     this.log("info", message, data, context);
   }
 
-  warn(message: string, data?: any, context?: LogContext) {
+  warn(message: string, data?: unknown, context?: LogContext) {
     this.log("warn", message, data, context);
   }
 
-  error(message: string, error?: any, context?: LogContext) {
+  error(message: string, error?: unknown, context?: LogContext) {
     const errorData =
       error instanceof Error
         ? {
@@ -127,7 +129,7 @@ class Logger {
     this.log("error", message, errorData, context);
   }
 
-  success(message: string, data?: any, context?: LogContext) {
+  success(message: string, data?: unknown, context?: LogContext) {
     this.log("success", message, data, context);
   }
 
@@ -177,7 +179,7 @@ class Logger {
     }
   }
 
-  table(data: any) {
+  table(data: unknown) {
     if (this.isDevelopment) {
       console.table(data);
     }
@@ -211,12 +213,13 @@ class Logger {
     // This could be Sentry, LogRocket, etc.
     try {
       // Example: Sentry integration
-      if (typeof window !== "undefined" && (window as any).Sentry) {
-        (window as any).Sentry.captureException(new Error(entry.message), {
+      const win = window as Window & { Sentry?: { captureException: (err: Error, opts: { extra: unknown }) => void } };
+      if (typeof window !== "undefined" && win.Sentry) {
+        win.Sentry.captureException(new Error(entry.message), {
           extra: entry.data,
         });
       }
-    } catch (e) {
+    } catch {
       // Silently fail to avoid breaking the app
     }
   }

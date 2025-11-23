@@ -56,7 +56,7 @@ interface CreateListingFormProps {
 
 export function CreateListingForm({ onSuccess }: CreateListingFormProps = {}) {
   const { listNFT } = useExchange();
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -95,7 +95,7 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps = {}) {
         { component: "CreateListingForm", action: "submit" }
       );
 
-      const { listingId, tx } = await listNFT.mutateAsync({
+      const { tx } = await listNFT.mutateAsync({
         collectionAddress: values.tokenContract,
         tokenId: values.tokenId,
         price: values.price,
@@ -110,13 +110,13 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps = {}) {
         form.reset();
         onSuccess?.();
       }
-    } catch (error: any) {
+    } catch (error) {
       logger.error("Failed to create listing", error, {
         component: "CreateListingForm",
         action: "submit",
       });
 
-      toast.error(error?.message || "Failed to create listing");
+      toast.error(error instanceof Error ? error.message : "Failed to create listing");
     } finally {
       setIsProcessing(false);
     }
