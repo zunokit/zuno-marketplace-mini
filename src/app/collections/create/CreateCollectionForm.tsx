@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { envConfigManager } from "@/lib/utils/env-config";
+import Image from "next/image";
 
 // Form validation schema
 const formSchema = z.object({
@@ -267,7 +268,9 @@ export default function CreateCollectionForm() {
         <CardContent>
           <Tabs
             value={tokenType}
-            onValueChange={(value) => setValue("tokenType", value as "ERC721" | "ERC1155")}
+            onValueChange={(value) =>
+              setValue("tokenType", value as "ERC721" | "ERC1155")
+            }
           >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ERC721">
@@ -403,10 +406,13 @@ export default function CreateCollectionForm() {
               <div className="border-2 border-dashed rounded-lg p-4 text-center">
                 {logoImage ? (
                   <div className="space-y-2">
-                    <img
+                    <Image
+                      width={100}
+                      height={100}
                       src={logoImage}
                       alt="Logo"
                       className="w-32 h-32 object-cover rounded-lg mx-auto"
+                      unoptimized
                     />
                     <Button
                       type="button"
@@ -446,7 +452,9 @@ export default function CreateCollectionForm() {
               <div className="border-2 border-dashed rounded-lg p-4 text-center">
                 {bannerImage ? (
                   <div className="space-y-2">
-                    <img
+                    <Image
+                      width={1400}
+                      height={400}
                       src={bannerImage}
                       alt="Banner"
                       className="w-full h-32 object-cover rounded-lg"
@@ -655,7 +663,12 @@ export default function CreateCollectionForm() {
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading || createERC721.isPending || createERC1155.isPending}>
+        <Button
+          type="submit"
+          disabled={
+            isLoading || createERC721.isPending || createERC1155.isPending
+          }
+        >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

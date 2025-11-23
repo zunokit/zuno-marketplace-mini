@@ -13,6 +13,7 @@ export default [
       'public/**',
       'node_modules/**',
       'node_modules/.pnpm/**',
+      '.claude/**',
     ],
   },
   ...compat.config({
