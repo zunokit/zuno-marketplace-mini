@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { logger } from "@/lib/utils/logger";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMarketplace } from "@/hooks/use-marketplace";
-import { useWallet } from "@/providers/WalletProvider";
+import { useExchange, useListings } from "zuno-marketplace-sdk/react";
+import { useAccount } from "wagmi";
 
 interface FilterOptions {
   priceMin: string;
@@ -48,480 +48,152 @@ interface SortOption {
   icon?: any;
 }
 
-const sortOptions: SortOption[] = [
-  { value: "price_asc", label: "Price: Low to High", icon: SortAsc },
-  { value: "price_desc", label: "Price: High to Low", icon: SortDesc },
-  { value: "newest", label: "Recently Listed" },
-  { value: "oldest", label: "Oldest First" },
-  { value: "ending_soon", label: "Ending Soon" },
-];
-
-const statusOptions = [
-  { value: "all", label: "All Status" },
-  { value: "ACTIVE", label: "Active" },
-  { value: "SOLD", label: "Sold" },
-  { value: "CANCELLED", label: "Cancelled" },
-];
-
 export function MarketplaceBrowser() {
-  const {
-    items: listings,
-    loading,
-    error,
-    fetchActiveListings,
-    buyListing,
-    cancelListing,
-    updateListingPrice,
-  } = useMarketplace();
-  const { account } = useWallet();
+  const { buyNFT, cancelListing } = useExchange();
+  const { data: listings, isLoading, refetch } = useListings("", 1, 50);
+  const { isConnected, address } = useAccount();
 
-  // UI State
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-
-  // Fetch listings on mount
-  useEffect(() => {
-    fetchActiveListings();
-  }, [fetchActiveListings]);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("newest");
-  const [filters, setFilters] = useState<FilterOptions>({
-    priceMin: "",
-    priceMax: "",
-    currency: "all",
-    collection: "all",
-    status: "ACTIVE",
-  });
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortBy, setSortBy] = useState("recent");
 
-  // Collections for filter
-  const collections = [
-    { value: "all", label: "All Collections" },
-    { value: "0x123...", label: "CryptoPunks" },
-    { value: "0x456...", label: "Bored Apes" },
-  ];
-
-  // Filter and sort listings
-  const filteredAndSortedListings = useMemo(() => {
-    const filtered = listings.filter((listing) => {
-      // Status filter
-      if (filters.status !== "all" && listing.status !== filters.status) {
-        return false;
-      }
-
-      // Price range filter
-      if (
-        filters.priceMin &&
-        parseFloat(listing.price) < parseFloat(filters.priceMin)
-      ) {
-        return false;
-      }
-      if (
-        filters.priceMax &&
-        parseFloat(listing.price) > parseFloat(filters.priceMax)
-      ) {
-        return false;
-      }
-
-      // Collection filter
-      if (
-        filters.collection !== "all" &&
-        listing.tokenContract !== filters.collection
-      ) {
-        return false;
-      }
-
-      // Search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesName = listing.nft?.name?.toLowerCase().includes(query);
-        const matchesCollection = listing.nft?.collection?.name
-          ?.toLowerCase()
-          .includes(query);
-        const matchesTokenId = listing.tokenId.includes(query);
-
-        if (!matchesName && !matchesCollection && !matchesTokenId) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    // Sort listings
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "price_asc":
-          return parseFloat(a.price) - parseFloat(b.price);
-        case "price_desc":
-          return parseFloat(b.price) - parseFloat(a.price);
-        case "newest":
-          return b.createdAt - a.createdAt;
-        case "oldest":
-          return a.createdAt - b.createdAt;
-        case "ending_soon":
-          // For auctions, sort by end time (not implemented in this example)
-          return 0;
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  }, [listings, filters, searchQuery, sortBy]);
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filters.priceMin || filters.priceMax) count++;
-    if (filters.currency !== "all") count++;
-    if (filters.collection !== "all") count++;
-    if (filters.status !== "ACTIVE") count++;
-    return count;
-  }, [filters]);
-
-  const clearFilters = () => {
-    setFilters({
-      priceMin: "",
-      priceMax: "",
-      currency: "all",
-      collection: "all",
-      status: "ACTIVE",
-    });
-    setSearchQuery("");
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      logger.error("Failed to refresh listings", error);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <p className="text-lg text-muted-foreground mb-4">
-          Failed to load marketplace
-        </p>
-        <Button variant="outline">
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Try Again
-        </Button>
-      </div>
-    );
-  }
+  const filteredListings = listings?.items?.filter((listing: any) => {
+    if (searchQuery) {
+      return listing.seller.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    return true;
+  }) || [];
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Marketplace</h1>
-          <p className="text-muted-foreground">
-            Discover, buy, and sell extraordinary NFTs
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant={viewMode === "grid" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-          >
-            <Grid3X3 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-          >
-            <List className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
       {/* Search and Filters */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center">
-        {/* Search */}
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, collection, or token ID..."
+            placeholder="Search listings..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
 
-        {/* Sort */}
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue placeholder="Sort by..." />
-          </SelectTrigger>
-          <SelectContent>
-            {sortOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                <div className="flex items-center gap-2">
-                  {option.icon && <option.icon className="h-4 w-4" />}
-                  {option.label}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Filters */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="outline" className="relative">
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
-              {activeFiltersCount > 0 && (
-                <Badge
-                  variant="destructive"
-                  className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs"
-                >
-                  {activeFiltersCount}
-                </Badge>
-              )}
-            </Button>
-          </SheetTrigger>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>Filters</SheetTitle>
-              <SheetDescription>
-                Refine your search with these filters
-              </SheetDescription>
-            </SheetHeader>
-
-            <div className="mt-6 space-y-6">
-              {/* Status Filter */}
-              <div>
-                <label className="text-sm font-medium">Status</label>
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, status: value }))
-                  }
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Price Range */}
-              <div>
-                <label className="text-sm font-medium">Price Range (ETH)</label>
-                <div className="mt-2 flex gap-2">
-                  <Input
-                    placeholder="Min"
-                    type="number"
-                    value={filters.priceMin}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        priceMin: e.target.value,
-                      }))
-                    }
-                  />
-                  <Input
-                    placeholder="Max"
-                    type="number"
-                    value={filters.priceMax}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        priceMax: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-
-              {/* Collection Filter */}
-              <div>
-                <label className="text-sm font-medium">Collection</label>
-                <Select
-                  value={filters.collection}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, collection: value }))
-                  }
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {collections.map((collection) => (
-                      <SelectItem
-                        key={collection.value}
-                        value={collection.value}
-                      >
-                        {collection.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Clear Filters */}
-              <Button
-                variant="outline"
-                onClick={clearFilters}
-                className="w-full"
-              >
-                Clear All Filters
+        <div className="flex gap-2">
+          <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Filter className="h-4 w-4 mr-2" />
+                Filters
               </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Filters</SheetTitle>
+                <SheetDescription>
+                  Filter listings by price, collection, etc.
+                </SheetDescription>
+              </SheetHeader>
+              {/* Filter content would go here */}
+            </SheetContent>
+          </Sheet>
 
-      {/* Results Summary */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {loading ? "Loading..." : `${filteredAndSortedListings.length} items`}
-        </p>
-        {activeFiltersCount > 0 && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            Clear {activeFiltersCount} filter
-            {activeFiltersCount !== 1 ? "s" : ""}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={refreshing || isLoading}
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} />
+            Refresh
           </Button>
-        )}
+
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("grid")}
+              className="rounded-r-none"
+            >
+              <Grid3X3 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setViewMode("list")}
+              className="rounded-l-none"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Listings Grid */}
-      {loading ? (
-        <div
-          className={cn(
-            "grid gap-6",
-            viewMode === "grid"
-              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              : "grid-cols-1"
-          )}
-        >
+      {/* Loading State */}
+      {isLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="space-y-3">
-              <Skeleton className="aspect-square w-full" />
-              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="aspect-square rounded-lg" />
+              <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-4 w-1/2" />
             </div>
           ))}
         </div>
-      ) : filteredAndSortedListings.length > 0 ? (
+      )}
+
+      {/* Empty State */}
+      {!isLoading && filteredListings.length === 0 && (
+        <div className="text-center py-12">
+          <div className="text-muted-foreground">
+            {searchQuery ? "No listings found matching your search." : "No active listings."}
+          </div>
+        </div>
+      )}
+
+      {/* Listings Grid */}
+      {!isLoading && filteredListings.length > 0 && (
         <div
           className={cn(
-            "grid gap-6",
+            "gap-6",
             viewMode === "grid"
-              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              : "grid-cols-1 max-w-2xl mx-auto"
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              : "space-y-4"
           )}
         >
-          {filteredAndSortedListings.map((listing) => (
+          {filteredListings.map((listing: any) => (
             <ListingCard
-              key={listing.id}
+              key={listing.id || listing.listingId}
               listing={listing}
-              isOwner={listing.seller === account}
-              onBuy={async () => {
-                try {
-                  logger.info(
-                    "Initiating NFT purchase",
-                    {
-                      listingId: listing.id,
-                      tokenContract: listing.tokenContract,
-                      tokenId: listing.tokenId,
-                      price: listing.price,
-                    },
-                    { component: "MarketplaceBrowser", action: "buyListing" }
-                  );
-
-                  await buyListing(
-                    listing.tokenContract,
-                    listing.tokenId,
-                    listing.amount || "1",
-                    listing.tokenType || "ERC721"
-                  );
-                } catch (error) {
-                  logger.error(
-                    "Failed to purchase NFT",
-                    error,
-                    { component: "MarketplaceBrowser", action: "buyListing" }
-                  );
+              isOwner={listing.seller?.toLowerCase() === address?.toLowerCase()}
+              onBuy={() => {
+                if (listing.id || listing.listingId) {
+                  buyNFT.mutateAsync({
+                    listingId: listing.id || listing.listingId
+                  });
                 }
               }}
-              onEdit={async () => {
-                try {
-                  const newPrice = window.prompt(
-                    "Enter new price (in ETH):",
-                    listing.price
-                  );
-                  if (newPrice && newPrice !== listing.price) {
-                    logger.info(
-                      "Updating listing price",
-                      {
-                        listingId: listing.id,
-                        oldPrice: listing.price,
-                        newPrice,
-                      },
-                      { component: "MarketplaceBrowser", action: "editListing" }
-                    );
-
-                    await updateListingPrice(listing.id, newPrice);
-                  }
-                } catch (error) {
-                  logger.error(
-                    "Failed to update listing price",
-                    error,
-                    { component: "MarketplaceBrowser", action: "editListing" }
-                  );
+              onCancel={() => {
+                if (listing.id || listing.listingId) {
+                  cancelListing.mutateAsync({
+                    listingId: listing.id || listing.listingId
+                  });
                 }
-              }}
-              onCancel={async () => {
-                try {
-                  logger.info(
-                    "Cancelling listing",
-                    {
-                      listingId: listing.id,
-                      tokenContract: listing.tokenContract,
-                      tokenId: listing.tokenId,
-                    },
-                    { component: "MarketplaceBrowser", action: "cancelListing" }
-                  );
-
-                  await cancelListing(
-                    listing.tokenContract,
-                    listing.tokenId,
-                    listing.tokenType || "ERC721"
-                  );
-                } catch (error) {
-                  logger.error(
-                    "Failed to cancel listing",
-                    error,
-                    { component: "MarketplaceBrowser", action: "cancelListing" }
-                  );
-                }
-              }}
-              onView={() => {
-                logger.info(
-                  "View listing details",
-                  { listingId: listing.id },
-                  { component: "MarketplaceBrowser", action: "viewListing" }
-                );
-                // Navigate to NFT detail page
-                window.location.href = `/nft/${listing.tokenContract}/${listing.tokenId}`;
               }}
             />
           ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">No listings found</h3>
-            <p className="text-muted-foreground mb-4">
-              Try adjusting your search or filter criteria
-            </p>
-            <Button variant="outline" onClick={clearFilters}>
-              Clear Filters
-            </Button>
-          </div>
         </div>
       )}
     </div>

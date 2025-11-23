@@ -12,8 +12,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ethers } from "ethers";
-import { useCollection } from "@/hooks/use-collection";
-import { useWallet } from "@/providers/WalletProvider";
+import { useCollection } from "zuno-marketplace-sdk/react";
+import { useAccount } from "wagmi";
 import { TokenType, CreateCollectionParams } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -107,8 +107,9 @@ const CATEGORIES = [
 
 export default function CreateCollectionForm() {
   const router = useRouter();
-  const { isConnected, account } = useWallet();
-  const { createCollection, isLoading } = useCollection();
+  const { address, isConnected } = useAccount();
+  const { createERC721, createERC1155 } = useCollection();
+  const isLoading = createERC721.isPending || createERC1155.isPending;
   const [logoImage, setLogoImage] = useState<string>("");
   const [bannerImage, setBannerImage] = useState<string>("");
 
@@ -214,7 +215,21 @@ export default function CreateCollectionForm() {
       };
 
       // Create collection
-      const collectionAddress = await createCollection(params);
+      let result;
+      if (params.tokenType === "ERC721") {
+        result = await createERC721.mutateAsync({
+          name: params.name,
+          symbol: params.symbol,
+          baseUri: params.baseTokenURI || "",
+          maxSupply: parseInt(params.maxSupply || "10000"),
+        });
+      } else {
+        result = await createERC1155.mutateAsync({
+          uri: params.baseTokenURI || "",
+        });
+      }
+
+      const collectionAddress = result.address;
 
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);
@@ -644,7 +659,7 @@ export default function CreateCollectionForm() {
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading || createERC721.isPending || createERC1155.isPending}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

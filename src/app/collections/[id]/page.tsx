@@ -1,27 +1,30 @@
-/**
- * Collection Detail Page
- * Shows collection information and NFTs
- */
+"use client";
 
-import { MainLayout } from "@/components/common/layout/MainLayout";
-import { CollectionDetail } from "./CollectionDetail";
-import { CollectionNFTs } from "@/components/features/nft/CollectionNFTs";
+import { useParams } from "next/navigation";
+import { useCollectionInfo } from "zuno-marketplace-sdk/react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function CollectionPage() {
-  // TODO: Fetch NFTs for this collection
-  const nfts: any[] = []; // This will be populated from blockchain or API
+export default function CollectionDetailPage() {
+  const params = useParams();
+  const collectionAddress = params.id as string;
+  const { data: collection, isLoading, error } = useCollectionInfo(collectionAddress);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading collection</div>;
 
   return (
-    <MainLayout>
-      <div className="container mx-auto py-8">
-        <CollectionDetail />
-
-        {/* NFTs Grid */}
-        <div className="mt-8">
-          <h2 className="text-2xl font-bold mb-4">Collection Items</h2>
-          <CollectionNFTs nfts={nfts} />
-        </div>
-      </div>
-    </MainLayout>
+    <div className="container mx-auto px-4 py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>{collection?.name || "Collection Details"}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Collection Address: {collectionAddress}</p>
+          <p>Symbol: {collection?.symbol}</p>
+          <Button className="mt-4">Manage Collection</Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

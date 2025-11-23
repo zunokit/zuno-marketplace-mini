@@ -32,8 +32,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
-import { useMarketplace } from "@/hooks/use-marketplace";
-import { useWallet } from "@/providers/WalletProvider";
+import { useExchange } from "zuno-marketplace-sdk/react";
+import { useAccount } from "wagmi";
 import { logger } from "@/lib/utils/logger";
 import { toast } from "sonner";
 
@@ -55,8 +55,8 @@ interface CreateListingFormProps {
 }
 
 export function CreateListingForm({ onSuccess }: CreateListingFormProps = {}) {
-  const { createListing } = useMarketplace();
-  const { isConnected, account } = useWallet();
+  const { listNFT } = useExchange();
+  const { address, isConnected } = useAccount();
   const [isProcessing, setIsProcessing] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -95,16 +95,17 @@ export function CreateListingForm({ onSuccess }: CreateListingFormProps = {}) {
         { component: "CreateListingForm", action: "submit" }
       );
 
-      const receipt = await createListing(
-        values.tokenContract,
-        values.tokenId,
-        values.price
-      );
+      const { listingId, tx } = await listNFT.mutateAsync({
+        collectionAddress: values.tokenContract,
+        tokenId: values.tokenId,
+        price: values.price,
+        duration: 30 * 24 * 60 * 60, // 30 days
+      });
 
       logger.endTimer("create-listing", "Listing created successfully");
 
-      if (receipt?.hash) {
-        setTxHash(receipt.hash);
+      if (tx?.hash) {
+        setTxHash(tx.hash);
         toast.success("Listing created successfully!");
         form.reset();
         onSuccess?.();

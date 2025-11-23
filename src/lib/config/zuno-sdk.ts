@@ -103,7 +103,7 @@ export const localSDK = createSDKForNetwork(31337);
 export async function initializeSDK(sdkInstance: ZunoSDK = sdk): Promise<void> {
   try {
     // Prefetch common ABIs for better performance
-    // Note: SDK v1.0.1 changed prefetchABIs API - no longer takes arguments
+    // Note: SDK v1.1.3 - prefetchABIs no longer takes arguments
     await sdkInstance.prefetchABIs();
 
     logger.success('Zuno SDK initialized successfully', undefined, {

@@ -23,12 +23,8 @@ export function MainLayout({
   const { isConnecting: walletConnecting } = useAppSelector(
     (state) => state.wallet
   );
-  const { loading: listingLoading } = useAppSelector((state) => state.listing);
-  const { loading: collectionsLoading } = useAppSelector(
-    (state) => state.collections
-  );
 
-  const isLoading = walletConnecting || listingLoading || collectionsLoading;
+  const isLoading = walletConnecting;
 
   return (
     <div className="min-h-screen flex flex-col">

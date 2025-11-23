@@ -1,28 +1,12 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit'
 
-// Import slices
+// Import only essential slices (others handled by SDK's React Query)
 import walletReducer from './slices/walletSlice'
-import collectionsReducer from './slices/collectionsSlice'
-import nftsReducer from './slices/nftsSlice'
-import auctionsReducer from './slices/auctionsSlice'
-import listingReducer from './slices/listingSlice'
-import offersReducer from './slices/offersSlice'
-import feesReducer from './slices/feesSlice'
 import notificationReducer from './slices/notificationSlice'
-import securityReducer from './slices/securitySlice'
-import accessControlReducer from './slices/accessControlSlice'
 
 const rootReducer = combineReducers({
   wallet: walletReducer,
-  collections: collectionsReducer,
-  nfts: nftsReducer,
-  auctions: auctionsReducer,
-  listing: listingReducer,
-  offers: offersReducer,
-  fees: feesReducer,
   notifications: notificationReducer,
-  security: securityReducer,
-  accessControl: accessControlReducer,
 })
 
 export const makeStore = () => {

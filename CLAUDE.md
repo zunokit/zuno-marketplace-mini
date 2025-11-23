@@ -10,6 +10,50 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 
 ## Key Architecture Principles
 
+### 0. Zuno Marketplace SDK Integration (v1.1.4)
+
+**IMPORTANT**: This project uses the official `zuno-marketplace-sdk` package (v1.1.4) for all blockchain interactions.
+
+**SDK Features**:
+- Built-in Wagmi & React Query integration
+- Automatic ABI management with smart caching
+- Type-safe React hooks for all marketplace operations
+- Standardized transaction responses with `{ tx: TransactionReceipt, ...data }` format
+- Complete query methods and mutation methods
+- Standardized naming: `collectionAddress` (not `nftAddress`)
+
+**Hook Usage**:
+```typescript
+// Direct SDK hooks (required)
+import { useExchange, useCollection, useAuction } from "zuno-marketplace-sdk/react";
+
+// Hooks provide automatic loading states, error handling, and caching
+const { listNFT, buyNFT, cancelListing } = useExchange();
+const { createERC721, mintERC721 } = useCollection();
+const { createEnglishAuction, placeBid } = useAuction();
+
+// Usage with React Query features
+await listNFT.mutateAsync({
+  collectionAddress: "0x...",
+  tokenId: "1",
+  price: "1.5",
+  duration: 86400
+});
+
+// Access loading and error states
+if (listNFT.isPending) return <Loading />;
+if (listNFT.isError) return <Error error={listNFT.error} />;
+```
+
+**Migration Status**:
+- ✅ SDK updated to v1.1.4 (from v1.0.2 → v1.1.3 → v1.1.4)
+- ✅ All custom services removed (`exchangeService`, `collectionService`, `auctionService`)
+- ✅ All components migrated to SDK hooks
+- ✅ Redux store simplified (only wallet and notification slices remain)
+- ✅ Full SDK v1.1.4 API usage (query methods, standardized responses)
+
+**SDK Documentation**: See `E:\zuno-marketplace-sdk\docs\API.md`
+
 ### 1. MarketplaceHub Pattern
 
 - **Single address per network** - All contract discovery happens through MarketplaceHub
@@ -17,29 +61,33 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 - Environment only needs one variable per network: `NEXT_PUBLIC_MARKETPLACE_HUB_LOCAL`
 - Supports local (chainId: 31337), Sepolia (11155111), and Mainnet (1)
 
-### 2. Service Layer Architecture
+### 2. SDK Architecture Pattern (Replaces Service Layer)
 
-- **13 service classes** wrapping 23 smart contracts
-- All services initialize through `initializeServices(provider, signer)`
-- Services auto-discover contract addresses via MarketplaceHubService
-- Each service is a singleton instance (e.g., `marketplaceHubService`, `exchangeService`)
-- Service naming: `{ContractName}Service` class, `{contractName}Service` instance
+**Note**: The custom service layer has been completely removed in favor of the official SDK.
 
-**Core Services**:
+**SDK Module Architecture**:
+- **ExchangeModule** - NFT marketplace trading operations (listings, purchases)
+- **AuctionModule** - English and Dutch auction support
+- **CollectionModule** - NFT collection creation and minting
 
-- `MarketplaceHubService` - Address discovery (MUST initialize first)
-- `ExchangeService` - ERC721/ERC1155 listings and purchases
-- `AuctionService` - English/Dutch auctions
-- `BundleService` - NFT bundles
-- `OfferService` - NFT and collection offers
-- `CollectionService` - Create/mint/manage collections
-- `FeeManagerService` - Fee tiers, VIP status, volume discounts
-- `RoyaltyManagerService` - ERC2981 royalty management
-- `AccessControlService` - Role-based permissions
-- `EmergencyManagerService` - Emergency pause/blacklist
-- `ListingValidatorService` - Pre-transaction validation
-- `ListingHistoryTrackerService` - Analytics and stats
-- `CollectionVerifierService` - Collection verification
+**Key SDK Features (v1.1.4)**:
+- **React Query Integration**: Automatic caching, refetching, and optimistic updates
+- **Wagmi Integration**: Seamless wallet connection and provider management
+- **Type Safety**: Full TypeScript support with strict mode
+- **Standardized Responses**: All mutations return `{ tx: TransactionReceipt, ...additionalData }`
+- **Built-in Error Handling**: User-friendly error messages and recovery
+- **Query Methods**: Imperative data fetching alongside hooks
+
+**Usage Pattern**:
+```typescript
+// All blockchain interactions go through SDK hooks
+const { listNFT } = useExchange(); // For mutations
+const { data: listings } = useListings(address, page, size); // For queries
+
+// No more custom services needed
+// Old: await exchangeService.listNFT(params)
+// New: await listNFT.mutateAsync(params)
+```
 
 ### 3. Contract ABI Management
 
