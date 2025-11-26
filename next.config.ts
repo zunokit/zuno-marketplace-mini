@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "zunokit.github.io",
+        port: "",
+        pathname: "/zuno-marketplace-assets/**",
+      },
     ],
   },
 };
