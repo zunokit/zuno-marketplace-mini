@@ -23,7 +23,7 @@ import {
   Gavel,
   Heart,
 } from "lucide-react";
-import { useWallet } from "@/providers/WalletProvider";
+import { useWallet } from "zuno-marketplace-sdk/react";
 import Link from "next/link";
 
 // User data helper
@@ -106,7 +106,7 @@ const userCollections = [
 ];
 
 export default function ProfilePage() {
-  const { account, isConnected } = useWallet();
+  const { address: account, isConnected } = useWallet();
   const [activeTab, setActiveTab] = useState("owned");
 
   if (!isConnected || !account) {

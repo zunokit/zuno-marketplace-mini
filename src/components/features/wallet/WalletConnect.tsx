@@ -18,24 +18,24 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wallet, ExternalLink, Copy, Power } from "lucide-react";
-import { useWallet } from "@/providers/WalletProvider";
+import { useWallet, useBalance } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
 
 export function WalletConnect() {
   const {
-    account,
-    balance,
+    address: account,
     isConnected,
-    isConnecting,
-    error,
+    isPending: isConnecting,
     connect,
     disconnect,
   } = useWallet();
+  const { data: balanceData } = useBalance(account);
+  const balance = balanceData ? balanceData.formatted : null;
   const [isOpen, setIsOpen] = useState(false);
 
   const handleConnect = async () => {
     try {
-      await connect();
+      connect();
       setIsOpen(false);
       toast.success("Wallet Connected", {
         description: "Successfully connected to your wallet!",

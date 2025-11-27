@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useWallet } from '@/providers/WalletProvider';
+import { useWallet, useBalance } from 'zuno-marketplace-sdk/react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -32,14 +32,16 @@ import { useState } from 'react';
 export function WalletConnectButton() {
   const { 
     isConnected, 
-    isConnecting, 
-    account, 
+    isPending: isConnecting, 
+    address: account, 
     chainId, 
-    balance, 
     connect, 
     disconnect,
-    switchNetwork 
+    switchChain: switchNetwork 
   } = useWallet();
+  
+  const { data: balanceData } = useBalance(account);
+  const balance = balanceData ? balanceData.formatted : null;
   
   const [copied, setCopied] = useState(false);
 
@@ -91,7 +93,7 @@ export function WalletConnectButton() {
 
   if (!isConnected) {
     return (
-      <Button onClick={connect}>
+      <Button onClick={() => connect()}>
         <Wallet className="mr-2 h-4 w-4" />
         Connect Wallet
       </Button>
@@ -178,7 +180,7 @@ export function WalletConnectButton() {
         
         {!isCorrectNetwork && (
           <DropdownMenuItem 
-            onClick={() => switchNetwork(parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '31337'))}
+            onClick={() => switchNetwork({ chainId: parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '31337') })}
           >
             <AlertCircle className="mr-2 h-4 w-4" />
             Switch Network
