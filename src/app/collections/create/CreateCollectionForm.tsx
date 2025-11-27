@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ethers } from "ethers";
 import { useCollection } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/providers/WalletProvider";
 import { TokenType, CreateCollectionParams } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,7 +104,7 @@ const CATEGORIES = [
 
 export default function CreateCollectionForm() {
   const router = useRouter();
-  const { isConnected } = useAccount();
+  const { isConnected } = useWallet();
   const { createERC721, createERC1155 } = useCollection();
   const isLoading = createERC721.isPending || createERC1155.isPending;
   const [logoImage, setLogoImage] = useState<string>("");

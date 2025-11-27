@@ -6,9 +6,7 @@ import { HeroSection } from "@/components/common/sections/HeroSection";
 export default function HomePage() {
   return (
     <MainLayout>
-      <div className="min-h-screen">
-        <HeroSection />
-      </div>
+      <HeroSection />
     </MainLayout>
   );
 }
