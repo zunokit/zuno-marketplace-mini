@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { ZunoProvider } from "zuno-marketplace-sdk/react";
+import { WalletProvider } from "@/providers/WalletProvider";
 import { defaultConfig, validateSDKConfig } from "@/lib/config/zuno-sdk";
 import { logger } from "@/lib/utils/logger";
 
@@ -43,9 +44,11 @@ export default function AppProvider({
 
   return (
     <ZunoProvider config={defaultConfig}>
-      <StoreProvider>
-        {children}
-      </StoreProvider>
+      <WalletProvider>
+        <StoreProvider>
+          {children}
+        </StoreProvider>
+      </WalletProvider>
     </ZunoProvider>
   );
 }

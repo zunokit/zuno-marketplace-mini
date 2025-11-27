@@ -22,7 +22,6 @@ import {
   Package,
   Gavel,
   Heart,
-  Activity,
 } from "lucide-react";
 import { useWallet } from "@/providers/WalletProvider";
 import Link from "next/link";
@@ -309,7 +308,7 @@ export default function ProfilePage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="owned" className="flex items-center gap-2">
             <Package className="h-4 w-4" />
             Owned
@@ -321,10 +320,6 @@ export default function ProfilePage() {
           <TabsTrigger value="collections" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Collections
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Activity
           </TabsTrigger>
           <TabsTrigger value="favorites" className="flex items-center gap-2">
             <Heart className="h-4 w-4" />
@@ -385,20 +380,6 @@ export default function ProfilePage() {
           <UserCollections collections={userCollections} />
         </TabsContent>
 
-        <TabsContent value="activity" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Activity className="h-16 w-16 mx-auto mb-4" />
-                <p>No recent activity</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="favorites" className="mt-6">
           <div className="text-center py-12">
             <Heart className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -407,7 +388,7 @@ export default function ProfilePage() {
               Start exploring and save your favorite NFTs
             </p>
             <Button variant="outline" asChild>
-              <Link href="/marketplace">Explore Marketplace</Link>
+              <Link href="/collections">Explore Collections</Link>
             </Button>
           </div>
         </TabsContent>

@@ -26,8 +26,8 @@ export function HeroSection() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button size="lg" asChild>
-            <Link href="/marketplace">
-              Explore Marketplace
+            <Link href="/collections">
+              Explore Collections
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

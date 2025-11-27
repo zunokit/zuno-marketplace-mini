@@ -25,7 +25,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { WalletConnectButton } from "@/components/wallet/WalletConnectButton";
 import {
-  Store,
   Palette,
   Gavel,
   User,
@@ -37,12 +36,6 @@ import {
 import { useAppSelector } from "@/lib/store/hooks";
 
 const navigationItems = [
-  {
-    title: "Marketplace",
-    href: "/marketplace",
-    icon: Store,
-    description: "Browse and buy NFTs",
-  },
   {
     title: "Collections",
     href: "/collections",

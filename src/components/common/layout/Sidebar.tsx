@@ -12,7 +12,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { 
-  Store, 
   Palette, 
   Gavel, 
   Package, 
@@ -21,7 +20,6 @@ import {
   Settings,
   Plus,
   Heart,
-  Clock,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react'
@@ -34,12 +32,6 @@ interface SidebarProps {
 }
 
 const navigationItems = [
-  {
-    title: 'Marketplace',
-    href: '/marketplace',
-    icon: Store,
-    description: 'Browse all NFTs',
-  },
   {
     title: 'Collections',
     href: '/collections',
@@ -94,11 +86,6 @@ const userItems = [
     title: 'Favorites',
     href: '/profile/favorites',
     icon: Heart,
-  },
-  {
-    title: 'Activity',
-    href: '/profile/activity',
-    icon: Clock,
   },
   {
     title: 'Settings',
@@ -251,7 +238,6 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               <nav className="space-y-1">
                 {userItems.map((item) => {
                   const isActive = pathname === item.href
-                  const showBadge = item.href === '/profile/activity' && notifications.unreadCount > 0
                   
                   const NavItem = (
                     <Button
@@ -266,14 +252,6 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                       <Link href={item.href}>
                         <item.icon className={cn("h-4 w-4", !collapsed && "mr-2")} />
                         {!collapsed && item.title}
-                        {showBadge && !collapsed && (
-                          <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
-                            {notifications.unreadCount}
-                          </Badge>
-                        )}
-                        {showBadge && collapsed && (
-                          <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full" />
-                        )}
                       </Link>
                     </Button>
                   )
@@ -287,11 +265,6 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                           </TooltipTrigger>
                           <TooltipContent side="right">
                             <p>{item.title}</p>
-                            {showBadge && (
-                              <p className="text-xs text-muted-foreground">
-                                {notifications.unreadCount} new notifications
-                              </p>
-                            )}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
