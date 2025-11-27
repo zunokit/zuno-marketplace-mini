@@ -10,9 +10,9 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 
 ## Key Architecture Principles
 
-### 0. Zuno Marketplace SDK Integration (v1.1.4)
+### 0. Zuno Marketplace SDK Integration (v1.1.5)
 
-**IMPORTANT**: This project uses the official `zuno-marketplace-sdk` package (v1.1.4) for all blockchain interactions.
+**IMPORTANT**: This project uses the official `zuno-marketplace-sdk` package (v1.1.5) for all blockchain interactions.
 
 **SDK Features**:
 - Built-in Wagmi & React Query integration
@@ -21,6 +21,7 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 - Standardized transaction responses with `{ tx: TransactionReceipt, ...data }` format
 - Complete query methods and mutation methods
 - Standardized naming: `collectionAddress` (not `nftAddress`)
+- Production-ready Logger System with structured logging (v1.1.5+)
 
 **Hook Usage**:
 ```typescript
@@ -46,11 +47,11 @@ if (listNFT.isError) return <Error error={listNFT.error} />;
 ```
 
 **Migration Status**:
-- ✅ SDK updated to v1.1.4 (from v1.0.2 → v1.1.3 → v1.1.4)
+- ✅ SDK updated to v1.1.5 (from v1.0.2 → v1.1.3 → v1.1.4 → v1.1.5)
 - ✅ All custom services removed (`exchangeService`, `collectionService`, `auctionService`)
 - ✅ All components migrated to SDK hooks
 - ✅ Redux store simplified (only wallet and notification slices remain)
-- ✅ Full SDK v1.1.4 API usage (query methods, standardized responses)
+- ✅ Full SDK v1.1.5 API usage (query methods, standardized responses, unified API endpoint, logger system)
 
 **SDK Documentation**: See `E:\zuno-marketplace-sdk\docs\API.md`
 
@@ -70,13 +71,15 @@ if (listNFT.isError) return <Error error={listNFT.error} />;
 - **AuctionModule** - English and Dutch auction support
 - **CollectionModule** - NFT collection creation and minting
 
-**Key SDK Features (v1.1.4)**:
+**Key SDK Features (v1.1.5)**:
 - **React Query Integration**: Automatic caching, refetching, and optimistic updates
 - **Wagmi Integration**: Seamless wallet connection and provider management
 - **Type Safety**: Full TypeScript support with strict mode
 - **Standardized Responses**: All mutations return `{ tx: TransactionReceipt, ...additionalData }`
 - **Built-in Error Handling**: User-friendly error messages and recovery
 - **Query Methods**: Imperative data fetching alongside hooks
+- **Unified API Endpoint**: Single `apiUrl` configuration (removed `abisUrl`)
+- **Production Logger**: Structured logging with multiple levels, auto-logging, and custom logger support
 
 **Usage Pattern**:
 ```typescript
@@ -89,7 +92,50 @@ const { data: listings } = useListings(address, page, size); // For queries
 // New: await listNFT.mutateAsync(params)
 ```
 
-### 3. Contract ABI Management
+### 3. SDK Logger System (v1.1.5+)
+
+**Production-Ready Logging** - The SDK includes a built-in logger system for debugging and monitoring:
+
+**Configuration** (in `src/lib/config/zuno-sdk.ts`):
+```typescript
+const config: ZunoSDKConfig = {
+  // ... other config
+  logger: {
+    level: process.env.NODE_ENV === "development" ? "debug" : "info",
+    // Optional: custom logger integration
+    customLogger: {
+      error: (msg) => Sentry.captureException(new Error(msg))
+    }
+  },
+};
+```
+
+**Logger Levels**:
+- `debug` - Verbose logging for development
+- `info` - General information (recommended for production)
+- `warn` - Warnings only
+- `error` - Errors only
+- `none` - Disable all logging
+
+**Auto-Logging Features**:
+- All SDK operations are automatically logged
+- Transaction hashes and status tracked
+- Error context included for debugging
+- Module-specific prefixes for clarity
+
+**Manual Logging** (via SDK instance):
+```typescript
+sdk.logger.info('Custom message', { data: {...} });
+sdk.logger.error('Operation failed', error);
+```
+
+**Migration Note**: The deprecated `debug: boolean` config option is still supported but should be replaced with `logger.level`.
+
+**Breaking Change from v1.1.4**:
+- ❌ Removed: `abisUrl` configuration parameter
+- ✅ Use: Single unified `apiUrl` for all API endpoints (ABIs, contracts, networks)
+
+### 4. Contract ABI Management
 
 **Dynamic ABI Loading from API** (Production):
 
@@ -97,6 +143,7 @@ const { data: listings } = useListings(address, page, size); // For queries
 - Managed by `ABIManager` in `src/lib/contracts/abi-manager.ts`
 - Automatic caching with TanStack React Query (1-hour stale time, 24-hour cache)
 - **Configuration**: Set `NEXT_PUBLIC_ZUNO_API_URL` and `NEXT_PUBLIC_ZUNO_API_KEY` in `.env`
+- **v1.1.5 Change**: Single unified `apiUrl` endpoint (no separate `abisUrl`)
 
 **Usage in Services**:
 ```typescript
@@ -120,7 +167,7 @@ const { data: contractABI, isLoading } = useContractABIByName("UserHub");
 - Single source of truth from API
 - Built-in versioning and rollback support
 
-### 4. Development Modes
+### 5. Development Modes
 
 **Local Development** (requires Anvil + deployed contracts):
 
@@ -143,7 +190,7 @@ npm run dev:local
 npm run dev:testnet  # Uses Sepolia (chain ID 11155111)
 ```
 
-### 5. Runtime Environment Configuration
+### 6. Runtime Environment Configuration
 
 The app includes a Settings Modal for runtime configuration management:
 
@@ -175,7 +222,7 @@ const rpcUrl = envConfigManager.getRpcUrl(31337);
 envConfigManager.clearConfig();
 ```
 
-### 6. Production-Ready Logging System
+### 7. Production-Ready Logging System
 
 The project uses a custom logger utility instead of `console.log` statements:
 
@@ -185,7 +232,7 @@ The project uses a custom logger utility instead of `console.log` statements:
 - **Production Ready**: Automatic error monitoring integration (Sentry ready)
 - **Development/Production Modes**: Different logging behavior per environment
 
-### 7. Service Architecture Patterns (Refactored)
+### 8. Service Architecture Patterns (Refactored)
 
 The codebase has been refactored to follow modern service architecture patterns:
 

@@ -25,7 +25,9 @@ export const defaultConfig: ZunoSDKConfig = {
     maxRetries: 3,
     backoff: "exponential",
   },
-  debug: process.env.NODE_ENV === "development",
+  logger: {
+    level: process.env.NODE_ENV === "development" ? "debug" : "info",
+  },
 };
 
 /**
