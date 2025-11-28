@@ -1,232 +1,119 @@
 /**
- * SDK Logger Wrapper
- * Uses Zuno Marketplace SDK's built-in logger instead of custom implementation
+ * SDK Logger - Uses Zuno Marketplace SDK v1.2.0+ built-in logger
+ * 
+ * With SDK v1.2.0+, we can now use:
+ * - ZunoSDK.getLogger() for non-React contexts (singleton)
+ * - useZunoLogger() hook for React components
+ * 
+ * This file provides a thin compatibility layer for existing code.
  */
 
 /* eslint-disable no-console */
 
-import { ZunoLogger } from "zuno-marketplace-sdk";
+import { ZunoLogger, type LogMetadata } from "zuno-marketplace-sdk";
 
-type LogLevel = "debug" | "info" | "warn" | "error" | "success";
+// Re-export SDK logger types for convenience
+export type { LogMetadata, LogLevel, Logger, LoggerConfig } from "zuno-marketplace-sdk";
 
+// Context type for backward compatibility
 interface LogContext {
-  userId?: string;
-  sessionId?: string;
-  requestId?: string;
   component?: string;
   action?: string;
-  duration?: number;
   [key: string]: unknown;
 }
 
-interface LogEntry {
-  level: LogLevel;
-  message: string;
-  data?: unknown;
-  context?: LogContext;
-  timestamp: Date;
-  id: string;
+// Singleton logger instance using SDK's ZunoLogger
+const sdkLogger = new ZunoLogger({
+  level: process.env.NODE_ENV === "development" ? "debug" : "info",
+  modulePrefix: true,
+  timestamp: true,
+  logTransactions: true,
+  includeErrorContext: true,
+});
+
+// Performance timers storage
+const performanceTimers = new Map<string, number>();
+
+/**
+ * Converts LogContext to SDK's LogMetadata format
+ */
+function toMetadata(context?: LogContext, data?: unknown): LogMetadata {
+  return {
+    module: context?.component,
+    action: context?.action,
+    data,
+    ...context,
+  };
 }
 
 /**
- * SDK Logger Wrapper
- * Provides compatibility layer for existing code while using SDK's logger
+ * Logger API - Compatible with existing codebase
+ * Uses SDK's ZunoLogger under the hood
  */
-class SDKLoggerWrapper {
-  private sdkLogger: ZunoLogger;
-  private isDevelopment = process.env.NODE_ENV !== "production";
-  private logHistory: LogEntry[] = [];
-  private maxHistorySize = 100;
-  private globalContext: LogContext = {};
-  private performanceTimers: Map<string, number> = new Map();
-
-  constructor() {
-    // Initialize SDK logger with appropriate configuration
-    this.sdkLogger = new ZunoLogger({
-      level: this.isDevelopment ? "debug" : "info",
-      customLogger: {
-        // In production, integrate with monitoring services
-        error: (msg: string, meta?: Record<string, unknown>) => {
-          if (!this.isDevelopment) {
-            this.sendToMonitoring(msg, meta);
-          }
-        },
-      },
-    });
-  }
-
-  private formatMessage(message: string, context?: LogContext): string {
-    if (!context) return message;
-    
-    const contextStr = context.component 
-      ? `[${context.component}${context.action ? `:${context.action}` : ''}] `
-      : '';
-    
-    return `${contextStr}${message}`;
-  }
-
-  private addToHistory(
-    level: LogLevel,
-    message: string,
-    data?: unknown,
-    context?: LogContext
-  ) {
-    const entry: LogEntry = {
-      level,
-      message,
-      data,
-      context: { ...this.globalContext, ...context },
-      timestamp: new Date(),
-      id: this.generateLogId(),
-    };
-
-    this.logHistory.push(entry);
-    if (this.logHistory.length > this.maxHistorySize) {
-      this.logHistory.shift();
-    }
-  }
-
+export const logger = {
   debug(message: string, data?: unknown, context?: LogContext) {
-    const formattedMessage = this.formatMessage(message, context);
-    const metadata = { ...this.globalContext, ...context, data };
-    
-    this.sdkLogger.debug(formattedMessage, metadata);
-    this.addToHistory("debug", message, data, context);
-  }
+    sdkLogger.debug(message, toMetadata(context, data));
+  },
 
   info(message: string, data?: unknown, context?: LogContext) {
-    const formattedMessage = this.formatMessage(message, context);
-    const metadata = { ...this.globalContext, ...context, data };
-    
-    this.sdkLogger.info(formattedMessage, metadata);
-    this.addToHistory("info", message, data, context);
-  }
+    sdkLogger.info(message, toMetadata(context, data));
+  },
 
   warn(message: string, data?: unknown, context?: LogContext) {
-    const formattedMessage = this.formatMessage(message, context);
-    const metadata = { ...this.globalContext, ...context, data };
-    
-    this.sdkLogger.warn(formattedMessage, metadata);
-    this.addToHistory("warn", message, data, context);
-  }
+    sdkLogger.warn(message, toMetadata(context, data));
+  },
 
   error(message: string, error?: unknown, context?: LogContext) {
-    const errorData =
-      error instanceof Error
-        ? {
-            message: error.message,
-            stack: error.stack,
-            name: error.name,
-          }
-        : error;
-
-    const formattedMessage = this.formatMessage(message, context);
-    const metadata = { ...this.globalContext, ...context, error: errorData };
-    
-    this.sdkLogger.error(formattedMessage, metadata);
-    this.addToHistory("error", message, errorData, context);
-  }
+    const errorData = error instanceof Error
+      ? { message: error.message, stack: error.stack, name: error.name }
+      : error;
+    sdkLogger.error(message, toMetadata(context, errorData));
+  },
 
   success(message: string, data?: unknown, context?: LogContext) {
-    // SDK logger doesn't have success level, use info with success indicator
-    const formattedMessage = `✅ ${this.formatMessage(message, context)}`;
-    const metadata = { ...this.globalContext, ...context, data, success: true };
-    
-    this.sdkLogger.info(formattedMessage, metadata);
-    this.addToHistory("success", message, data, context);
-  }
-
-  // Context management
-  setGlobalContext(context: LogContext) {
-    this.globalContext = { ...this.globalContext, ...context };
-  }
-
-  clearGlobalContext() {
-    this.globalContext = {};
-  }
+    // Use info level with success indicator
+    sdkLogger.info(`✅ ${message}`, { ...toMetadata(context, data), success: true });
+  },
 
   // Performance tracking
   startTimer(label: string) {
-    this.performanceTimers.set(label, performance.now());
-  }
+    performanceTimers.set(label, performance.now());
+  },
 
-  endTimer(label: string, message?: string, context?: LogContext) {
-    const startTime = this.performanceTimers.get(label);
+  endTimer(label: string, message?: string, context?: LogContext): number {
+    const startTime = performanceTimers.get(label);
     if (startTime) {
       const duration = performance.now() - startTime;
-      this.performanceTimers.delete(label);
-
-      const timerContext = { ...context, duration: Math.round(duration) };
-      const timerMessage = message || `Timer '${label}' completed`;
-
-      this.info(timerMessage, { label, duration }, timerContext);
+      performanceTimers.delete(label);
+      sdkLogger.info(message || `Timer '${label}' completed`, {
+        ...toMetadata(context),
+        duration: Math.round(duration),
+        label,
+      });
       return duration;
     }
     return 0;
-  }
+  },
 
-  // Utility methods for compatibility
-  private generateLogId(): string {
-    return Math.random().toString(36).substr(2, 9);
-  }
-
+  // Console utilities (development only)
   group(label: string) {
-    if (this.isDevelopment) {
+    if (process.env.NODE_ENV === "development") {
       console.group(`ℹ️ ${label}`);
     }
-  }
+  },
 
   groupEnd() {
-    if (this.isDevelopment) {
+    if (process.env.NODE_ENV === "development") {
       console.groupEnd();
     }
-  }
+  },
 
   table(data: unknown) {
-    if (this.isDevelopment) {
+    if (process.env.NODE_ENV === "development") {
       console.table(data);
     }
-  }
+  },
+};
 
-  time(label: string) {
-    this.startTimer(label);
-  }
-
-  timeEnd(label: string) {
-    this.endTimer(label);
-  }
-
-  clear() {
-    if (this.isDevelopment) {
-      console.clear();
-    }
-    this.logHistory = [];
-  }
-
-  getHistory(): LogEntry[] {
-    return [...this.logHistory];
-  }
-
-  private sendToMonitoring(message: string, meta?: Record<string, unknown>) {
-    // In production, send errors to monitoring service
-    try {
-      // Example: Sentry integration
-      const win = window as Window & { 
-        Sentry?: { 
-          captureException: (err: Error, opts: { extra: unknown }) => void 
-        } 
-      };
-      
-      if (typeof window !== "undefined" && win.Sentry) {
-        win.Sentry.captureException(new Error(message), {
-          extra: meta,
-        });
-      }
-    } catch {
-      // Silently fail to avoid breaking the app
-    }
-  }
-}
-
-// Export singleton instance for backward compatibility
-export const logger = new SDKLoggerWrapper();
+// Export SDK logger directly for advanced usage
+export { sdkLogger };

@@ -5,7 +5,7 @@
 
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
 import { envConfigManager } from "@/lib/utils/env-config";
-import { logger } from "./logger";
+import { logger } from "./sdk-logger";
 
 export class Web3Utils {
   private provider: BrowserProvider | JsonRpcProvider | null = null;

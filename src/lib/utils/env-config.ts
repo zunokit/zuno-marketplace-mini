@@ -3,7 +3,7 @@
  * Manages runtime environment configuration with localStorage support
  */
 
-import { logger } from "./logger";
+import { logger } from "./sdk-logger";
 
 export interface EnvConfig {
   NEXT_PUBLIC_DEFAULT_CHAIN_ID?: string;
