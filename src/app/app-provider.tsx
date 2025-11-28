@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { ZunoProvider } from "zuno-marketplace-sdk/react";
 import { defaultConfig, validateSDKConfig } from "@/lib/config/zuno-sdk";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/lib/utils/sdk-logger";
 
 export default function AppProvider({
   children,

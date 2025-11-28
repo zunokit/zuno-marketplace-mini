@@ -15,7 +15,7 @@ import React, {
 } from "react";
 import { ethers } from "ethers";
 import { toast } from "sonner";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/lib/utils/sdk-logger";
 import { envConfigManager } from "@/lib/utils/env-config";
 
 // ============================================================================

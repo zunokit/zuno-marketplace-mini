@@ -2,7 +2,7 @@
  * Utility Functions - Centralized Export
  */
 
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/lib/utils/sdk-logger";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 

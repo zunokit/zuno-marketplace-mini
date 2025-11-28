@@ -6,7 +6,7 @@
 "use client";
 
 import { useState } from "react";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/lib/utils/sdk-logger";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

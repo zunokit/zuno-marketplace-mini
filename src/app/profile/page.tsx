@@ -4,7 +4,7 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/lib/utils/sdk-logger";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { NFTCard } from "@/components/features/nft/NFTCard";
 import { UserCollections } from "@/components/features/collection/UserCollections";
