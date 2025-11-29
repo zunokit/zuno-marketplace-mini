@@ -17,6 +17,7 @@ export const defaultConfig: ZunoSDKConfig = {
     ? parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID)
     : 31337) as number | "mainnet" | "sepolia" | "polygon" | "arbitrum",
   apiUrl: process.env.NEXT_PUBLIC_ZUNO_API_URL,
+  rpcUrl: process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545",
   cache: {
     ttl: 300000, // 5 minutes cache for contract instances
     gcTime: 600000, // 10 minutes garbage collection
