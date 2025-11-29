@@ -35,14 +35,14 @@ export default function MintPage() {
   const collectionAddress = params.id as string;
   
   const { data: collection, isLoading, error, refetch } = useCollectionInfo(collectionAddress);
-  const { batchMintERC721, mintERC1155 } = useCollection();
+  const { batchMintERC721, batchMintERC1155 } = useCollection();
   const { address, isConnected } = useAccount();
   
   const [quantity, setQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
   
   const isERC1155 = collection?.tokenType === 'ERC1155';
-  const mintFn = isERC1155 ? mintERC1155 : batchMintERC721;
+  const mintFn = isERC1155 ? batchMintERC1155 : batchMintERC721;
 
   const mintPrice = parseFloat(collection?.mintPrice || "0");
   const totalPrice = mintPrice * quantity;
