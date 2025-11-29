@@ -183,8 +183,8 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11
       zuno-marketplace-sdk:
-        specifier: 1.3.0-beta-claude-02
-        version: 1.3.0-beta-claude-02(@react-native-async-storage/async-storage@2.2.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.0)(bufferutil@4.0.9)(react@19.1.0)(utf-8-validate@5.0.10)))(@types/react@19.2.0)(bufferutil@4.0.9)(immer@10.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.1.0))(utf-8-validate@5.0.10)(zod@4.1.11)
+        specifier: 2.0.0-beta-claude.3
+        version: 2.0.0-beta-claude.3(@react-native-async-storage/async-storage@2.2.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.0)(bufferutil@4.0.9)(react@19.1.0)(utf-8-validate@5.0.10)))(@types/react@19.2.0)(bufferutil@4.0.9)(immer@10.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.1.0))(utf-8-validate@5.0.10)(zod@4.1.11)
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3
@@ -1879,15 +1879,6 @@ packages:
 
   '@tanstack/query-core@5.90.5':
     resolution: {integrity: sha512-wLamYp7FaDq6ZnNehypKI5fNvxHPfTYylE0m/ZpuuzJfJqhR5Pxg9gvGBHZx4n7J+V5Rg5mZxHHTlv25Zt5u+w==}
-
-  '@tanstack/query-devtools@5.91.0':
-    resolution: {integrity: sha512-uNWkqWTiIKCv8Iaahb7bftmDaZVkBetB+l+OQhQeCEZAedyqxw2eyaRUc8sAQ2LzD843tVdYL6bzOtRWJHJSbQ==}
-
-  '@tanstack/react-query-devtools@5.91.0':
-    resolution: {integrity: sha512-s7g8Zn8HN05HNe22n/KdNm8wXaRbkcsVkqpkdYIQuCfjVmEUoTQqtJsN2iZtgd9CU36xNS38trWIofxzyW5vbQ==}
-    peerDependencies:
-      '@tanstack/react-query': ^5.90.10
-      react: ^18 || ^19
 
   '@tanstack/react-query@5.90.5':
     resolution: {integrity: sha512-pN+8UWpxZkEJ/Rnnj2v2Sxpx1WFlaa9L6a4UO89p6tTQbeo+m0MS8oYDjbggrR8QcTyjKoYWKS3xJQGr3ExT8Q==}
@@ -5906,8 +5897,8 @@ packages:
   zod@4.1.11:
     resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
 
-  zuno-marketplace-sdk@1.3.0-beta-claude-02:
-    resolution: {integrity: sha512-8h3xv6FqH2xCKNAynW1zt4PUyqgDD3OcQ2wjMf0VGj0lQqKSncyRmBlpTIsaju/xtCZD5fQdzWMtWl1JCBDP3g==}
+  zuno-marketplace-sdk@2.0.0-beta-claude.3:
+    resolution: {integrity: sha512-k3fLoaDgHZ6PLmFQU8spo+jh6mjPrB8DZSVfBSRvj5lEXsS77MZd8RdnYqYVFmyy/wGzd6CvYsnRMd388OIPWA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
@@ -6831,7 +6822,7 @@ snapshots:
       '@ethereumjs/tx': 4.2.0
       '@types/debug': 4.1.12
       debug: 4.4.3
-      semver: 7.7.2
+      semver: 7.7.3
       superstruct: 1.0.4
     transitivePeerDependencies:
       - supports-color
@@ -7633,7 +7624,7 @@ snapshots:
       metro: 0.83.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       metro-config: 0.83.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       metro-core: 0.83.3
-      semver: 7.7.2
+      semver: 7.7.3
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -8111,14 +8102,6 @@ snapshots:
       tailwindcss: 4.1.14
 
   '@tanstack/query-core@5.90.5': {}
-
-  '@tanstack/query-devtools@5.91.0': {}
-
-  '@tanstack/react-query-devtools@5.91.0(@tanstack/react-query@5.90.5(react@19.1.0))(react@19.1.0)':
-    dependencies:
-      '@tanstack/query-devtools': 5.91.0
-      '@tanstack/react-query': 5.90.5(react@19.1.0)
-      react: 19.1.0
 
   '@tanstack/react-query@5.90.5(react@19.1.0)':
     dependencies:
@@ -12170,7 +12153,7 @@ snapshots:
       react-refresh: 0.14.2
       regenerator-runtime: 0.13.11
       scheduler: 0.26.0
-      semver: 7.7.2
+      semver: 7.7.3
       stacktrace-parser: 0.1.11
       whatwg-fetch: 3.6.20
       ws: 6.2.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -13320,11 +13303,10 @@ snapshots:
 
   zod@4.1.11: {}
 
-  zuno-marketplace-sdk@1.3.0-beta-claude-02(@react-native-async-storage/async-storage@2.2.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.0)(bufferutil@4.0.9)(react@19.1.0)(utf-8-validate@5.0.10)))(@types/react@19.2.0)(bufferutil@4.0.9)(immer@10.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.1.0))(utf-8-validate@5.0.10)(zod@4.1.11):
+  zuno-marketplace-sdk@2.0.0-beta-claude.3(@react-native-async-storage/async-storage@2.2.0(react-native@0.82.1(@babel/core@7.28.5)(@types/react@19.2.0)(bufferutil@4.0.9)(react@19.1.0)(utf-8-validate@5.0.10)))(@types/react@19.2.0)(bufferutil@4.0.9)(immer@10.1.3)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.1.0))(utf-8-validate@5.0.10)(zod@4.1.11):
     dependencies:
       '@tanstack/query-core': 5.90.5
       '@tanstack/react-query': 5.90.5(react@19.1.0)
-      '@tanstack/react-query-devtools': 5.91.0(@tanstack/react-query@5.90.5(react@19.1.0))(react@19.1.0)
       '@types/jest': 30.0.0
       '@wagmi/connectors': 5.11.2(f22f4c30f2de93cbcb092f0f69af3727)
       '@wagmi/core': 2.22.0(@tanstack/query-core@5.90.5)(@types/react@19.2.0)(immer@10.1.3)(react@19.1.0)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.1.0))(viem@2.38.0(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.1.11))
