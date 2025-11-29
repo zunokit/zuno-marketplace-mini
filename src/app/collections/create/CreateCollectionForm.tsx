@@ -221,6 +221,9 @@ export default function CreateCollectionForm() {
         royaltyFee: Math.round(parseFloat(params.royaltyFee || "0") * 100), // Convert % to basis points
         maxSupply: parseInt(params.maxSupply || "10000"),
         mintLimitPerWallet: parseInt(params.mintLimitPerWallet || "0"),
+        publicMintPrice: params.mintPrice, // Same as mintPrice by default
+        allowlistStageDuration: 86400, // 24 hours default
+        tokenURI: params.baseTokenURI || "",
       };
 
       if (params.tokenType === "ERC721") {
