@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCollectionInfo, useCollection, useZuno } from "zuno-marketplace-sdk/react";
+import { useCollectionInfo, useCollection } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { ethers } from "ethers";
@@ -37,7 +37,6 @@ export default function MintPage() {
   const { data: collection, isLoading, error, refetch } = useCollectionInfo(collectionAddress);
   const { mintERC721, batchMintERC721 } = useCollection();
   const { address, isConnected } = useAccount();
-  const sdk = useZuno();
   
   const [quantity, setQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
@@ -70,24 +69,26 @@ export default function MintPage() {
 
     setIsMinting(true);
     try {
-      const value = ethers.parseEther(totalPrice.toString()).toString();
+      const totalValue = ethers.parseEther(totalPrice.toString()).toString();
       
       if (quantity === 1) {
+        // Single mint
         const result = await mintERC721.mutateAsync({
           collectionAddress,
           recipient: address,
-          value,
+          value: totalValue,
         });
         
-        toast.success(`NFT Minted Successfully!`, {
+        toast.success("NFT Minted Successfully!", {
           description: `Token ID: ${result.tokenId}`,
         });
       } else {
+        // Batch mint - more gas efficient
         const result = await batchMintERC721.mutateAsync({
           collectionAddress,
           recipient: address,
           amount: quantity,
-          value,
+          value: totalValue,
         });
         
         toast.success(`${quantity} NFTs Minted Successfully!`, {
