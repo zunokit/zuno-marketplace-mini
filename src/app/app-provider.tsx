@@ -1,8 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import StoreProvider from "@/lib/store/StoreProvider";
-import { ZunoProvider } from "zuno-marketplace-sdk/react";
-import { ZunoDevTools } from "zuno-marketplace-sdk/devtools";
+import { ZunoProvider, ZunoDevTools } from "zuno-marketplace-sdk/react";
 import { defaultConfig, validateSDKConfig } from "@/lib/config/zuno-sdk";
 import { logger } from "@/lib/utils/sdk-logger";
 

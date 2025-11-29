@@ -9,8 +9,6 @@
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "dev:testnet": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=11155111 npm run dev",
-    "dev:local": "NEXT_PUBLIC_DEFAULT_CHAIN_ID=31337 npm run dev",
     "type-check": "tsc --noEmit",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
@@ -75,7 +73,7 @@
     "vaul": "^1.1.2",
     "wagmi": "^2.18.0",
     "zod": "^4.1.11",
-    "zuno-marketplace-sdk": "2.0.0-beta-claude.7"
+    "zuno-marketplace-sdk": "file:..\\zuno-marketplace-sdk"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
