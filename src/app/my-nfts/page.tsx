@@ -6,10 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Package, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, Package, RefreshCw, Gavel } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
+import { toast } from "sonner";
 
 interface CollectionWithTokens {
   address: string;
@@ -112,12 +128,215 @@ function CollectionGroup({
   );
 }
 
+function AuctionModal({
+  open,
+  onClose,
+  selectedTokens,
+  userCollections,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selectedTokens: Set<string>;
+  userCollections: CollectionWithTokens[];
+  onSuccess: () => void;
+}) {
+  const { createEnglishAuction, createDutchAuction } = useAuction();
+  const [auctionType, setAuctionType] = useState<'english' | 'dutch'>('english');
+  const [startPrice, setStartPrice] = useState('0.1');
+  const [reservePrice, setReservePrice] = useState('0.05');
+  const [duration, setDuration] = useState('86400'); // 1 day
+  const [priceDropPerHour, setPriceDropPerHour] = useState('500'); // 5%
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+
+  const selectedItems = useMemo(() => {
+    const items: Array<{ collection: string; tokenId: string; type: 'ERC721' | 'ERC1155' }> = [];
+    selectedTokens.forEach(key => {
+      const [collection, tokenId] = key.split(':');
+      const col = userCollections.find(c => c.address === collection);
+      if (col) items.push({ collection, tokenId, type: col.type });
+    });
+    return items;
+  }, [selectedTokens, userCollections]);
+
+  const handleCreateAuctions = async () => {
+    if (selectedItems.length === 0) return;
+    
+    setIsProcessing(true);
+    setProgress({ current: 0, total: selectedItems.length });
+
+    try {
+      // SDK handles approval automatically
+      let completed = 0;
+      for (const item of selectedItems) {
+        try {
+          if (auctionType === 'english') {
+            await createEnglishAuction.mutateAsync({
+              collectionAddress: item.collection,
+              tokenId: item.tokenId,
+              amount: 1,
+              startingBid: startPrice,
+              reservePrice: reservePrice,
+              duration: parseInt(duration),
+            });
+          } else {
+            await createDutchAuction.mutateAsync({
+              collectionAddress: item.collection,
+              tokenId: item.tokenId,
+              amount: 1,
+              startPrice: startPrice,
+              endPrice: reservePrice,
+              duration: parseInt(duration),
+            });
+          }
+          completed++;
+          setProgress({ current: completed, total: selectedItems.length });
+          toast.success(`Auction created for #${item.tokenId}`);
+        } catch (err: any) {
+          toast.error(`Failed for #${item.tokenId}: ${err.message}`);
+        }
+      }
+
+      if (completed === selectedItems.length) {
+        toast.success(`All ${completed} auctions created!`);
+        onSuccess();
+      } else {
+        toast.warning(`${completed}/${selectedItems.length} auctions created`);
+      }
+    } catch (err: any) {
+      toast.error(`Error: ${err.message}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {selectedItems.length > 1 ? `Batch Auction (${selectedItems.length} NFTs)` : 'Create Auction'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Auction Type</Label>
+            <Select value={auctionType} onValueChange={(v: 'english' | 'dutch') => setAuctionType(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="english">English Auction (Ascending)</SelectItem>
+                <SelectItem value="dutch">Dutch Auction (Descending)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>{auctionType === 'english' ? 'Starting Bid' : 'Start Price'} (ETH)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={startPrice}
+              onChange={(e) => setStartPrice(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>{auctionType === 'english' ? 'Reserve Price' : 'End Price'} (ETH)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={reservePrice}
+              onChange={(e) => setReservePrice(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Duration</Label>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="3600">1 Hour</SelectItem>
+                <SelectItem value="21600">6 Hours</SelectItem>
+                <SelectItem value="43200">12 Hours</SelectItem>
+                <SelectItem value="86400">1 Day</SelectItem>
+                <SelectItem value="259200">3 Days</SelectItem>
+                <SelectItem value="604800">7 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {auctionType === 'dutch' && (
+            <div className="space-y-2">
+              <Label>Price Drop Per Hour (%)</Label>
+              <Select value={priceDropPerHour} onValueChange={setPriceDropPerHour}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="100">1%</SelectItem>
+                  <SelectItem value="250">2.5%</SelectItem>
+                  <SelectItem value="500">5%</SelectItem>
+                  <SelectItem value="1000">10%</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {isProcessing && (
+            <div className="bg-muted rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Processing...</span>
+              </div>
+              <div className="w-full bg-background rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {progress.current} / {progress.total} completed
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+            Cancel
+          </Button>
+          <Button onClick={handleCreateAuctions} disabled={isProcessing}>
+            {isProcessing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Gavel className="h-4 w-4 mr-2" />
+                {selectedItems.length > 1 ? `Create ${selectedItems.length} Auctions` : 'Create Auction'}
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function MyNFTsPage() {
   const { address, isConnected } = useAccount();
   const { data: allCollections, isLoading: loadingCollections, refetch } = useCreatedCollections();
   const [userCollections, setUserCollections] = useState<CollectionWithTokens[]>([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
+  const [auctionModalOpen, setAuctionModalOpen] = useState(false);
 
   useEffect(() => {
     if (!allCollections || !address) return;
@@ -223,11 +442,25 @@ export default function MyNFTsPage() {
             <p className="font-medium">{selectedTokens.size} NFT(s) selected</p>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setSelectedTokens(new Set())}>Clear</Button>
+              <Button onClick={() => setAuctionModalOpen(true)}>
+                <Gavel className="h-4 w-4 mr-2" />
+                {selectedTokens.size > 1 ? 'Batch Auction' : 'Create Auction'}
+              </Button>
               <Button disabled>List for Sale</Button>
-              <Button disabled>Transfer</Button>
             </div>
           </div>
         )}
+
+        <AuctionModal
+          open={auctionModalOpen}
+          onClose={() => setAuctionModalOpen(false)}
+          selectedTokens={selectedTokens}
+          userCollections={userCollections}
+          onSuccess={() => {
+            setSelectedTokens(new Set());
+            setAuctionModalOpen(false);
+          }}
+        />
 
         {isLoading && (
           <div className="flex justify-center items-center py-20">
