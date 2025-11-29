@@ -24,9 +24,7 @@ export interface CreateCollectionParams extends SDKCollectionParams {
   tokenType: NFTType;
   // App-specific fields not in SDK
   allowlist?: string[];
-  publicMintPrice?: string;
-  allowlistStageDuration?: string;
-  baseURI?: string;
+  baseTokenURI?: string;
 }
 
 /**

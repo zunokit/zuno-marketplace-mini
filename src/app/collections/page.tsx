@@ -16,60 +16,31 @@ import { Search, Filter, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { logger } from "@/lib/utils/sdk-logger";
 
-// Mock data for collections
-const mockCollections = [
-  {
-    address: "0x1234567890123456789012345678901234567890",
-    name: "Cosmic Creatures",
-    symbol: "COSMIC",
-    description: "A collection of otherworldly digital creatures",
-    creator: "0x1234...5678",
-    verified: true,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 100,
-      totalOwners: 45,
-      floorPrice: "0.5",
-      totalVolume: "125.5",
-      listed: 12,
-    },
-    createdAt: Date.now() - 30 * 24 * 60 * 60 * 1000, // 30 days ago
-  },
-  {
-    address: "0xabcdef1234567890abcdef1234567890abcdef12",
-    name: "Digital Dreams",
-    symbol: "DREAM",
-    description: "Surreal digital art exploring consciousness",
-    creator: "0xabcd...efgh",
-    verified: true,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 50,
-      totalOwners: 28,
-      floorPrice: "0.8",
-      totalVolume: "89.2",
-      listed: 8,
-    },
-    createdAt: Date.now() - 15 * 24 * 60 * 60 * 1000, // 15 days ago
-  },
-  {
-    address: "0x9876543210987654321098765432109876543210",
-    name: "Abstract Visions",
-    symbol: "VISION",
-    description: "Abstract generative art pieces",
-    creator: "0x9876...5432",
-    verified: false,
-    type: "ERC721" as const,
-    stats: {
-      totalSupply: 200,
-      totalOwners: 67,
-      floorPrice: "0.3",
-      totalVolume: "45.7",
-      listed: 23,
-    },
-    createdAt: Date.now() - 60 * 24 * 60 * 60 * 1000, // 60 days ago
-  },
-];
+// Collection type for the page (matches CollectionsGrid)
+interface Collection {
+  address: string;
+  name: string;
+  symbol: string;
+  description?: string;
+  image?: string;
+  bannerImage?: string;
+  creator: string;
+  verified?: boolean;
+  type: "ERC721" | "ERC1155";
+  stats?: {
+    totalSupply: number;
+    totalOwners: number;
+    floorPrice?: string;
+    totalVolume?: string;
+    listed?: number;
+  };
+  socialLinks?: {
+    website?: string;
+    twitter?: string;
+    discord?: string;
+  };
+  createdAt?: number;
+}
 
 export default function CollectionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,17 +48,21 @@ export default function CollectionsPage() {
   const [page, setPage] = useState(1);
   const pageSize = 12;
   const [isLoading, setIsLoading] = useState(false);
+  const [collections, setCollections] = useState<Collection[]>([]);
 
-  // Simulate loading for demo
+  // TODO: Fetch collections from blockchain/API
+  // For now, start with empty array - collections will be added when created
   useEffect(() => {
     setIsLoading(true);
-    const timer = setTimeout(() => setIsLoading(false), 500);
+    // Simulate API call delay
+    const timer = setTimeout(() => {
+      setCollections([]);
+      setIsLoading(false);
+    }, 300);
     return () => clearTimeout(timer);
   }, [page]);
 
-  // Use mock data instead of SDK hook
-  const collections = mockCollections;
-  const totalPages = Math.ceil(collections.length / pageSize);
+  const totalPages = Math.max(1, Math.ceil(collections.length / pageSize));
 
   // Filter collections based on search
   const filteredCollections = collections.filter(collection => {
