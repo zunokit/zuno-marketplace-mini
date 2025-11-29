@@ -75,7 +75,7 @@
     "vaul": "^1.1.2",
     "wagmi": "^2.18.0",
     "zod": "^4.1.11",
-    "zuno-marketplace-sdk": "2.0.0-beta-claude.4"
+    "zuno-marketplace-sdk": "2.0.0-beta-claude.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
