@@ -13,6 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ethers } from "ethers";
 import { useCollection, useWallet } from "zuno-marketplace-sdk/react";
+import type { CollectionParams } from "zuno-marketplace-sdk";
 import { TokenType, CreateCollectionParams } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -210,19 +211,22 @@ export default function CreateCollectionForm() {
         discord: data.discord,
       };
 
-      // Create collection
+      // Create collection - use SDK's CollectionParams type
       let result;
+      const collectionParams: CollectionParams = {
+        name: params.name,
+        symbol: params.symbol,
+        description: params.description,
+        mintPrice: params.mintPrice,
+        royaltyFee: Math.round(parseFloat(params.royaltyFee || "0") * 100), // Convert % to basis points
+        maxSupply: parseInt(params.maxSupply || "10000"),
+        mintLimitPerWallet: parseInt(params.mintLimitPerWallet || "0"),
+      };
+
       if (params.tokenType === "ERC721") {
-        result = await createERC721.mutateAsync({
-          name: params.name,
-          symbol: params.symbol,
-          baseUri: params.baseTokenURI || "",
-          maxSupply: parseInt(params.maxSupply || "10000"),
-        });
+        result = await createERC721.mutateAsync(collectionParams);
       } else {
-        result = await createERC1155.mutateAsync({
-          uri: params.baseTokenURI || "",
-        });
+        result = await createERC1155.mutateAsync(collectionParams);
       }
 
       const collectionAddress = result.address;

@@ -5,7 +5,6 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import AppProvider from "./app-provider";
 import "./globals.css";
-import "@/lib/utils/interceptor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

@@ -1,39 +1,58 @@
 /**
  * Collection-related type definitions
+ * Uses SDK types for type safety
  */
 
-export type NFTType = "ERC721" | "ERC1155";
+import type {
+  CollectionParams as SDKCollectionParams,
+  MintERC721Params,
+  BatchMintERC721Params,
+  MintERC1155Params,
+  TokenStandard,
+} from "zuno-marketplace-sdk";
+
+/**
+ * Token type - re-export from SDK
+ */
+export type NFTType = TokenStandard;
 
 /**
  * Parameters for creating a new collection
+ * Extends SDK CollectionParams with app-specific fields
  */
-export type CreateCollectionParams = {
-  name: string;
-  symbol: string;
-  owner?: string;
-  description?: string;
-  mintPrice?: string;
-  royaltyFee?: string;
-  maxSupply?: string;
-  mintLimitPerWallet?: string;
-  mintStartTime?: string;
-  allowlistMintPrice?: string;
-  publicMintPrice?: string;
-  allowlistStageDuration?: string; // Duration in seconds (default 24h = 86400)
-  baseURI?: string;
+export interface CreateCollectionParams extends SDKCollectionParams {
   tokenType: NFTType;
-  allowlist?: string[]; // Array of addresses to add to allowlist
-};
+  // App-specific fields not in SDK
+  allowlist?: string[];
+  publicMintPrice?: string;
+  allowlistStageDuration?: string;
+  baseURI?: string;
+}
 
 /**
- * Parameters for minting NFTs
+ * Parameters for minting ERC721 NFTs - re-export from SDK
+ */
+export type MintERC721 = MintERC721Params;
+
+/**
+ * Parameters for batch minting ERC721 NFTs - re-export from SDK
+ */
+export type BatchMintERC721 = BatchMintERC721Params;
+
+/**
+ * Parameters for minting ERC1155 NFTs - re-export from SDK
+ */
+export type MintERC1155 = MintERC1155Params;
+
+/**
+ * Legacy mint params for backwards compatibility
  */
 export type MintParams = {
   collection: string;
   to: string;
-  amount?: string; // For ERC1155, default 1
+  amount?: string;
   tokenType: NFTType;
-  value?: string; // ETH value to send with transaction
+  value?: string;
 };
 
 /**

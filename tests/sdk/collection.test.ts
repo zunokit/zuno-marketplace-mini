@@ -8,6 +8,7 @@ import {
   generateMockAddress,
   generateMockTokenId,
 } from "zuno-marketplace-sdk/testing";
+import type { CollectionParams, MintERC721Params, BatchMintERC721Params } from "zuno-marketplace-sdk";
 
 describe("Collection Module", () => {
   let mockSdk: ReturnType<typeof createMockSDK>;
@@ -22,17 +23,22 @@ describe("Collection Module", () => {
       const collectionAddress = generateMockAddress();
 
       mockSdk.collection.createERC721Collection.mockResolvedValue({
-        collectionAddress,
+        address: collectionAddress,
         tx: mockTx,
       });
 
-      const result = await mockSdk.collection.createERC721Collection({
+      const params: CollectionParams = {
         name: "Test Collection",
         symbol: "TEST",
-        baseURI: "https://api.example.com/metadata/",
-      });
+        maxSupply: 10000,
+        description: "A test collection",
+        mintPrice: "0.01",
+        royaltyFee: 250, // 2.5%
+      };
 
-      expect(result.collectionAddress).toBe(collectionAddress);
+      const result = await mockSdk.collection.createERC721Collection(params);
+
+      expect(result.address).toBe(collectionAddress);
       expect(result.tx.status).toBe(1);
     });
   });
@@ -43,17 +49,19 @@ describe("Collection Module", () => {
       const collectionAddress = generateMockAddress();
 
       mockSdk.collection.createERC1155Collection.mockResolvedValue({
-        collectionAddress,
+        address: collectionAddress,
         tx: mockTx,
       });
 
-      const result = await mockSdk.collection.createERC1155Collection({
+      const params: CollectionParams = {
         name: "Multi Token",
         symbol: "MULTI",
-        baseURI: "https://api.example.com/metadata/",
-      });
+        maxSupply: 10000,
+      };
 
-      expect(result.collectionAddress).toBe(collectionAddress);
+      const result = await mockSdk.collection.createERC1155Collection(params);
+
+      expect(result.address).toBe(collectionAddress);
     });
   });
 
@@ -67,11 +75,13 @@ describe("Collection Module", () => {
         tx: mockTx,
       });
 
-      const result = await mockSdk.collection.mintNFT({
+      const params: MintERC721Params = {
         collectionAddress: generateMockAddress(),
-        to: generateMockAddress(),
-        tokenURI: "https://api.example.com/metadata/1",
-      });
+        recipient: generateMockAddress(),
+        value: "0.01",
+      };
+
+      const result = await mockSdk.collection.mintNFT(params);
 
       expect(result.tokenId).toBe(tokenId);
       expect(result.tx.status).toBe(1);
@@ -87,11 +97,14 @@ describe("Collection Module", () => {
         tx: mockTx,
       });
 
-      const result = await mockSdk.collection.batchMint({
+      const params: BatchMintERC721Params = {
         collectionAddress: generateMockAddress(),
-        to: generateMockAddress(),
+        recipient: generateMockAddress(),
         amount: 3,
-      });
+        value: "0.03",
+      };
+
+      const result = await mockSdk.collection.batchMint(params);
 
       expect(result.tokenIds).toHaveLength(3);
       expect(result.tokenIds).toEqual(["1", "2", "3"]);
