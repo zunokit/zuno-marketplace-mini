@@ -10,10 +10,10 @@
 
 /* eslint-disable no-console */
 
-import { ZunoLogger, type LogMetadata } from "zuno-marketplace-sdk";
+import { ZunoLogger, type LogMetadata, type LogLevel, type Logger, type LoggerConfig } from "zuno-marketplace-sdk/logger";
 
 // Re-export SDK logger types for convenience
-export type { LogMetadata, LogLevel, Logger, LoggerConfig } from "zuno-marketplace-sdk";
+export type { LogMetadata, LogLevel, Logger, LoggerConfig };
 
 // Context type for backward compatibility
 interface LogContext {

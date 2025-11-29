@@ -5,7 +5,7 @@
  * The SDK is managed by ZunoProvider in app-provider.tsx.
  */
 
-import { ZunoSDKConfig } from "zuno-marketplace-sdk";
+import type { ZunoSDKConfig } from "zuno-marketplace-sdk";
 
 /**
  * Default SDK configuration

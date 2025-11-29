@@ -198,7 +198,7 @@ export function WalletConnectButton() {
         
         <DropdownMenuSeparator />
         
-        <DropdownMenuItem onClick={disconnect} className="text-destructive">
+        <DropdownMenuItem onClick={() => disconnect()} className="text-destructive">
           <LogOut className="mr-2 h-4 w-4" />
           Disconnect
         </DropdownMenuItem>

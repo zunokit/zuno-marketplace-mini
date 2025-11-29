@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import StoreProvider from "@/lib/store/StoreProvider";
 import { ZunoProvider } from "zuno-marketplace-sdk/react";
+import { ZunoDevTools } from "zuno-marketplace-sdk/devtools";
 import { defaultConfig, validateSDKConfig } from "@/lib/config/zuno-sdk";
 import { logger } from "@/lib/utils/sdk-logger";
 
@@ -46,6 +47,18 @@ export default function AppProvider({
       <StoreProvider>
         {children}
       </StoreProvider>
+      {process.env.NODE_ENV === "development" && (
+        <ZunoDevTools
+          config={{
+            showLogger: true,
+            showTransactions: true,
+            showCache: true,
+            showNetwork: true,
+            position: "bottom-right",
+            defaultCollapsed: true,
+          }}
+        />
+      )}
     </ZunoProvider>
   );
 }
