@@ -360,22 +360,14 @@ export default function MyNFTsPage() {
 
   // Create a Set of NFTs that are in active auctions
   const auctionedNFTs = useMemo(() => {
-    console.log('[DEBUG] userAuctions:', userAuctions);
     const set = new Set<string>();
     if (userAuctions?.items) {
-      console.log('[DEBUG] userAuctions.items:', userAuctions.items);
       userAuctions.items
-        .filter(a => {
-          console.log('[DEBUG] auction item:', a, 'status:', a.status);
-          return a.status === 'active';
-        })
+        .filter(a => a.status === 'active')
         .forEach(auction => {
-          const key = `${auction.collectionAddress.toLowerCase()}:${auction.tokenId}`;
-          console.log('[DEBUG] Adding to auctionedNFTs:', key);
-          set.add(key);
+          set.add(`${auction.collectionAddress.toLowerCase()}:${auction.tokenId}`);
         });
     }
-    console.log('[DEBUG] auctionedNFTs set:', Array.from(set));
     return set;
   }, [userAuctions]);
 
@@ -396,7 +388,7 @@ export default function MyNFTsPage() {
             }
           }
         } catch {
-          // Skip
+          // Skip failed requests
         }
       }
 
