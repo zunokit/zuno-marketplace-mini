@@ -35,11 +35,14 @@ export default function MintPage() {
   const collectionAddress = params.id as string;
   
   const { data: collection, isLoading, error, refetch } = useCollectionInfo(collectionAddress);
-  const { mintERC721, batchMintERC721 } = useCollection();
+  const { batchMintERC721, mintERC1155 } = useCollection();
   const { address, isConnected } = useAccount();
   
   const [quantity, setQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
+  
+  const isERC1155 = collection?.tokenType === 'ERC1155';
+  const mintFn = isERC1155 ? mintERC1155 : batchMintERC721;
 
   const mintPrice = parseFloat(collection?.mintPrice || "0");
   const totalPrice = mintPrice * quantity;
@@ -71,37 +74,22 @@ export default function MintPage() {
     try {
       const totalValue = ethers.parseEther(totalPrice.toString()).toString();
       
-      if (quantity === 1) {
-        // Single mint
-        const result = await mintERC721.mutateAsync({
-          collectionAddress,
-          recipient: address,
-          value: totalValue,
-        });
-        
-        toast.success("NFT Minted Successfully!", {
-          description: `Token ID: ${result.tokenId}`,
-        });
-      } else {
-        // Batch mint - more gas efficient
-        const result = await batchMintERC721.mutateAsync({
-          collectionAddress,
-          recipient: address,
-          amount: quantity,
-          value: totalValue,
-        });
-        
-        toast.success(`${quantity} NFTs Minted Successfully!`, {
-          description: `TX: ${result.tx.hash.slice(0, 10)}...`,
-        });
-      }
+      const result = await mintFn.mutateAsync({
+        collectionAddress,
+        recipient: address,
+        amount: quantity,
+        value: totalValue,
+      });
+      
+      toast.success(`${quantity} NFT${quantity > 1 ? 's' : ''} Minted!`, {
+        description: `TX: ${result.tx.hash.slice(0, 10)}...`,
+      });
       
       refetch();
       setQuantity(1);
     } catch (err) {
-      const error = err as Error;
       toast.error("Failed to mint NFT", {
-        description: error.message || "Unknown error",
+        description: (err as Error).message || "Unknown error",
       });
     } finally {
       setIsMinting(false);
