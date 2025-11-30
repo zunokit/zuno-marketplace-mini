@@ -213,8 +213,8 @@ function AuctionModal({
           completed++;
           setProgress({ current: completed, total: selectedItems.length });
           toast.success(`Auction created for #${item.tokenId}`);
-        } catch (err: any) {
-          toast.error(`Failed for #${item.tokenId}: ${err.message}`);
+        } catch (err) {
+          toast.error(`Failed for #${item.tokenId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       }
 
@@ -224,8 +224,8 @@ function AuctionModal({
       } else {
         toast.warning(`${completed}/${selectedItems.length} auctions created`);
       }
-    } catch (err: any) {
-      toast.error(`Error: ${err.message}`);
+    } catch (err) {
+      toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsProcessing(false);
     }
