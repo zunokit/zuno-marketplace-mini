@@ -35,6 +35,15 @@ interface CollectionWithTokens {
   tokens: Array<{ tokenId: string; amount: number }>;
 }
 
+interface ListingItem {
+  id: string;
+  collectionAddress: string;
+  tokenId: string;
+  price: string;
+  endTime: number;
+  status: string;
+}
+
 function NFTCard({ 
   collectionAddress, 
   tokenId, 
@@ -42,6 +51,7 @@ function NFTCard({
   isSelected,
   onSelect,
   isInAuction,
+  isListed,
 }: { 
   collectionAddress: string;
   tokenId: string;
@@ -49,18 +59,20 @@ function NFTCard({
   isSelected: boolean;
   onSelect: (selected: boolean) => void;
   isInAuction?: boolean;
+  isListed?: boolean;
 }) {
   const { data: info } = useCollectionInfo(collectionAddress);
+  const isDisabled = isInAuction || isListed;
 
   return (
-    <Card className={`overflow-hidden transition-all ${isSelected ? 'ring-2 ring-primary' : ''} ${isInAuction ? 'opacity-60' : ''}`}>
+    <Card className={`overflow-hidden transition-all ${isSelected ? 'ring-2 ring-primary' : ''} ${isDisabled ? 'opacity-60' : ''}`}>
       <div className="relative">
         <div className="absolute top-2 left-2 z-10">
           <Checkbox 
             checked={isSelected} 
             onCheckedChange={onSelect}
             className="bg-background"
-            disabled={isInAuction}
+            disabled={isDisabled}
           />
         </div>
         {isInAuction && (
@@ -68,6 +80,14 @@ function NFTCard({
             <Badge variant="destructive" className="text-xs">
               <Gavel className="h-3 w-3 mr-1" />
               In Auction
+            </Badge>
+          </div>
+        )}
+        {isListed && !isInAuction && (
+          <div className="absolute top-2 right-2 z-10">
+            <Badge variant="secondary" className="text-xs bg-green-500 text-white">
+              <Tag className="h-3 w-3 mr-1" />
+              Listed
             </Badge>
           </div>
         )}
@@ -94,15 +114,20 @@ function CollectionGroup({
   onSelectToken,
   onSelectAll,
   auctionedNFTs,
+  listedNFTs,
 }: {
   collection: CollectionWithTokens;
   selectedTokens: Set<string>;
   onSelectToken: (tokenId: string, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
   auctionedNFTs: Set<string>;
+  listedNFTs: Set<string>;
 }) {
   const { data: info } = useCollectionInfo(collection.address);
-  const availableTokens = collection.tokens.filter(t => !auctionedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`));
+  const availableTokens = collection.tokens.filter(t => 
+    !auctionedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`) &&
+    !listedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`)
+  );
   const allSelected = availableTokens.length > 0 && availableTokens.every(t => selectedTokens.has(`${collection.address}:${t.tokenId}`));
   const someSelected = availableTokens.some(t => selectedTokens.has(`${collection.address}:${t.tokenId}`));
 
@@ -131,7 +156,9 @@ function CollectionGroup({
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {collection.tokens.map((token) => {
-          const isInAuction = auctionedNFTs.has(`${collection.address.toLowerCase()}:${token.tokenId}`);
+          const key = `${collection.address.toLowerCase()}:${token.tokenId}`;
+          const isInAuction = auctionedNFTs.has(key);
+          const isListed = listedNFTs.has(key);
           return (
             <NFTCard
               key={`${collection.address}:${token.tokenId}`}
@@ -141,6 +168,7 @@ function CollectionGroup({
               isSelected={selectedTokens.has(`${collection.address}:${token.tokenId}`)}
               onSelect={(selected) => onSelectToken(token.tokenId, selected)}
               isInAuction={isInAuction}
+              isListed={isListed}
             />
           );
         })}
@@ -554,6 +582,7 @@ function MyNFTsTab() {
   const { address } = useAccount();
   const { data: allCollections, isLoading: loadingCollections, refetch } = useCreatedCollections();
   const { data: userAuctions, refetch: refetchAuctions } = useAuctionsBySeller(address, 1, 100);
+  const { data: userListings, refetch: refetchListings } = useListingsBySeller(address);
   const [userCollections, setUserCollections] = useState<CollectionWithTokens[]>([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
@@ -569,6 +598,18 @@ function MyNFTsTab() {
     }
     return set;
   }, [userAuctions]);
+
+  const listedNFTs = useMemo(() => {
+    const set = new Set<string>();
+    if (userListings) {
+      (userListings as Array<{ collectionAddress: string; tokenId: string; status: string }>)
+        .filter(l => l.status === 'active')
+        .forEach(listing => {
+          set.add(`${listing.collectionAddress.toLowerCase()}:${listing.tokenId}`);
+        });
+    }
+    return set;
+  }, [userListings]);
 
   useEffect(() => {
     if (!allCollections || !address) return;
@@ -599,12 +640,16 @@ function MyNFTsTab() {
   const totalNFTs = useMemo(() => userCollections.reduce((sum, c) => sum + c.tokens.length, 0), [userCollections]);
   const availableNFTs = useMemo(() => {
     return userCollections.reduce((sum, c) => {
-      return sum + c.tokens.filter(t => !auctionedNFTs.has(`${c.address.toLowerCase()}:${t.tokenId}`)).length;
+      return sum + c.tokens.filter(t => {
+        const key = `${c.address.toLowerCase()}:${t.tokenId}`;
+        return !auctionedNFTs.has(key) && !listedNFTs.has(key);
+      }).length;
     }, 0);
-  }, [userCollections, auctionedNFTs]);
+  }, [userCollections, auctionedNFTs, listedNFTs]);
 
   const handleSelectToken = (collectionAddress: string, tokenId: string, selected: boolean) => {
-    if (auctionedNFTs.has(`${collectionAddress.toLowerCase()}:${tokenId}`)) return;
+    const nftKey = `${collectionAddress.toLowerCase()}:${tokenId}`;
+    if (auctionedNFTs.has(nftKey) || listedNFTs.has(nftKey)) return;
     const key = `${collectionAddress}:${tokenId}`;
     setSelectedTokens(prev => {
       const next = new Set(prev);
@@ -617,7 +662,8 @@ function MyNFTsTab() {
     setSelectedTokens(prev => {
       const next = new Set(prev);
       collection.tokens.forEach(t => {
-        if (auctionedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`)) return;
+        const nftKey = `${collection.address.toLowerCase()}:${t.tokenId}`;
+        if (auctionedNFTs.has(nftKey) || listedNFTs.has(nftKey)) return;
         const key = `${collection.address}:${t.tokenId}`;
         if (selected) next.add(key); else next.delete(key);
       });
@@ -631,7 +677,8 @@ function MyNFTsTab() {
     } else {
       const all = new Set<string>();
       userCollections.forEach(c => c.tokens.forEach(t => {
-        if (!auctionedNFTs.has(`${c.address.toLowerCase()}:${t.tokenId}`)) {
+        const nftKey = `${c.address.toLowerCase()}:${t.tokenId}`;
+        if (!auctionedNFTs.has(nftKey) && !listedNFTs.has(nftKey)) {
           all.add(`${c.address}:${t.tokenId}`);
         }
       }));
@@ -647,9 +694,10 @@ function MyNFTsTab() {
         <p className="text-muted-foreground">
           {isLoading ? 'Loading...' : `${totalNFTs} NFTs in ${userCollections.length} collections`}
           {auctionedNFTs.size > 0 && ` (${auctionedNFTs.size} in auction)`}
+          {listedNFTs.size > 0 && ` (${listedNFTs.size} listed)`}
         </p>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchAuctions(); }}>
+          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchAuctions(); refetchListings(); }}>
             <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
           {availableNFTs > 0 && (
@@ -690,7 +738,7 @@ function MyNFTsTab() {
         onClose={() => setListingModalOpen(false)}
         selectedTokens={selectedTokens}
         userCollections={userCollections}
-        onSuccess={() => { setSelectedTokens(new Set()); setListingModalOpen(false); }}
+        onSuccess={() => { setSelectedTokens(new Set()); setListingModalOpen(false); refetchListings(); }}
       />
 
       {isLoading && (
@@ -708,6 +756,7 @@ function MyNFTsTab() {
           onSelectToken={(tokenId, selected) => handleSelectToken(collection.address, tokenId, selected)}
           onSelectAll={(selected) => handleSelectAllInCollection(collection, selected)}
           auctionedNFTs={auctionedNFTs}
+          listedNFTs={listedNFTs}
         />
       ))}
 
