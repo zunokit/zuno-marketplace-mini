@@ -49,8 +49,17 @@ export default function AuctionDetailPage() {
   const hours = Math.floor((timeLeft % 86400) / 3600);
   const minutes = Math.floor((timeLeft % 3600) / 60);
 
+  const minBid = auction ? parseFloat(auction.currentBid || auction.startingBid || '0') * 1.05 : 0;
+
   const handlePlaceBid = async () => {
     if (!bidAmount) return;
+    
+    const bidValue = parseFloat(bidAmount);
+    if (bidValue < minBid) {
+      toast.error(`Bid must be at least ${minBid.toFixed(4)} ETH (5% higher than current bid)`);
+      return;
+    }
+    
     setIsProcessing(true);
     try {
       await placeBid.mutateAsync({ auctionId, amount: bidAmount });
@@ -58,7 +67,14 @@ export default function AuctionDetailPage() {
       setBidAmount("");
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to place bid");
+      const msg = err instanceof Error ? err.message : "Failed to place bid";
+      if (msg.includes("InsufficientBidIncrement") || msg.includes("0x955daf56")) {
+        toast.error(`Bid too low! Minimum bid is ${minBid.toFixed(4)} ETH`);
+      } else if (msg.includes("BidTooLow") || msg.includes("0x")) {
+        toast.error("Your bid is lower than the current highest bid");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -272,11 +288,15 @@ export default function AuctionDetailPage() {
                         <Input
                           type="number"
                           step="0.001"
-                          placeholder={`Min: ${parseFloat(auction.currentBid || auction.startPrice || '0') + 0.01}`}
+                          min={minBid}
+                          placeholder={`Min: ${minBid.toFixed(4)} ETH`}
                           value={bidAmount}
                           onChange={(e) => setBidAmount(e.target.value)}
                           disabled={!isConnected || isSeller}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          Minimum bid: {minBid.toFixed(4)} ETH (5% higher than current)
+                        </p>
                       </div>
                       <Button 
                         className="w-full" 
