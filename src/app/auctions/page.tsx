@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Gavel, Plus, Clock, TrendingDown, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useActiveAuctions, useAuctionsBySeller } from "zuno-marketplace-sdk/react";
+import { useActiveAuctions, useAuctionsBySeller } from "@/hooks/useAuctionQueries";
 import { useAccount } from "wagmi";
 
 function AuctionCard({ auction }: { auction: { 

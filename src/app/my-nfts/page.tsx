@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Package, RefreshCw, Gavel } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo, useAuction, useAuctionsBySeller } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction } from "zuno-marketplace-sdk/react";
+import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 
