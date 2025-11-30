@@ -14,7 +14,7 @@ import {
   Loader2, AlertCircle, CheckCircle, XCircle 
 } from "lucide-react";
 import Link from "next/link";
-import { useAuction, useAuctionDetails, useDutchAuctionPrice } from "zuno-marketplace-sdk/react";
+import { useAuction, useAuctionDetails, useDutchAuctionPrice, usePendingRefund } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 
@@ -28,7 +28,13 @@ export default function AuctionDetailPage() {
   const { data: currentPrice } = useDutchAuctionPrice(
     auction?.type === 'dutch' ? auctionId : undefined
   );
+  const { data: pendingRefund } = usePendingRefund(
+    auction?.type === 'english' ? auctionId : undefined,
+    address
+  );
   const { placeBid, buyNow, cancelAuction, settleAuction, withdrawBid } = useAuction();
+  
+  const hasPendingRefund = pendingRefund && parseFloat(pendingRefund) > 0;
 
   const [bidAmount, setBidAmount] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -101,7 +107,7 @@ export default function AuctionDetailPage() {
     setIsProcessing(true);
     try {
       await withdrawBid.mutateAsync({ auctionId });
-      toast.success("Bid withdrawn!");
+      toast.success(`Withdrawn ${pendingRefund} ETH successfully!`);
       refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to withdraw");
@@ -320,10 +326,18 @@ export default function AuctionDetailPage() {
               </Card>
             )}
 
-            {isEnglish && isConnected && !isSeller && (
-              <Button variant="outline" className="w-full" onClick={handleWithdraw} disabled={isProcessing}>
-                Withdraw Previous Bid
-              </Button>
+            {isEnglish && isConnected && !isSeller && hasPendingRefund && (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    You have {pendingRefund} ETH to withdraw from a previous bid
+                  </p>
+                  <Button variant="outline" className="w-full" onClick={handleWithdraw} disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Withdraw {pendingRefund} ETH
+                  </Button>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
