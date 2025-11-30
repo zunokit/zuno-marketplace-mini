@@ -7,13 +7,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Store, 
   RefreshCw, 
   Loader2, 
   Clock,
   ShoppingCart,
-  Search
+  Search,
+  XCircle
 } from "lucide-react";
 import { useCollectionInfo, useExchange, useCreatedCollections, useZuno } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
@@ -43,24 +45,40 @@ interface ListingCardProps {
   onBuy: (listingId: string, price: string) => void;
   isBuying: boolean;
   currentUser?: string;
+  isSelected?: boolean;
+  onSelect?: (selected: boolean) => void;
+  selectionMode?: boolean;
 }
 
-function ListingCard({ listing, onBuy, isBuying, currentUser }: ListingCardProps) {
+function ListingCard({ listing, onBuy, isBuying, currentUser, isSelected, onSelect, selectionMode }: ListingCardProps) {
   const { data: info } = useCollectionInfo(listing.collectionAddress);
   const timeLeft = Math.max(0, listing.endTime - Math.floor(Date.now() / 1000));
   const days = Math.floor(timeLeft / 86400);
   const hours = Math.floor((timeLeft % 86400) / 3600);
   const isSeller = currentUser?.toLowerCase() === listing.seller.toLowerCase();
+  const canSelect = !isSeller && timeLeft > 0;
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${isSelected ? 'ring-2 ring-primary' : ''}`}>
       <div className="relative">
+        {selectionMode && canSelect && (
+          <div className="absolute top-2 left-2 z-10">
+            <Checkbox 
+              checked={isSelected} 
+              onCheckedChange={(checked) => onSelect?.(!!checked)}
+              className="bg-background"
+            />
+          </div>
+        )}
         <div className="absolute top-2 right-2 z-10">
           <Badge variant="outline" className="text-xs bg-background">
             {listing.price} ETH
           </Badge>
         </div>
-        <div className="h-40 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+        <div 
+          className={`h-40 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center ${selectionMode && canSelect ? 'cursor-pointer' : ''}`}
+          onClick={() => selectionMode && canSelect && onSelect?.(!isSelected)}
+        >
           <span className="text-3xl font-bold text-primary/30">#{listing.tokenId}</span>
         </div>
       </div>
@@ -111,9 +129,11 @@ export default function MarketplacePage() {
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [allListings, setAllListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
+  const [isBatchBuying, setIsBatchBuying] = useState(false);
   
   const { data: collections, refetch: refetchCollections } = useCreatedCollections();
-  const { buyNFT } = useExchange();
+  const { buyNFT, batchBuyNFT } = useExchange();
 
   // Fetch listings from all collections
   useEffect(() => {
@@ -171,6 +191,59 @@ export default function MarketplacePage() {
     }
   };
 
+  const handleSelectListing = (listingId: string, selected: boolean) => {
+    setSelectedListings(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(listingId);
+      } else {
+        next.delete(listingId);
+      }
+      return next;
+    });
+  };
+
+  const handleBatchBuy = async () => {
+    if (!isConnected || selectedListings.size === 0) return;
+
+    setIsBatchBuying(true);
+    try {
+      const listingIds = Array.from(selectedListings);
+      
+      // Calculate total price for all listings
+      let totalValue = 0n;
+      for (const id of listingIds) {
+        const price = await sdk.exchange.getBuyerPrice(id);
+        const { ethers } = await import('ethers');
+        totalValue += ethers.parseEther(price);
+      }
+      
+      const { ethers } = await import('ethers');
+      await batchBuyNFT.mutateAsync({
+        listingIds,
+        value: ethers.formatEther(totalValue)
+      });
+      
+      toast.success(`Successfully purchased ${listingIds.length} NFTs!`);
+      setSelectedListings(new Set());
+      handleRefresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to batch buy NFTs");
+    } finally {
+      setIsBatchBuying(false);
+    }
+  };
+
+  // Calculate selected total price for display
+  const selectedTotalPrice = useMemo(() => {
+    return Array.from(selectedListings).reduce((sum, id) => {
+      const listing = allListings.find(l => l.id === id);
+      return sum + (listing ? parseFloat(listing.price) : 0);
+    }, 0);
+  }, [selectedListings, allListings]);
+
+  const selectionMode = selectedListings.size > 0;
+
   // Filter active listings and apply search
   const activeListings = useMemo(() => {
     let filtered = allListings.filter(l => l.status === 'active');
@@ -220,7 +293,32 @@ export default function MarketplacePage() {
         <div className="text-sm text-muted-foreground mb-4">
           {isLoading ? 'Loading listings...' : `${activeListings.length} active listing${activeListings.length !== 1 ? 's' : ''}`}
           {collections && ` from ${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
+          {!isLoading && activeListings.length > 0 && (
+            <span className="ml-2 text-xs">(Click cards to select for batch buy)</span>
+          )}
         </div>
+
+        {/* Batch Buy Bar */}
+        {selectionMode && (
+          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border border-primary/50 rounded-lg p-4 mb-6 flex items-center justify-between">
+            <div>
+              <p className="font-medium text-primary">{selectedListings.size} NFT(s) selected</p>
+              <p className="text-sm text-muted-foreground">~{selectedTotalPrice.toFixed(4)} ETH (+ fees)</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelectedListings(new Set())}>
+                <XCircle className="h-4 w-4 mr-2" />Clear
+              </Button>
+              <Button size="sm" onClick={handleBatchBuy} disabled={isBatchBuying}>
+                {isBatchBuying ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Buying...</>
+                ) : (
+                  <><ShoppingCart className="h-4 w-4 mr-2" />Buy {selectedListings.size} NFTs (1 tx)</>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Loading */}
         {isLoading && (
@@ -241,6 +339,9 @@ export default function MarketplacePage() {
                 onBuy={handleBuy}
                 isBuying={buyingId === listing.id}
                 currentUser={address}
+                isSelected={selectedListings.has(listing.id)}
+                onSelect={(selected) => handleSelectListing(listing.id, selected)}
+                selectionMode={true}
               />
             ))}
           </div>
