@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown, Tag } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction, useExchange } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
@@ -868,14 +868,29 @@ function ListingCard({
 
 function MyListingsTab() {
   const { address } = useAccount();
-  const { data: userListings, isLoading, refetch } = useListingsBySeller(address, 1, 100);
+  // User implements their own listing query (API, subgraph, etc.)
+  // Example: const { data } = useQuery(['listings', address], () => fetchListings(address))
+  const [userListings, setUserListings] = useState<ListingItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { cancelListing, batchCancelListing } = useExchange();
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const refetch = async () => {
+    if (!address) return;
+    setIsLoading(true);
+    try {
+      // TODO: Replace with your data source
+      // const response = await fetch(`/api/listings?seller=${address}`);
+      // setUserListings(await response.json());
+      setUserListings([]); // Placeholder
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const activeListings = useMemo(() => {
-    if (!userListings?.items) return [];
-    return userListings.items.filter((l: ListingItem) => l.status === 'active');
+    return userListings.filter((l: ListingItem) => l.status === 'active');
   }, [userListings]);
 
   const handleSelectListing = (listingId: string, selected: boolean) => {
