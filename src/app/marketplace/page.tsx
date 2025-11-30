@@ -154,10 +154,10 @@ export default function MarketplacePage() {
 
     setBuyingId(listingId);
     try {
-      const { ethers } = await import('ethers');
+      // SDK expects value in ETH (handles conversion internally)
       await buyNFT.mutateAsync({ 
         listingId, 
-        value: ethers.parseEther(price).toString()
+        value: price
       });
       toast.success("NFT purchased successfully!");
       handleRefresh();
