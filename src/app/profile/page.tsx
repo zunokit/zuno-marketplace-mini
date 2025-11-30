@@ -400,7 +400,7 @@ function ListingModal({
   open,
   onClose,
   selectedTokens,
-  userCollections,
+  userCollections: _userCollections,
   onSuccess,
 }: {
   open: boolean;
@@ -1090,10 +1090,13 @@ function ListingCard({
 function MyListingsTab() {
   const { address } = useAccount();
   const { data, isLoading, refetch } = useListingsBySeller(address);
-  const userListings = (data || []) as Array<{ id: string; collectionAddress: string; tokenId: string; price: string; endTime: number; status: string }>;
   const { cancelListing, batchCancelListing } = useExchange();
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const userListings = useMemo(() => {
+    return (data || []) as Array<{ id: string; collectionAddress: string; tokenId: string; price: string; endTime: number; status: string }>;
+  }, [data]);
 
   const activeListings = useMemo(() => {
     return userListings.filter((l) => l.status === 'active');
