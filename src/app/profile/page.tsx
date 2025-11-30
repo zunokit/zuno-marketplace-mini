@@ -491,7 +491,7 @@ function ListingModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {isBatchMode ? `List ${selectedList.length} NFTs for Sale` : 'List NFT for Sale'}
+            {isBatchMode ? `List ${selectedTokens.size} NFTs for Sale` : 'List NFT for Sale'}
           </DialogTitle>
         </DialogHeader>
 
