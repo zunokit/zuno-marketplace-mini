@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useCollectionInfo, useZuno } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
+import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,26 +54,30 @@ export default function CollectionDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Skeleton className="h-10 w-64 mb-4" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8">
+          <Skeleton className="h-10 w-64 mb-4" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-destructive">Error loading collection</p>
-          </CardContent>
-        </Card>
-      </div>
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8">
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-destructive">Error loading collection</p>
+            </CardContent>
+          </Card>
+        </div>
+      </MainLayout>
     );
   }
 
@@ -84,9 +89,10 @@ export default function CollectionDetailPage() {
     addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <h1 className="text-3xl font-bold">{collection?.name || "Collection"}</h1>
           <Badge variant="secondary">{collection?.tokenType}</Badge>
@@ -217,8 +223,9 @@ export default function CollectionDetailPage() {
             <ExternalLink className="mr-2 h-4 w-4" />
             View on Explorer
           </Button>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
+    </MainLayout>
   );
 }
