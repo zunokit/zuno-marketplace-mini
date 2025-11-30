@@ -368,6 +368,150 @@ function AuctionModal({
   );
 }
 
+function ListingModal({
+  open,
+  onClose,
+  selectedTokens,
+  userCollections,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selectedTokens: Set<string>;
+  userCollections: CollectionWithTokens[];
+  onSuccess: () => void;
+}) {
+  const { listNFT } = useExchange();
+  const [price, setPrice] = useState('0.1');
+  const [duration, setDuration] = useState('604800');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+
+  const selectedList = useMemo(() => {
+    const list: Array<{ collectionAddress: string; tokenId: string }> = [];
+    selectedTokens.forEach(key => {
+      const [collectionAddress, tokenId] = key.split(':');
+      list.push({ collectionAddress, tokenId });
+    });
+    return list;
+  }, [selectedTokens]);
+
+  const handleCreateListings = async () => {
+    if (selectedList.length === 0) return;
+    
+    setIsProcessing(true);
+    setProgress({ current: 0, total: selectedList.length });
+
+    try {
+      let completed = 0;
+
+      for (const item of selectedList) {
+        try {
+          await listNFT.mutateAsync({
+            collectionAddress: item.collectionAddress,
+            tokenId: item.tokenId,
+            price: price,
+            duration: parseInt(duration),
+          });
+          completed++;
+          setProgress({ current: completed, total: selectedList.length });
+          toast.success(`Listed NFT #${item.tokenId}`);
+        } catch (err) {
+          toast.error(`Failed to list #${item.tokenId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+      }
+
+      if (completed === selectedList.length) {
+        toast.success(`All ${completed} NFTs listed successfully!`);
+        onSuccess();
+      } else if (completed > 0) {
+        toast.warning(`${completed}/${selectedList.length} NFTs listed`);
+      }
+    } catch (err) {
+      toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const isBatchMode = selectedList.length > 1;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {isBatchMode ? `List ${selectedList.length} NFTs for Sale` : 'List NFT for Sale'}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isBatchMode && (
+          <div className="bg-muted/50 rounded-lg p-3 text-sm">
+            <p className="font-medium text-primary">
+              {selectedList.length} transactions required
+            </p>
+            <p className="text-muted-foreground text-xs mt-1">
+              Each NFT requires a separate listing transaction
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Price (ETH)</Label>
+            <Input 
+              type="number" 
+              step="0.001" 
+              min="0"
+              value={price} 
+              onChange={(e) => setPrice(e.target.value)} 
+              placeholder="0.1"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Duration</Label>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="86400">1 Day</SelectItem>
+                <SelectItem value="259200">3 Days</SelectItem>
+                <SelectItem value="604800">7 Days</SelectItem>
+                <SelectItem value="1209600">14 Days</SelectItem>
+                <SelectItem value="2592000">30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isProcessing && (
+            <div className="bg-muted rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Processing...</span>
+              </div>
+              <div className="w-full bg-background rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{progress.current} / {progress.total} completed</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
+          <Button onClick={handleCreateListings} disabled={isProcessing || !price || parseFloat(price) <= 0}>
+            {isProcessing ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Listing...</>
+            ) : (
+              <><Tag className="h-4 w-4 mr-2" />{isBatchMode ? `List ${selectedList.length} NFTs` : 'List NFT'}</>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CollectionCard({ address, type }: { address: string; type: "ERC721" | "ERC1155" }) {
   const { data: info, isLoading } = useCollectionInfo(address);
 
@@ -414,6 +558,7 @@ function MyNFTsTab() {
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
   const [auctionModalOpen, setAuctionModalOpen] = useState(false);
+  const [listingModalOpen, setListingModalOpen] = useState(false);
 
   const auctionedNFTs = useMemo(() => {
     const set = new Set<string>();
@@ -520,6 +665,10 @@ function MyNFTsTab() {
           <p className="font-medium">{selectedTokens.size} NFT(s) selected</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setSelectedTokens(new Set())}>Clear</Button>
+            <Button size="sm" variant="secondary" onClick={() => setListingModalOpen(true)}>
+              <Tag className="h-4 w-4 mr-2" />
+              {selectedTokens.size > 1 ? 'List All' : 'List for Sale'}
+            </Button>
             <Button size="sm" onClick={() => setAuctionModalOpen(true)}>
               <Gavel className="h-4 w-4 mr-2" />
               {selectedTokens.size > 1 ? 'Batch Auction' : 'Create Auction'}
@@ -534,6 +683,14 @@ function MyNFTsTab() {
         selectedTokens={selectedTokens}
         userCollections={userCollections}
         onSuccess={() => { setSelectedTokens(new Set()); setAuctionModalOpen(false); refetchAuctions(); }}
+      />
+
+      <ListingModal
+        open={listingModalOpen}
+        onClose={() => setListingModalOpen(false)}
+        selectedTokens={selectedTokens}
+        userCollections={userCollections}
+        onSuccess={() => { setSelectedTokens(new Set()); setListingModalOpen(false); }}
       />
 
       {isLoading && (
