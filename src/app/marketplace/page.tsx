@@ -146,7 +146,7 @@ export default function MarketplacePage() {
     refetchCollections();
   };
 
-  const handleBuy = async (listingId: string, price: string) => {
+  const handleBuy = async (listingId: string, _price: string) => {
     if (!isConnected) {
       toast.error("Please connect your wallet");
       return;
@@ -154,10 +154,13 @@ export default function MarketplacePage() {
 
     setBuyingId(listingId);
     try {
+      // Get total price including royalty and taker fee from contract
+      const totalPrice = await sdk.exchange.getBuyerPrice(listingId);
+      
       // SDK expects value in ETH (handles conversion internally)
       await buyNFT.mutateAsync({ 
         listingId, 
-        value: price
+        value: totalPrice
       });
       toast.success("NFT purchased successfully!");
       handleRefresh();
