@@ -2,23 +2,35 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCollectionInfo, useCollection, useIsInAllowlist, useIsAllowlistOnly } from "zuno-marketplace-sdk/react";
+import {
+  useCollectionInfo,
+  useCollection,
+  useIsInAllowlist,
+  useIsAllowlistOnly,
+} from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { ethers } from "ethers";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardFooter,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { 
-  Package, 
-  DollarSign, 
-  Percent, 
-  Users, 
+import {
+  Package,
+  DollarSign,
+  Percent,
+  Users,
   User,
   Hash,
   ArrowLeft,
@@ -26,24 +38,29 @@ import {
   Plus,
   Minus,
   Wallet,
-  CheckCircle
+  CheckCircle,
 } from "lucide-react";
 
 export default function MintPage() {
   const params = useParams();
   const router = useRouter();
   const collectionAddress = params.id as string;
-  
-  const { data: collection, isLoading, error, refetch } = useCollectionInfo(collectionAddress);
+
+  const {
+    data: collection,
+    isLoading,
+    error,
+    refetch,
+  } = useCollectionInfo(collectionAddress);
   const { batchMintERC721, batchMintERC1155 } = useCollection();
   const { address, isConnected } = useAccount();
   const { data: isInAllowlist } = useIsInAllowlist(collectionAddress, address);
   const { data: isAllowlistOnly } = useIsAllowlistOnly(collectionAddress);
-  
+
   const [quantity, setQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
-  
-  const isERC1155 = collection?.tokenType === 'ERC1155';
+
+  const isERC1155 = collection?.tokenType === "ERC1155";
   const mintFn = isERC1155 ? batchMintERC1155 : batchMintERC721;
 
   const mintPrice = parseFloat(collection?.mintPrice || "0");
@@ -75,7 +92,8 @@ export default function MintPage() {
     // Check allowlist if collection is in allowlist-only mode
     if (isAllowlistOnly && !isInAllowlist) {
       toast.error("You are not in the allowlist", {
-        description: "This collection only allows allowlisted addresses to mint.",
+        description:
+          "This collection only allows allowlisted addresses to mint.",
       });
       return;
     }
@@ -83,18 +101,18 @@ export default function MintPage() {
     setIsMinting(true);
     try {
       const totalValue = ethers.parseEther(totalPrice.toString()).toString();
-      
+
       const result = await mintFn.mutateAsync({
         collectionAddress,
         recipient: address,
         amount: quantity,
         value: totalValue,
       });
-      
-      toast.success(`${quantity} NFT${quantity > 1 ? 's' : ''} Minted!`, {
+
+      toast.success(`${quantity} NFT${quantity > 1 ? "s" : ""} Minted!`, {
         description: `TX: ${result.tx.hash.slice(0, 10)}...`,
       });
-      
+
       refetch();
       setQuantity(1);
     } catch (err) {
@@ -106,8 +124,8 @@ export default function MintPage() {
     }
   };
 
-  const formatAddress = (addr: string) => 
-    addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : '';
+  const formatAddress = (addr: string) =>
+    addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "";
 
   const mintProgress = maxSupply > 0 ? (totalMinted / maxSupply) * 100 : 0;
 
@@ -128,8 +146,14 @@ export default function MintPage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="border-destructive">
           <CardContent className="pt-6">
-            <p className="text-destructive">Error loading collection: {error.message}</p>
-            <Button variant="outline" className="mt-4" onClick={() => router.back()}>
+            <p className="text-destructive">
+              Error loading collection: {error.message}
+            </p>
+            <Button
+              variant="outline"
+              className="mt-4"
+              onClick={() => router.back()}
+            >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Go Back
             </Button>
@@ -142,9 +166,9 @@ export default function MintPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Back Button */}
-      <Button 
-        variant="ghost" 
-        className="mb-6" 
+      <Button
+        variant="ghost"
+        className="mb-6"
         onClick={() => router.push(`/collections/${collectionAddress}`)}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -167,7 +191,9 @@ export default function MintPage() {
             {/* Description */}
             {collection?.description && (
               <div>
-                <p className="text-sm text-muted-foreground">{collection.description}</p>
+                <p className="text-sm text-muted-foreground">
+                  {collection.description}
+                </p>
               </div>
             )}
 
@@ -199,9 +225,11 @@ export default function MintPage() {
                   <DollarSign className="h-3 w-3" />
                   Mint Price
                 </p>
-                <p className="text-lg font-bold">{collection?.mintPrice || "0"} ETH</p>
+                <p className="text-lg font-bold">
+                  {collection?.mintPrice || "0"} ETH
+                </p>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Percent className="h-3 w-3" />
@@ -211,15 +239,17 @@ export default function MintPage() {
                   {((collection?.royaltyFee || 0) / 100).toFixed(1)}%
                 </p>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Users className="h-3 w-3" />
                   Limit/Wallet
                 </p>
-                <p className="text-lg font-bold">{collection?.mintLimitPerWallet || "∞"}</p>
+                <p className="text-lg font-bold">
+                  {collection?.mintLimitPerWallet || "∞"}
+                </p>
               </div>
-              
+
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground flex items-center gap-1">
                   <Hash className="h-3 w-3" />
@@ -238,7 +268,7 @@ export default function MintPage() {
                 Owner
               </span>
               <span className="font-mono text-sm">
-                {formatAddress(collection?.owner || '')}
+                {formatAddress(collection?.owner || "")}
               </span>
             </div>
           </CardContent>
@@ -249,10 +279,9 @@ export default function MintPage() {
           <CardHeader>
             <CardTitle>Mint NFT</CardTitle>
             <CardDescription>
-              {remaining > 0 
+              {remaining > 0
                 ? `${remaining.toLocaleString()} NFTs available to mint`
-                : "Sold out!"
-              }
+                : "Sold out!"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -269,7 +298,9 @@ export default function MintPage() {
                   </p>
                 )}
               </div>
-              {isConnected && <CheckCircle className="h-5 w-5 text-green-500" />}
+              {isConnected && (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              )}
             </div>
 
             {/* Quantity Selector */}
@@ -330,12 +361,24 @@ export default function MintPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col gap-2">
             {/* Allowlist Status */}
             {isAllowlistOnly && (
-              <div className={`p-3 rounded-lg mb-4 ${isInAllowlist ? 'bg-green-500/10 border border-green-500/30' : 'bg-destructive/10 border border-destructive/30'}`}>
-                <p className={`text-sm font-medium ${isInAllowlist ? 'text-green-500' : 'text-destructive'}`}>
-                  {isInAllowlist ? '✓ You are in the allowlist' : '✗ You are not in the allowlist'}
+              <div
+                className={`p-3 rounded-lg mb-4 ${
+                  isInAllowlist
+                    ? "bg-green-500/10 border border-green-500/30"
+                    : "bg-destructive/10 border border-destructive/30"
+                }`}
+              >
+                <p
+                  className={`text-sm font-medium ${
+                    isInAllowlist ? "text-green-500" : "text-destructive"
+                  }`}
+                >
+                  {isInAllowlist
+                    ? "✓ You are in the allowlist"
+                    : "✗ You are not in the allowlist"}
                 </p>
                 {!isInAllowlist && (
                   <p className="text-xs text-muted-foreground mt-1">
@@ -345,10 +388,15 @@ export default function MintPage() {
               </div>
             )}
 
-            <Button 
+            <Button
               className="w-full h-12 text-lg"
               onClick={handleMint}
-              disabled={isMinting || !isConnected || remaining <= 0 || (isAllowlistOnly && !isInAllowlist)}
+              disabled={
+                isMinting ||
+                !isConnected ||
+                remaining <= 0 ||
+                (isAllowlistOnly && !isInAllowlist)
+              }
             >
               {isMinting ? (
                 <>
@@ -362,7 +410,7 @@ export default function MintPage() {
               ) : isAllowlistOnly && !isInAllowlist ? (
                 "Not in Allowlist"
               ) : (
-                `Mint ${quantity} NFT${quantity > 1 ? 's' : ''}`
+                `Mint ${quantity} NFT${quantity > 1 ? "s" : ""}`
               )}
             </Button>
           </CardFooter>
