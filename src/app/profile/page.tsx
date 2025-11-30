@@ -409,51 +409,73 @@ function ListingModal({
   userCollections: CollectionWithTokens[];
   onSuccess: () => void;
 }) {
-  const { listNFT } = useExchange();
+  const { listNFT, batchListNFT } = useExchange();
   const [price, setPrice] = useState('0.1');
   const [duration, setDuration] = useState('604800');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
-  const selectedList = useMemo(() => {
-    const list: Array<{ collectionAddress: string; tokenId: string }> = [];
+  // Group selected tokens by collection for batch listing
+  const groupedByCollection = useMemo(() => {
+    const groups: Record<string, string[]> = {};
     selectedTokens.forEach(key => {
       const [collectionAddress, tokenId] = key.split(':');
-      list.push({ collectionAddress, tokenId });
+      if (!groups[collectionAddress]) {
+        groups[collectionAddress] = [];
+      }
+      groups[collectionAddress].push(tokenId);
     });
-    return list;
+    return groups;
   }, [selectedTokens]);
 
+  const collectionGroups = Object.entries(groupedByCollection);
+  const totalNFTs = selectedTokens.size;
+  const numTransactions = collectionGroups.length;
+
   const handleCreateListings = async () => {
-    if (selectedList.length === 0) return;
+    if (totalNFTs === 0) return;
     
     setIsProcessing(true);
-    setProgress({ current: 0, total: selectedList.length });
+    setProgress({ current: 0, total: numTransactions });
 
     try {
-      let completed = 0;
+      let completedTx = 0;
+      let completedNFTs = 0;
 
-      for (const item of selectedList) {
+      for (const [collectionAddress, tokenIds] of collectionGroups) {
         try {
-          await listNFT.mutateAsync({
-            collectionAddress: item.collectionAddress,
-            tokenId: item.tokenId,
-            price: price,
-            duration: parseInt(duration),
-          });
-          completed++;
-          setProgress({ current: completed, total: selectedList.length });
-          toast.success(`Listed NFT #${item.tokenId}`);
+          if (tokenIds.length === 1) {
+            // Single NFT - use listNFT
+            await listNFT.mutateAsync({
+              collectionAddress,
+              tokenId: tokenIds[0],
+              price,
+              duration: parseInt(duration),
+            });
+          } else {
+            // Multiple NFTs from same collection - use batchListNFT (1 tx)
+            const prices = tokenIds.map(() => price);
+            await batchListNFT.mutateAsync({
+              collectionAddress,
+              tokenIds,
+              prices,
+              duration: parseInt(duration),
+            });
+          }
+          completedTx++;
+          completedNFTs += tokenIds.length;
+          setProgress({ current: completedTx, total: numTransactions });
+          toast.success(`Listed ${tokenIds.length} NFT(s) from collection`);
         } catch (err) {
-          toast.error(`Failed to list #${item.tokenId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       }
 
-      if (completed === selectedList.length) {
-        toast.success(`All ${completed} NFTs listed successfully!`);
+      if (completedNFTs === totalNFTs) {
+        toast.success(`All ${completedNFTs} NFTs listed in ${completedTx} transaction(s)!`);
         onSuccess();
-      } else if (completed > 0) {
-        toast.warning(`${completed}/${selectedList.length} NFTs listed`);
+      } else if (completedNFTs > 0) {
+        toast.warning(`${completedNFTs}/${totalNFTs} NFTs listed`);
       }
     } catch (err) {
       toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -462,7 +484,7 @@ function ListingModal({
     }
   };
 
-  const isBatchMode = selectedList.length > 1;
+  const isBatchMode = totalNFTs > 1;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -476,10 +498,12 @@ function ListingModal({
         {isBatchMode && (
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <p className="font-medium text-primary">
-              {selectedList.length} transactions required
+              {numTransactions === 1 
+                ? '1 transaction (batch listing!)' 
+                : `${numTransactions} transactions (grouped by collection)`}
             </p>
             <p className="text-muted-foreground text-xs mt-1">
-              Each NFT requires a separate listing transaction
+              {totalNFTs} NFTs from {numTransactions} collection{numTransactions > 1 ? 's' : ''}
             </p>
           </div>
         )}
@@ -531,7 +555,7 @@ function ListingModal({
             {isProcessing ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Listing...</>
             ) : (
-              <><Tag className="h-4 w-4 mr-2" />{isBatchMode ? `List ${selectedList.length} NFTs` : 'List NFT'}</>
+              <><Tag className="h-4 w-4 mr-2" />{isBatchMode ? `List ${totalNFTs} NFTs` : 'List NFT'}</>
             )}
           </Button>
         </div>
