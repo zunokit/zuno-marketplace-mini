@@ -162,7 +162,7 @@ function AuctionModal({
   userCollections: CollectionWithTokens[];
   onSuccess: () => void;
 }) {
-  const { createEnglishAuction, createDutchAuction } = useAuction();
+  const { createEnglishAuction, createDutchAuction, batchCreateEnglishAuction, batchCreateDutchAuction } = useAuction();
   const [auctionType, setAuctionType] = useState<'english' | 'dutch'>('english');
   const [startPrice, setStartPrice] = useState('0.1');
   const [reservePrice, setReservePrice] = useState('0.05');
@@ -170,58 +170,105 @@ function AuctionModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
-  const selectedItems = useMemo(() => {
-    const items: Array<{ collection: string; tokenId: string; type: 'ERC721' | 'ERC1155' }> = [];
+  // Group selected tokens by collection for batch processing
+  const groupedByCollection = useMemo(() => {
+    const groups: Map<string, { tokenIds: string[]; type: 'ERC721' | 'ERC1155' }> = new Map();
     selectedTokens.forEach(key => {
       const [collection, tokenId] = key.split(':');
       const col = userCollections.find(c => c.address === collection);
-      if (col) items.push({ collection, tokenId, type: col.type });
+      if (col) {
+        const existing = groups.get(collection);
+        if (existing) {
+          existing.tokenIds.push(tokenId);
+        } else {
+          groups.set(collection, { tokenIds: [tokenId], type: col.type });
+        }
+      }
     });
-    return items;
+    return groups;
   }, [selectedTokens, userCollections]);
 
+  const totalNFTs = useMemo(() => {
+    let count = 0;
+    groupedByCollection.forEach(g => count += g.tokenIds.length);
+    return count;
+  }, [groupedByCollection]);
+
   const handleCreateAuctions = async () => {
-    if (selectedItems.length === 0) return;
+    if (groupedByCollection.size === 0) return;
     
     setIsProcessing(true);
-    setProgress({ current: 0, total: selectedItems.length });
+    setProgress({ current: 0, total: groupedByCollection.size });
 
     try {
-      let completed = 0;
-      for (const item of selectedItems) {
+      let completedGroups = 0;
+      let totalCreated = 0;
+
+      for (const [collectionAddress, group] of groupedByCollection) {
         try {
-          if (auctionType === 'english') {
-            await createEnglishAuction.mutateAsync({
-              collectionAddress: item.collection,
-              tokenId: item.tokenId,
-              amount: 1,
-              startingBid: startPrice,
-              reservePrice: reservePrice,
-              duration: parseInt(duration),
-            });
+          if (group.tokenIds.length === 1) {
+            // Single NFT - use individual creation
+            if (auctionType === 'english') {
+              await createEnglishAuction.mutateAsync({
+                collectionAddress,
+                tokenId: group.tokenIds[0],
+                amount: 1,
+                startingBid: startPrice,
+                reservePrice: reservePrice,
+                duration: parseInt(duration),
+              });
+            } else {
+              await createDutchAuction.mutateAsync({
+                collectionAddress,
+                tokenId: group.tokenIds[0],
+                amount: 1,
+                startPrice: startPrice,
+                endPrice: reservePrice,
+                duration: parseInt(duration),
+              });
+            }
+            totalCreated += 1;
+            toast.success(`Auction created for #${group.tokenIds[0]}`);
           } else {
-            await createDutchAuction.mutateAsync({
-              collectionAddress: item.collection,
-              tokenId: item.tokenId,
-              amount: 1,
-              startPrice: startPrice,
-              endPrice: reservePrice,
-              duration: parseInt(duration),
-            });
+            // Multiple NFTs from same collection - use batch creation (1 tx!)
+            if (auctionType === 'english') {
+              const result = await batchCreateEnglishAuction.mutateAsync({
+                collectionAddress,
+                tokenIds: group.tokenIds,
+                startingBid: startPrice,
+                reservePrice: reservePrice,
+                duration: parseInt(duration),
+              });
+              totalCreated += result.auctionIds.length;
+              toast.success(`Batch created ${result.auctionIds.length} English auctions!`);
+            } else {
+              const result = await batchCreateDutchAuction.mutateAsync({
+                collectionAddress,
+                tokenIds: group.tokenIds,
+                startPrice: startPrice,
+                endPrice: reservePrice,
+                duration: parseInt(duration),
+              });
+              totalCreated += result.auctionIds.length;
+              toast.success(`Batch created ${result.auctionIds.length} Dutch auctions!`);
+            }
           }
-          completed++;
-          setProgress({ current: completed, total: selectedItems.length });
-          toast.success(`Auction created for #${item.tokenId}`);
+          completedGroups++;
+          setProgress({ current: completedGroups, total: groupedByCollection.size });
         } catch (err) {
-          toast.error(`Failed for #${item.tokenId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          const tokenList = group.tokenIds.length > 3 
+            ? `${group.tokenIds.slice(0, 3).join(', ')}...` 
+            : group.tokenIds.join(', ');
+          toast.error(`Failed for collection tokens [${tokenList}]: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
       }
 
-      if (completed === selectedItems.length) {
-        toast.success(`All ${completed} auctions created!`);
+      if (totalCreated === totalNFTs) {
+        toast.success(`All ${totalCreated} auctions created successfully!`);
         onSuccess();
-      } else {
-        toast.warning(`${completed}/${selectedItems.length} auctions created`);
+      } else if (totalCreated > 0) {
+        toast.warning(`${totalCreated}/${totalNFTs} auctions created`);
+        onSuccess();
       }
     } catch (err) {
       toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -230,14 +277,30 @@ function AuctionModal({
     }
   };
 
+  const isBatchMode = totalNFTs > 1;
+  const numTransactions = groupedByCollection.size;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {selectedItems.length > 1 ? `Batch Auction (${selectedItems.length} NFTs)` : 'Create Auction'}
+            {isBatchMode ? `Batch Auction (${totalNFTs} NFTs)` : 'Create Auction'}
           </DialogTitle>
         </DialogHeader>
+
+        {isBatchMode && (
+          <div className="bg-muted/50 rounded-lg p-3 text-sm">
+            <p className="font-medium text-primary">
+              {numTransactions === 1 
+                ? '1 transaction required' 
+                : `${numTransactions} transactions required`}
+            </p>
+            <p className="text-muted-foreground text-xs mt-1">
+              NFTs grouped by collection for efficient batch creation
+            </p>
+          </div>
+        )}
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -296,7 +359,7 @@ function AuctionModal({
             {isProcessing ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
             ) : (
-              <><Gavel className="h-4 w-4 mr-2" />{selectedItems.length > 1 ? `Create ${selectedItems.length} Auctions` : 'Create Auction'}</>
+              <><Gavel className="h-4 w-4 mr-2" />{isBatchMode ? `Create ${totalNFTs} Auctions` : 'Create Auction'}</>
             )}
           </Button>
         </div>
