@@ -44,7 +44,6 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
-import { envConfigManager } from "@/lib/utils/env-config";
 import Image from "next/image";
 
 // Form validation schema
@@ -129,8 +128,8 @@ export default function CreateCollectionForm() {
       maxSupply: "10000",
       mintLimitPerWallet: "50",
       mintPrice: "10",
-      // Convert comma-separated allowlist to newline-separated for textarea
-      allowlist: envConfigManager.getAllowlistAddresses().join("\n"),
+      // Default allowlist from env (comma-separated -> newline-separated)
+      allowlist: (process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST || "").split(",").filter(Boolean).join("\n"),
       baseTokenURI: "https://api.example.com/metadata",
     },
   });

@@ -4,7 +4,6 @@
  */
 
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
-import { envConfigManager } from "@/lib/utils/env-config";
 import { logger } from "./sdk-logger";
 
 export class Web3Utils {
@@ -60,36 +59,12 @@ export class Web3Utils {
    * Initialize fallback JSON-RPC provider for read-only operations
    */
   private initializeFallbackProvider(): void {
-    const chainIdNum = envConfigManager.getDefaultChainId();
-    const chainId = chainIdNum.toString();
-    let rpcUrl = "";
-
-    // Determine RPC URL based on chain ID
-    switch (chainId) {
-      case "31337": // Local development
-        rpcUrl =
-          process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "http://127.0.0.1:8545";
-        break;
-      case "1": // Ethereum Mainnet
-        rpcUrl =
-          process.env.NEXT_PUBLIC_RPC_URL_MAINNET ||
-          "https://eth-mainnet.alchemyapi.io/v2/YOUR-API-KEY";
-        break;
-      case "11155111": // Sepolia Testnet
-        rpcUrl =
-          process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA ||
-          "https://sepolia.infura.io/v3/YOUR-PROJECT-ID";
-        break;
-      default:
-        throw new Error(`Unsupported chain ID: ${chainId}`);
-    }
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
+    const chainId = process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337";
 
     logger.info(
       `Connecting to RPC: ${rpcUrl} (Chain ID: ${chainId})`,
-      {
-        rpcUrl,
-        chainId,
-      },
+      { rpcUrl, chainId },
       { component: "Web3Utils", action: "initializeFallbackProvider" }
     );
     this.provider = new JsonRpcProvider(rpcUrl);

@@ -16,7 +16,6 @@ import React, {
 import { ethers } from "ethers";
 import { toast } from "sonner";
 import { logger } from "@/lib/utils/sdk-logger";
-import { envConfigManager } from "@/lib/utils/env-config";
 
 // ============================================================================
 // Types & Interfaces
@@ -296,7 +295,7 @@ class WalletService {
   }
 
   static validateNetwork(currentChainId: number): boolean {
-    const expectedChainId = envConfigManager.getDefaultChainId();
+    const expectedChainId = parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337", 10);
     return currentChainId === expectedChainId;
   }
 
@@ -368,9 +367,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: ActionType.UPDATE_CHAIN, payload: newChainId });
 
     if (!WalletService.validateNetwork(newChainId)) {
-      toast.warning(
-        `Network mismatch. Please switch to chain ${envConfigManager.getDefaultChainId()}`
-      );
+      const expectedChainId = process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337";
+      toast.warning(`Network mismatch. Please switch to chain ${expectedChainId}`);
     }
 
     // Reload page to ensure clean state
@@ -395,7 +393,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       // Validate network
       if (!WalletService.validateNetwork(connectionData.chainId)) {
-        const expectedChainId = envConfigManager.getDefaultChainId();
+        const expectedChainId = parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337", 10);
         
         const shouldSwitch = window.confirm(
           `You're on the wrong network (Chain ID: ${connectionData.chainId}).\n` +
