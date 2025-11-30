@@ -677,10 +677,9 @@ function AuctionCard({
 function MyAuctionsTab() {
   const { address } = useAccount();
   const { data: userAuctions, isLoading, refetch } = useAuctionsBySeller(address, 1, 100);
-  const { cancelAuction } = useAuction();
+  const { cancelAuction, batchCancelAuction } = useAuction();
   const [selectedAuctions, setSelectedAuctions] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cancelProgress, setCancelProgress] = useState({ current: 0, total: 0 });
 
   const activeAuctions = useMemo(() => {
     if (!userAuctions?.items) return [];
@@ -708,24 +707,12 @@ function MyAuctionsTab() {
     
     const toCancel = Array.from(selectedAuctions);
     setIsProcessing(true);
-    setCancelProgress({ current: 0, total: toCancel.length });
 
-    let success = 0;
-    for (const auctionId of toCancel) {
-      try {
-        await cancelAuction.mutateAsync({ auctionId });
-        success++;
-        setCancelProgress({ current: success, total: toCancel.length });
-        toast.success(`Auction ${auctionId.slice(0, 8)}... cancelled`);
-      } catch (err) {
-        toast.error(`Failed to cancel ${auctionId.slice(0, 8)}...: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
-    }
-
-    if (success === toCancel.length) {
-      toast.success(`All ${success} auctions cancelled!`);
-    } else if (success > 0) {
-      toast.warning(`${success}/${toCancel.length} auctions cancelled`);
+    try {
+      const { cancelledCount } = await batchCancelAuction.mutateAsync(toCancel);
+      toast.success(`${cancelledCount} auction(s) cancelled in 1 transaction!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel auctions');
     }
 
     setSelectedAuctions(new Set());
@@ -768,9 +755,9 @@ function MyAuctionsTab() {
             <Button variant="outline" size="sm" onClick={() => setSelectedAuctions(new Set())}>Clear</Button>
             <Button variant="destructive" size="sm" onClick={handleCancelSelected} disabled={isProcessing}>
               {isProcessing ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling {cancelProgress.current}/{cancelProgress.total}</>
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling...</>
               ) : (
-                <><XCircle className="h-4 w-4 mr-2" />Cancel {selectedAuctions.size} Auction{selectedAuctions.size > 1 ? 's' : ''}</>
+                <><XCircle className="h-4 w-4 mr-2" />Cancel {selectedAuctions.size} Auction{selectedAuctions.size > 1 ? 's' : ''} (1 tx)</>
               )}
             </Button>
           </div>
