@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown, Tag } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo, useAuction, useExchange } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
@@ -809,21 +809,12 @@ function MyAuctionsTab() {
   );
 }
 
-interface ListingItem {
-  id: string;
-  collectionAddress: string;
-  tokenId: string;
-  price: string;
-  endTime: number;
-  status: string;
-}
-
 function ListingCard({
   listing,
   isSelected,
   onSelect,
 }: {
-  listing: ListingItem;
+  listing: { id: string; collectionAddress: string; tokenId: string; price: string; endTime: number; status: string };
   isSelected: boolean;
   onSelect: (selected: boolean) => void;
 }) {
@@ -868,29 +859,14 @@ function ListingCard({
 
 function MyListingsTab() {
   const { address } = useAccount();
-  // User implements their own listing query (API, subgraph, etc.)
-  // Example: const { data } = useQuery(['listings', address], () => fetchListings(address))
-  const [userListings, setUserListings] = useState<ListingItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { data, isLoading, refetch } = useListingsBySeller(address);
+  const userListings = (data || []) as Array<{ id: string; collectionAddress: string; tokenId: string; price: string; endTime: number; status: string }>;
   const { cancelListing, batchCancelListing } = useExchange();
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const refetch = async () => {
-    if (!address) return;
-    setIsLoading(true);
-    try {
-      // TODO: Replace with your data source
-      // const response = await fetch(`/api/listings?seller=${address}`);
-      // setUserListings(await response.json());
-      setUserListings([]); // Placeholder
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const activeListings = useMemo(() => {
-    return userListings.filter((l: ListingItem) => l.status === 'active');
+    return userListings.filter((l) => l.status === 'active');
   }, [userListings]);
 
   const handleSelectListing = (listingId: string, selected: boolean) => {
