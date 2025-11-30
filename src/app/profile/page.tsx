@@ -22,9 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown } from "lucide-react";
+import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown, Tag } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo, useAuction } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
@@ -809,6 +809,200 @@ function MyAuctionsTab() {
   );
 }
 
+interface ListingItem {
+  id: string;
+  collectionAddress: string;
+  tokenId: string;
+  price: string;
+  endTime: number;
+  status: string;
+}
+
+function ListingCard({
+  listing,
+  isSelected,
+  onSelect,
+}: {
+  listing: ListingItem;
+  isSelected: boolean;
+  onSelect: (selected: boolean) => void;
+}) {
+  const { data: info } = useCollectionInfo(listing.collectionAddress);
+  const timeLeft = Math.max(0, listing.endTime - Math.floor(Date.now() / 1000));
+  const days = Math.floor(timeLeft / 86400);
+  const hours = Math.floor((timeLeft % 86400) / 3600);
+
+  return (
+    <Card className={`overflow-hidden transition-all ${isSelected ? 'ring-2 ring-destructive' : ''}`}>
+      <div className="relative">
+        <div className="absolute top-2 left-2 z-10">
+          <Checkbox 
+            checked={isSelected} 
+            onCheckedChange={onSelect}
+            className="bg-background"
+          />
+        </div>
+        <div className="absolute top-2 right-2 z-10">
+          <Badge variant="outline" className="text-xs bg-background">
+            <Tag className="h-3 w-3 mr-1" />
+            Listed
+          </Badge>
+        </div>
+        <div className="h-28 bg-gradient-to-br from-green-500/20 to-green-500/5 flex items-center justify-center">
+          <span className="text-2xl font-bold text-green-500/30">#{listing.tokenId}</span>
+        </div>
+      </div>
+      <CardContent className="p-3">
+        <p className="text-sm font-medium truncate mb-1">{info?.name || 'Loading...'}</p>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {timeLeft > 0 ? (days > 0 ? `${days}d ${hours}h` : `${hours}h`) : 'Expired'}
+          </span>
+          <span className="font-medium text-foreground">{listing.price} ETH</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyListingsTab() {
+  const { address } = useAccount();
+  const { data: userListings, isLoading, refetch } = useListingsBySeller(address, 1, 100);
+  const { cancelListing, batchCancelListing } = useExchange();
+  const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const activeListings = useMemo(() => {
+    if (!userListings?.items) return [];
+    return userListings.items.filter((l: ListingItem) => l.status === 'active');
+  }, [userListings]);
+
+  const handleSelectListing = (listingId: string, selected: boolean) => {
+    setSelectedListings(prev => {
+      const next = new Set(prev);
+      if (selected) next.add(listingId); else next.delete(listingId);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedListings.size === activeListings.length) {
+      setSelectedListings(new Set());
+    } else {
+      setSelectedListings(new Set(activeListings.map((l: ListingItem) => l.id)));
+    }
+  };
+
+  const handleCancelSelected = async () => {
+    if (selectedListings.size === 0) return;
+    
+    const toCancel = Array.from(selectedListings);
+    setIsProcessing(true);
+
+    try {
+      if (toCancel.length === 1) {
+        await cancelListing.mutateAsync({ listingId: toCancel[0] });
+        toast.success('Listing cancelled!');
+      } else {
+        await batchCancelListing.mutateAsync({ listingIds: toCancel });
+        toast.success(`${toCancel.length} listing(s) cancelled in 1 transaction!`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel listings');
+    }
+
+    setSelectedListings(new Set());
+    setIsProcessing(false);
+    refetch();
+  };
+
+  const handleCancelSingle = async (listingId: string) => {
+    try {
+      await cancelListing.mutateAsync({ listingId });
+      toast.success('Listing cancelled!');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel listing');
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <p className="text-muted-foreground">
+          {isLoading ? 'Loading...' : `${activeListings.length} active listings`}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
+          {activeListings.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleSelectAll}>
+              {selectedListings.size === activeListings.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {selectedListings.size > 0 && (
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border border-destructive/50 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <p className="font-medium text-destructive">{selectedListings.size} listing(s) selected</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedListings(new Set())}>Clear</Button>
+            <Button variant="destructive" size="sm" onClick={handleCancelSelected} disabled={isProcessing}>
+              {isProcessing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling...</>
+              ) : (
+                <><XCircle className="h-4 w-4 mr-2" />Cancel {selectedListings.size} Listing{selectedListings.size > 1 ? 's' : ''} {selectedListings.size > 1 ? '(1 tx)' : ''}</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading your listings...</span>
+        </div>
+      )}
+
+      {!isLoading && activeListings.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {activeListings.map((listing: ListingItem) => (
+            <div key={listing.id} className="relative group">
+              <ListingCard
+                listing={listing}
+                isSelected={selectedListings.has(listing.id)}
+                onSelect={(selected) => handleSelectListing(listing.id, selected)}
+              />
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={() => handleCancelSingle(listing.id)}
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && activeListings.length === 0 && (
+        <div className="text-center py-12">
+          <Tag className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground mb-4">No active listings</p>
+          <Button asChild><Link href="/profile">List NFTs from My NFTs</Link></Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
 
@@ -841,6 +1035,10 @@ export default function ProfilePage() {
               <Package className="h-4 w-4" />
               My NFTs
             </TabsTrigger>
+            <TabsTrigger value="listings" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              My Listings
+            </TabsTrigger>
             <TabsTrigger value="auctions" className="flex items-center gap-2">
               <Gavel className="h-4 w-4" />
               My Auctions
@@ -853,6 +1051,10 @@ export default function ProfilePage() {
 
           <TabsContent value="nfts">
             <MyNFTsTab />
+          </TabsContent>
+
+          <TabsContent value="listings">
+            <MyListingsTab />
           </TabsContent>
 
           <TabsContent value="auctions">
