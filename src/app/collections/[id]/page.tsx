@@ -16,8 +16,10 @@ import {
   User,
   Hash,
   ExternalLink,
-  Coins
+  Coins,
+  FolderOpen
 } from "lucide-react";
+import Link from "next/link";
 
 export default function CollectionDetailPage() {
   const params = useParams();
@@ -204,6 +206,12 @@ export default function CollectionDetailPage() {
           <Button onClick={handleMint}>
             <Coins className="mr-2 h-4 w-4" />
             Mint NFT
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/my-nfts">
+              <FolderOpen className="mr-2 h-4 w-4" />
+              My NFTs
+            </Link>
           </Button>
           <Button variant="outline" onClick={handleViewExplorer}>
             <ExternalLink className="mr-2 h-4 w-4" />

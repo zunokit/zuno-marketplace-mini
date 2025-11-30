@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Palette, Gavel, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Palette, Gavel, Plus, ChevronLeft, ChevronRight, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
@@ -20,6 +20,12 @@ interface SidebarProps {
 }
 
 const navigationItems = [
+  {
+    title: 'My NFTs',
+    href: '/my-nfts',
+    icon: Package,
+    description: 'Your NFTs',
+  },
   {
     title: 'Collections',
     href: '/collections',
@@ -39,6 +45,11 @@ const createItems = [
     title: 'Create Collection',
     href: '/collections/create',
     icon: Plus,
+  },
+  {
+    title: 'Create Auction',
+    href: '/auctions/create',
+    icon: Gavel,
   },
 ]
 
