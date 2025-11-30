@@ -105,7 +105,7 @@ const CATEGORIES = [
 export default function CreateCollectionForm() {
   const router = useRouter();
   const { isConnected } = useWallet();
-  const { createERC721, createERC1155 } = useCollection();
+  const { createERC721, createERC1155, addToAllowlist, setAllowlistOnly } = useCollection();
   const isLoading = createERC721.isPending || createERC1155.isPending;
   const [logoImage, setLogoImage] = useState<string>("");
   const [bannerImage, setBannerImage] = useState<string>("");
@@ -233,6 +233,29 @@ export default function CreateCollectionForm() {
       }
 
       const collectionAddress = result.address;
+
+      // Add addresses to allowlist if provided
+      if (allowlistAddresses.length > 0) {
+        toast.info("Adding addresses to allowlist...");
+        try {
+          await addToAllowlist.mutateAsync({ 
+            collectionAddress, 
+            addresses: allowlistAddresses 
+          });
+          
+          // Enable allowlist-only mode so only allowlisted users can mint
+          await setAllowlistOnly.mutateAsync({ 
+            collectionAddress, 
+            enabled: true 
+          });
+          
+          toast.success(`${allowlistAddresses.length} addresses added to allowlist`);
+        } catch (err) {
+          toast.error("Failed to configure allowlist", {
+            description: (err as Error).message,
+          });
+        }
+      }
 
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);

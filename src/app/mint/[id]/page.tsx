@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCollectionInfo, useCollection } from "zuno-marketplace-sdk/react";
+import { useCollectionInfo, useCollection, useIsInAllowlist, useIsAllowlistOnly } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { ethers } from "ethers";
@@ -37,6 +37,8 @@ export default function MintPage() {
   const { data: collection, isLoading, error, refetch } = useCollectionInfo(collectionAddress);
   const { batchMintERC721, batchMintERC1155 } = useCollection();
   const { address, isConnected } = useAccount();
+  const { data: isInAllowlist } = useIsInAllowlist(collectionAddress, address);
+  const { data: isAllowlistOnly } = useIsAllowlistOnly(collectionAddress);
   
   const [quantity, setQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
@@ -67,6 +69,14 @@ export default function MintPage() {
 
     if (quantity < 1) {
       toast.error("Quantity must be at least 1");
+      return;
+    }
+
+    // Check allowlist if collection is in allowlist-only mode
+    if (isAllowlistOnly && !isInAllowlist) {
+      toast.error("You are not in the allowlist", {
+        description: "This collection only allows allowlisted addresses to mint.",
+      });
       return;
     }
 
@@ -321,10 +331,24 @@ export default function MintPage() {
             </div>
           </CardContent>
           <CardFooter>
+            {/* Allowlist Status */}
+            {isAllowlistOnly && (
+              <div className={`p-3 rounded-lg mb-4 ${isInAllowlist ? 'bg-green-500/10 border border-green-500/30' : 'bg-destructive/10 border border-destructive/30'}`}>
+                <p className={`text-sm font-medium ${isInAllowlist ? 'text-green-500' : 'text-destructive'}`}>
+                  {isInAllowlist ? '✓ You are in the allowlist' : '✗ You are not in the allowlist'}
+                </p>
+                {!isInAllowlist && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This collection only allows allowlisted addresses to mint.
+                  </p>
+                )}
+              </div>
+            )}
+
             <Button 
               className="w-full h-12 text-lg"
               onClick={handleMint}
-              disabled={isMinting || !isConnected || remaining <= 0}
+              disabled={isMinting || !isConnected || remaining <= 0 || (isAllowlistOnly && !isInAllowlist)}
             >
               {isMinting ? (
                 <>
@@ -335,6 +359,8 @@ export default function MintPage() {
                 "Sold Out"
               ) : !isConnected ? (
                 "Connect Wallet to Mint"
+              ) : isAllowlistOnly && !isInAllowlist ? (
+                "Not in Allowlist"
               ) : (
                 `Mint ${quantity} NFT${quantity > 1 ? 's' : ''}`
               )}
