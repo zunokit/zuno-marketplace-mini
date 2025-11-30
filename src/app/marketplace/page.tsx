@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,10 +15,20 @@ import {
   ShoppingCart,
   Search
 } from "lucide-react";
-import { useCollectionInfo, useExchange, useListings } from "zuno-marketplace-sdk/react";
+import { useCollectionInfo, useExchange, useCreatedCollections, useZuno } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import Link from "next/link";
+
+interface Listing {
+  id: string;
+  collectionAddress: string;
+  tokenId: string;
+  price: string;
+  seller: string;
+  endTime: number;
+  status: string;
+}
 
 interface ListingCardProps {
   listing: {
@@ -96,14 +106,45 @@ function ListingCard({ listing, onBuy, isBuying, currentUser }: ListingCardProps
 
 export default function MarketplacePage() {
   const { address, isConnected } = useAccount();
-  const [collectionFilter, setCollectionFilter] = useState("");
+  const sdk = useZuno();
+  const [searchFilter, setSearchFilter] = useState("");
   const [buyingId, setBuyingId] = useState<string | null>(null);
+  const [allListings, setAllListings] = useState<Listing[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Get listings for a specific collection if filtered
-  const { data: listings, isLoading, refetch } = useListings(
-    collectionFilter || undefined
-  );
+  const { data: collections, refetch: refetchCollections } = useCreatedCollections();
   const { buyNFT } = useExchange();
+
+  // Fetch listings from all collections
+  useEffect(() => {
+    if (!collections || collections.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchAllListings = async () => {
+      setIsLoading(true);
+      const listings: Listing[] = [];
+
+      for (const col of collections) {
+        try {
+          const colListings = await sdk.exchange.getListings(col.address);
+          listings.push(...colListings);
+        } catch {
+          // Skip collections with no listings or errors
+        }
+      }
+
+      setAllListings(listings);
+      setIsLoading(false);
+    };
+
+    fetchAllListings();
+  }, [collections, sdk]);
+
+  const handleRefresh = async () => {
+    refetchCollections();
+  };
 
   const handleBuy = async (listingId: string, price: string) => {
     if (!isConnected) {
@@ -119,7 +160,7 @@ export default function MarketplacePage() {
         value: ethers.parseEther(price).toString()
       });
       toast.success("NFT purchased successfully!");
-      refetch();
+      handleRefresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to purchase NFT");
     } finally {
@@ -127,7 +168,21 @@ export default function MarketplacePage() {
     }
   };
 
-  const activeListings = listings?.filter(l => l.status === 'active') || [];
+  // Filter active listings and apply search
+  const activeListings = useMemo(() => {
+    let filtered = allListings.filter(l => l.status === 'active');
+    
+    if (searchFilter) {
+      const search = searchFilter.toLowerCase();
+      filtered = filtered.filter(l => 
+        l.collectionAddress.toLowerCase().includes(search) ||
+        l.tokenId.includes(search) ||
+        l.seller.toLowerCase().includes(search)
+      );
+    }
+    
+    return filtered;
+  }, [allListings, searchFilter]);
 
   return (
     <MainLayout>
@@ -146,30 +201,26 @@ export default function MarketplacePage() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Filter by collection address..."
-              value={collectionFilter}
-              onChange={(e) => setCollectionFilter(e.target.value)}
+              placeholder="Search by collection, token ID, or seller..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
               className="pl-10 font-mono text-sm"
             />
           </div>
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
+          <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
 
-        {/* Info */}
-        {!collectionFilter && (
-          <div className="bg-muted/50 rounded-lg p-4 mb-6">
-            <p className="text-sm text-muted-foreground">
-              Enter a collection address to view listings. 
-              Browse collections from the <Link href="/collections" className="underline">Collections</Link> page.
-            </p>
-          </div>
-        )}
+        {/* Stats */}
+        <div className="text-sm text-muted-foreground mb-4">
+          {isLoading ? 'Loading listings...' : `${activeListings.length} active listing${activeListings.length !== 1 ? 's' : ''}`}
+          {collections && ` from ${collections.length} collection${collections.length !== 1 ? 's' : ''}`}
+        </div>
 
         {/* Loading */}
-        {isLoading && collectionFilter && (
+        {isLoading && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {[...Array(10)].map((_, i) => (
               <Skeleton key={i} className="h-64" />
@@ -178,32 +229,29 @@ export default function MarketplacePage() {
         )}
 
         {/* Listings */}
-        {!isLoading && collectionFilter && activeListings.length > 0 && (
-          <>
-            <p className="text-sm text-muted-foreground mb-4">
-              {activeListings.length} listing{activeListings.length !== 1 ? 's' : ''} found
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {activeListings.map((listing) => (
-                <ListingCard
-                  key={listing.id}
-                  listing={listing}
-                  onBuy={handleBuy}
-                  isBuying={buyingId === listing.id}
-                  currentUser={address}
-                />
-              ))}
-            </div>
-          </>
+        {!isLoading && activeListings.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {activeListings.map((listing) => (
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                onBuy={handleBuy}
+                isBuying={buyingId === listing.id}
+                currentUser={address}
+              />
+            ))}
+          </div>
         )}
 
         {/* Empty */}
-        {!isLoading && collectionFilter && activeListings.length === 0 && (
+        {!isLoading && activeListings.length === 0 && (
           <div className="text-center py-12">
             <Store className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
             <p className="text-lg text-muted-foreground mb-4">No listings found</p>
             <p className="text-sm text-muted-foreground">
-              No NFTs are currently listed for sale in this collection.
+              {searchFilter 
+                ? 'No listings match your search criteria.'
+                : 'No NFTs are currently listed for sale. List yours from the Profile page!'}
             </p>
           </div>
         )}
