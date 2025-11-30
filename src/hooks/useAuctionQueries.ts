@@ -19,7 +19,7 @@ export function useActiveAuctions(page = 1, pageSize = 20) {
 
       const factory = await sdk.contractRegistry.getContract(
         "AuctionFactory",
-        sdk.getConfig().network,
+        String(sdk.getConfig().network),
         provider
       );
 
@@ -66,7 +66,7 @@ export function useAuctionsBySeller(seller?: string, page = 1, pageSize = 20) {
 
       const factory = await sdk.contractRegistry.getContract(
         "AuctionFactory",
-        sdk.getConfig().network,
+        String(sdk.getConfig().network),
         provider
       );
 
