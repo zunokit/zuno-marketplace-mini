@@ -221,7 +221,8 @@ export default function CreateCollectionForm() {
         maxSupply: parseInt(params.maxSupply || "10000"),
         mintLimitPerWallet: parseInt(params.mintLimitPerWallet || "0"),
         publicMintPrice: params.mintPrice, // Same as mintPrice by default
-        allowlistStageDuration: 86400, // 24 hours default
+        // Only set allowlist duration if addresses provided, otherwise go straight to public
+        allowlistStageDuration: allowlistAddresses.length > 0 ? 86400 : 0,
         tokenURI: params.baseTokenURI || "",
       };
 
