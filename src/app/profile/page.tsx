@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Package, RefreshCw, Gavel, Palette, User } from "lucide-react";
+import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown } from "lucide-react";
 import Link from "next/link";
 import { useCreatedCollections, useCollectionInfo, useAuction } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
@@ -615,6 +615,213 @@ function MyCollectionsTab() {
   );
 }
 
+interface AuctionItem {
+  id: string;
+  collectionAddress: string;
+  tokenId: string;
+  type: 'english' | 'dutch';
+  status: string;
+  startPrice?: string;
+  currentBid?: string;
+  endTime: number;
+}
+
+function AuctionCard({
+  auction,
+  isSelected,
+  onSelect,
+}: {
+  auction: AuctionItem;
+  isSelected: boolean;
+  onSelect: (selected: boolean) => void;
+}) {
+  const { data: info } = useCollectionInfo(auction.collectionAddress);
+  const timeLeft = Math.max(0, auction.endTime - Math.floor(Date.now() / 1000));
+  const hours = Math.floor(timeLeft / 3600);
+  const minutes = Math.floor((timeLeft % 3600) / 60);
+
+  return (
+    <Card className={`overflow-hidden transition-all ${isSelected ? 'ring-2 ring-destructive' : ''}`}>
+      <div className="relative">
+        <div className="absolute top-2 left-2 z-10">
+          <Checkbox 
+            checked={isSelected} 
+            onCheckedChange={onSelect}
+            className="bg-background"
+          />
+        </div>
+        <div className="absolute top-2 right-2 z-10">
+          <Badge variant={auction.type === 'english' ? 'default' : 'secondary'} className="text-xs">
+            {auction.type === 'english' ? <Gavel className="h-3 w-3 mr-1" /> : <TrendingDown className="h-3 w-3 mr-1" />}
+            {auction.type}
+          </Badge>
+        </div>
+        <div className="h-28 bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center">
+          <span className="text-2xl font-bold text-orange-500/30">#{auction.tokenId}</span>
+        </div>
+      </div>
+      <CardContent className="p-3">
+        <p className="text-sm font-medium truncate mb-1">{info?.name || 'Loading...'}</p>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {timeLeft > 0 ? `${hours}h ${minutes}m` : 'Ended'}
+          </span>
+          <span>{auction.currentBid || auction.startPrice} ETH</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyAuctionsTab() {
+  const { address } = useAccount();
+  const { data: userAuctions, isLoading, refetch } = useAuctionsBySeller(address, 1, 100);
+  const { cancelAuction } = useAuction();
+  const [selectedAuctions, setSelectedAuctions] = useState<Set<string>>(new Set());
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [cancelProgress, setCancelProgress] = useState({ current: 0, total: 0 });
+
+  const activeAuctions = useMemo(() => {
+    if (!userAuctions?.items) return [];
+    return userAuctions.items.filter((a: AuctionItem) => a.status === 'active');
+  }, [userAuctions]);
+
+  const handleSelectAuction = (auctionId: string, selected: boolean) => {
+    setSelectedAuctions(prev => {
+      const next = new Set(prev);
+      if (selected) next.add(auctionId); else next.delete(auctionId);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedAuctions.size === activeAuctions.length) {
+      setSelectedAuctions(new Set());
+    } else {
+      setSelectedAuctions(new Set(activeAuctions.map((a: AuctionItem) => a.id)));
+    }
+  };
+
+  const handleCancelSelected = async () => {
+    if (selectedAuctions.size === 0) return;
+    
+    const toCancel = Array.from(selectedAuctions);
+    setIsProcessing(true);
+    setCancelProgress({ current: 0, total: toCancel.length });
+
+    let success = 0;
+    for (const auctionId of toCancel) {
+      try {
+        await cancelAuction.mutateAsync({ auctionId });
+        success++;
+        setCancelProgress({ current: success, total: toCancel.length });
+        toast.success(`Auction ${auctionId.slice(0, 8)}... cancelled`);
+      } catch (err) {
+        toast.error(`Failed to cancel ${auctionId.slice(0, 8)}...: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      }
+    }
+
+    if (success === toCancel.length) {
+      toast.success(`All ${success} auctions cancelled!`);
+    } else if (success > 0) {
+      toast.warning(`${success}/${toCancel.length} auctions cancelled`);
+    }
+
+    setSelectedAuctions(new Set());
+    setIsProcessing(false);
+    refetch();
+  };
+
+  const handleCancelSingle = async (auctionId: string) => {
+    try {
+      await cancelAuction.mutateAsync({ auctionId });
+      toast.success('Auction cancelled!');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel auction');
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <p className="text-muted-foreground">
+          {isLoading ? 'Loading...' : `${activeAuctions.length} active auctions`}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
+          {activeAuctions.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleSelectAll}>
+              {selectedAuctions.size === activeAuctions.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {selectedAuctions.size > 0 && (
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border border-destructive/50 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <p className="font-medium text-destructive">{selectedAuctions.size} auction(s) selected</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedAuctions(new Set())}>Clear</Button>
+            <Button variant="destructive" size="sm" onClick={handleCancelSelected} disabled={isProcessing}>
+              {isProcessing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling {cancelProgress.current}/{cancelProgress.total}</>
+              ) : (
+                <><XCircle className="h-4 w-4 mr-2" />Cancel {selectedAuctions.size} Auction{selectedAuctions.size > 1 ? 's' : ''}</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading your auctions...</span>
+        </div>
+      )}
+
+      {!isLoading && activeAuctions.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {activeAuctions.map((auction: AuctionItem) => (
+            <div key={auction.id} className="relative group">
+              <AuctionCard
+                auction={auction}
+                isSelected={selectedAuctions.has(auction.id)}
+                onSelect={(selected) => handleSelectAuction(auction.id, selected)}
+              />
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
+                <Button size="sm" variant="secondary" asChild>
+                  <Link href={`/auctions/${auction.id}`}>View</Link>
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={() => handleCancelSingle(auction.id)}
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && activeAuctions.length === 0 && (
+        <div className="text-center py-12">
+          <Gavel className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground mb-4">No active auctions</p>
+          <Button asChild><Link href="/profile">Create Auction from My NFTs</Link></Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
 
@@ -647,6 +854,10 @@ export default function ProfilePage() {
               <Package className="h-4 w-4" />
               My NFTs
             </TabsTrigger>
+            <TabsTrigger value="auctions" className="flex items-center gap-2">
+              <Gavel className="h-4 w-4" />
+              My Auctions
+            </TabsTrigger>
             <TabsTrigger value="collections" className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               My Collections
@@ -655,6 +866,10 @@ export default function ProfilePage() {
 
           <TabsContent value="nfts">
             <MyNFTsTab />
+          </TabsContent>
+
+          <TabsContent value="auctions">
+            <MyAuctionsTab />
           </TabsContent>
 
           <TabsContent value="collections">
