@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Package, RefreshCw, Gavel } from "lucide-react";
+import { Loader2, Package, RefreshCw, Gavel, Palette, User } from "lucide-react";
 import Link from "next/link";
 import { useCreatedCollections, useCollectionInfo, useAuction } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
@@ -165,8 +166,7 @@ function AuctionModal({
   const [auctionType, setAuctionType] = useState<'english' | 'dutch'>('english');
   const [startPrice, setStartPrice] = useState('0.1');
   const [reservePrice, setReservePrice] = useState('0.05');
-  const [duration, setDuration] = useState('86400'); // 1 day
-  const [priceDropPerHour, setPriceDropPerHour] = useState('500'); // 5%
+  const [duration, setDuration] = useState('86400');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
@@ -187,7 +187,6 @@ function AuctionModal({
     setProgress({ current: 0, total: selectedItems.length });
 
     try {
-      // SDK handles approval automatically
       let completed = 0;
       for (const item of selectedItems) {
         try {
@@ -244,9 +243,7 @@ function AuctionModal({
           <div className="space-y-2">
             <Label>Auction Type</Label>
             <Select value={auctionType} onValueChange={(v: 'english' | 'dutch') => setAuctionType(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="english">English Auction (Ascending)</SelectItem>
                 <SelectItem value="dutch">Dutch Auction (Descending)</SelectItem>
@@ -256,30 +253,18 @@ function AuctionModal({
 
           <div className="space-y-2">
             <Label>{auctionType === 'english' ? 'Starting Bid' : 'Start Price'} (ETH)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={startPrice}
-              onChange={(e) => setStartPrice(e.target.value)}
-            />
+            <Input type="number" step="0.01" value={startPrice} onChange={(e) => setStartPrice(e.target.value)} />
           </div>
 
           <div className="space-y-2">
             <Label>{auctionType === 'english' ? 'Reserve Price' : 'End Price'} (ETH)</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={reservePrice}
-              onChange={(e) => setReservePrice(e.target.value)}
-            />
+            <Input type="number" step="0.01" value={reservePrice} onChange={(e) => setReservePrice(e.target.value)} />
           </div>
 
           <div className="space-y-2">
             <Label>Duration</Label>
             <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="3600">1 Hour</SelectItem>
                 <SelectItem value="21600">6 Hours</SelectItem>
@@ -291,23 +276,6 @@ function AuctionModal({
             </Select>
           </div>
 
-          {auctionType === 'dutch' && (
-            <div className="space-y-2">
-              <Label>Price Drop Per Hour (%)</Label>
-              <Select value={priceDropPerHour} onValueChange={setPriceDropPerHour}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="100">1%</SelectItem>
-                  <SelectItem value="250">2.5%</SelectItem>
-                  <SelectItem value="500">5%</SelectItem>
-                  <SelectItem value="1000">10%</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
           {isProcessing && (
             <div className="bg-muted rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
@@ -315,33 +283,20 @@ function AuctionModal({
                 <span className="text-sm">Processing...</span>
               </div>
               <div className="w-full bg-background rounded-full h-2">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all"
-                  style={{ width: `${(progress.current / progress.total) * 100}%` }}
-                />
+                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {progress.current} / {progress.total} completed
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">{progress.current} / {progress.total} completed</p>
             </div>
           )}
         </div>
 
         <div className="flex gap-2 justify-end">
-          <Button variant="outline" onClick={onClose} disabled={isProcessing}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
           <Button onClick={handleCreateAuctions} disabled={isProcessing}>
             {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
-              </>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
             ) : (
-              <>
-                <Gavel className="h-4 w-4 mr-2" />
-                {selectedItems.length > 1 ? `Create ${selectedItems.length} Auctions` : 'Create Auction'}
-              </>
+              <><Gavel className="h-4 w-4 mr-2" />{selectedItems.length > 1 ? `Create ${selectedItems.length} Auctions` : 'Create Auction'}</>
             )}
           </Button>
         </div>
@@ -350,8 +305,46 @@ function AuctionModal({
   );
 }
 
-export default function MyNFTsPage() {
-  const { address, isConnected } = useAccount();
+function CollectionCard({ address, type }: { address: string; type: "ERC721" | "ERC1155" }) {
+  const { data: info, isLoading } = useCollectionInfo(address);
+
+  if (isLoading) {
+    return (
+      <Card className="overflow-hidden">
+        <div className="h-32 bg-muted animate-pulse" />
+        <CardContent className="p-4">
+          <div className="h-4 bg-muted rounded animate-pulse mb-2" />
+          <div className="h-3 bg-muted rounded animate-pulse w-2/3" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Link href={`/collections/${address}`}>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+        <div className="h-32 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+          <Palette className="h-12 w-12 text-primary/30" />
+        </div>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold truncate">{info?.name || "Unknown"}</h3>
+            <Badge variant="outline">{type}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground font-mono truncate">{address}</p>
+          {info && (
+            <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+              <span>Supply: {info.totalSupply?.toString() || 0}/{info.maxSupply?.toString() || '∞'}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function MyNFTsTab() {
+  const { address } = useAccount();
   const { data: allCollections, isLoading: loadingCollections, refetch } = useCreatedCollections();
   const { data: userAuctions, refetch: refetchAuctions } = useAuctionsBySeller(address, 1, 100);
   const [userCollections, setUserCollections] = useState<CollectionWithTokens[]>([]);
@@ -359,15 +352,12 @@ export default function MyNFTsPage() {
   const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
   const [auctionModalOpen, setAuctionModalOpen] = useState(false);
 
-  // Create a Set of NFTs that are in active auctions
   const auctionedNFTs = useMemo(() => {
     const set = new Set<string>();
     if (userAuctions?.items) {
-      userAuctions.items
-        .filter(a => a.status === 'active')
-        .forEach(auction => {
-          set.add(`${auction.collectionAddress.toLowerCase()}:${auction.tokenId}`);
-        });
+      userAuctions.items.filter(a => a.status === 'active').forEach(auction => {
+        set.add(`${auction.collectionAddress.toLowerCase()}:${auction.tokenId}`);
+      });
     }
     return set;
   }, [userAuctions]);
@@ -388,9 +378,7 @@ export default function MyNFTsPage() {
               results.push({ address: col.address, type: col.type, tokens });
             }
           }
-        } catch {
-          // Skip failed requests
-        }
+        } catch { /* Skip */ }
       }
 
       setUserCollections(results);
@@ -400,10 +388,7 @@ export default function MyNFTsPage() {
     fetchUserTokens();
   }, [allCollections, address]);
 
-  const totalNFTs = useMemo(() => {
-    return userCollections.reduce((sum, c) => sum + c.tokens.length, 0);
-  }, [userCollections]);
-
+  const totalNFTs = useMemo(() => userCollections.reduce((sum, c) => sum + c.tokens.length, 0), [userCollections]);
   const availableNFTs = useMemo(() => {
     return userCollections.reduce((sum, c) => {
       return sum + c.tokens.filter(t => !auctionedNFTs.has(`${c.address.toLowerCase()}:${t.tokenId}`)).length;
@@ -411,7 +396,6 @@ export default function MyNFTsPage() {
   }, [userCollections, auctionedNFTs]);
 
   const handleSelectToken = (collectionAddress: string, tokenId: string, selected: boolean) => {
-    // Don't allow selecting auctioned NFTs
     if (auctionedNFTs.has(`${collectionAddress.toLowerCase()}:${tokenId}`)) return;
     const key = `${collectionAddress}:${tokenId}`;
     setSelectedTokens(prev => {
@@ -425,7 +409,6 @@ export default function MyNFTsPage() {
     setSelectedTokens(prev => {
       const next = new Set(prev);
       collection.tokens.forEach(t => {
-        // Skip auctioned NFTs
         if (auctionedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`)) return;
         const key = `${collection.address}:${t.tokenId}`;
         if (selected) next.add(key); else next.delete(key);
@@ -440,7 +423,6 @@ export default function MyNFTsPage() {
     } else {
       const all = new Set<string>();
       userCollections.forEach(c => c.tokens.forEach(t => {
-        // Skip auctioned NFTs
         if (!auctionedNFTs.has(`${c.address.toLowerCase()}:${t.tokenId}`)) {
           all.add(`${c.address}:${t.tokenId}`);
         }
@@ -451,13 +433,135 @@ export default function MyNFTsPage() {
 
   const isLoading = loadingCollections || isLoadingTokens;
 
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <p className="text-muted-foreground">
+          {isLoading ? 'Loading...' : `${totalNFTs} NFTs in ${userCollections.length} collections`}
+          {auctionedNFTs.size > 0 && ` (${auctionedNFTs.size} in auction)`}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchAuctions(); }}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
+          {availableNFTs > 0 && (
+            <Button variant="outline" size="sm" onClick={handleSelectAll}>
+              {selectedTokens.size === availableNFTs ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {selectedTokens.size > 0 && (
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border rounded-lg p-4 mb-6 flex items-center justify-between">
+          <p className="font-medium">{selectedTokens.size} NFT(s) selected</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedTokens(new Set())}>Clear</Button>
+            <Button size="sm" onClick={() => setAuctionModalOpen(true)}>
+              <Gavel className="h-4 w-4 mr-2" />
+              {selectedTokens.size > 1 ? 'Batch Auction' : 'Create Auction'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <AuctionModal
+        open={auctionModalOpen}
+        onClose={() => setAuctionModalOpen(false)}
+        selectedTokens={selectedTokens}
+        userCollections={userCollections}
+        onSuccess={() => { setSelectedTokens(new Set()); setAuctionModalOpen(false); refetchAuctions(); }}
+      />
+
+      {isLoading && (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading your NFTs...</span>
+        </div>
+      )}
+
+      {!isLoading && userCollections.length > 0 && userCollections.map((collection) => (
+        <CollectionGroup
+          key={collection.address}
+          collection={collection}
+          selectedTokens={selectedTokens}
+          onSelectToken={(tokenId, selected) => handleSelectToken(collection.address, tokenId, selected)}
+          onSelectAll={(selected) => handleSelectAllInCollection(collection, selected)}
+          auctionedNFTs={auctionedNFTs}
+        />
+      ))}
+
+      {!isLoading && userCollections.length === 0 && (
+        <div className="text-center py-12">
+          <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground mb-4">No NFTs found</p>
+          <Button asChild><Link href="/collections">Browse Collections</Link></Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MyCollectionsTab() {
+  const { address } = useAccount();
+  const { data: allCollections, isLoading, refetch } = useCreatedCollections();
+
+  const myCollections = useMemo(() => {
+    if (!allCollections || !address) return [];
+    return allCollections.filter(c => c.creator?.toLowerCase() === address.toLowerCase());
+  }, [allCollections, address]);
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <p className="text-muted-foreground">
+          {isLoading ? 'Loading...' : `${myCollections.length} collections created`}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/collections/create">Create Collection</Link>
+          </Button>
+        </div>
+      </div>
+
+      {isLoading && (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {!isLoading && myCollections.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {myCollections.map((col) => (
+            <CollectionCard key={col.address} address={col.address} type={col.type} />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && myCollections.length === 0 && (
+        <div className="text-center py-12">
+          <Palette className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground mb-4">No collections created</p>
+          <Button asChild><Link href="/collections/create">Create Collection</Link></Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ProfilePage() {
+  const { address, isConnected } = useAccount();
+
   if (!isConnected) {
     return (
       <MainLayout>
         <div className="container mx-auto px-4 py-20 text-center">
-          <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <User className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
           <h1 className="text-2xl font-bold mb-2">Connect Wallet</h1>
-          <p className="text-muted-foreground">Connect your wallet to view your NFTs</p>
+          <p className="text-muted-foreground">Connect your wallet to view your profile</p>
         </div>
       </MainLayout>
     );
@@ -466,78 +570,34 @@ export default function MyNFTsPage() {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">My NFTs</h1>
-            <p className="text-muted-foreground">
-              {isLoading ? 'Loading...' : `${totalNFTs} NFTs in ${userCollections.length} collections`}
-              {auctionedNFTs.size > 0 && ` (${auctionedNFTs.size} in auction)`}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { refetch(); refetchAuctions(); }}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            {availableNFTs > 0 && (
-              <Button variant="outline" onClick={handleSelectAll}>
-                {selectedTokens.size === availableNFTs ? 'Deselect All' : 'Select All'}
-              </Button>
-            )}
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+            <User className="h-8 w-8" />
+            My Profile
+          </h1>
+          <p className="text-muted-foreground font-mono">{address}</p>
         </div>
 
-        {selectedTokens.size > 0 && (
-          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border rounded-lg p-4 mb-6 flex items-center justify-between">
-            <p className="font-medium">{selectedTokens.size} NFT(s) selected</p>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setSelectedTokens(new Set())}>Clear</Button>
-              <Button onClick={() => setAuctionModalOpen(true)}>
-                <Gavel className="h-4 w-4 mr-2" />
-                {selectedTokens.size > 1 ? 'Batch Auction' : 'Create Auction'}
-              </Button>
-              <Button disabled>List for Sale</Button>
-            </div>
-          </div>
-        )}
+        <Tabs defaultValue="nfts" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="nfts" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              My NFTs
+            </TabsTrigger>
+            <TabsTrigger value="collections" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              My Collections
+            </TabsTrigger>
+          </TabsList>
 
-        <AuctionModal
-          open={auctionModalOpen}
-          onClose={() => setAuctionModalOpen(false)}
-          selectedTokens={selectedTokens}
-          userCollections={userCollections}
-          onSuccess={() => {
-            setSelectedTokens(new Set());
-            setAuctionModalOpen(false);
-            refetchAuctions();
-          }}
-        />
+          <TabsContent value="nfts">
+            <MyNFTsTab />
+          </TabsContent>
 
-        {isLoading && (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2 text-muted-foreground">Loading your NFTs...</span>
-          </div>
-        )}
-
-        {!isLoading && userCollections.length > 0 && userCollections.map((collection) => (
-          <CollectionGroup
-            key={collection.address}
-            collection={collection}
-            selectedTokens={selectedTokens}
-            onSelectToken={(tokenId, selected) => handleSelectToken(collection.address, tokenId, selected)}
-            onSelectAll={(selected) => handleSelectAllInCollection(collection, selected)}
-            auctionedNFTs={auctionedNFTs}
-          />
-        ))}
-
-        {!isLoading && userCollections.length === 0 && (
-          <div className="text-center py-12">
-            <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-lg text-muted-foreground mb-4">No NFTs found</p>
-            <Button asChild><Link href="/collections">Browse Collections</Link></Button>
-          </div>
-        )}
+          <TabsContent value="collections">
+            <MyCollectionsTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );

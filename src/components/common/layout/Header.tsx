@@ -14,9 +14,15 @@ import {
 } from "@/components/ui/sheet";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { WalletConnectButton } from "@/components/wallet/WalletConnectButton";
-import { Palette, Gavel, Menu, Plus } from "lucide-react";
+import { Palette, Gavel, Menu, Plus, User } from "lucide-react";
 
 const navigationItems = [
+  {
+    title: "Profile",
+    href: "/profile",
+    icon: User,
+    description: "Your profile",
+  },
   {
     title: "Collections",
     href: "/collections",
@@ -80,6 +86,14 @@ export function Header() {
                   >
                     <Plus className="h-4 w-4" />
                     <span>Create Collection</span>
+                  </Link>
+                  <Link
+                    href="/auctions/create"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Gavel className="h-4 w-4" />
+                    <span>Create Auction</span>
                   </Link>
                 </div>
 

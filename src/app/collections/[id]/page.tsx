@@ -208,7 +208,7 @@ export default function CollectionDetailPage() {
             Mint NFT
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/my-nfts">
+            <Link href="/profile">
               <FolderOpen className="mr-2 h-4 w-4" />
               My NFTs
             </Link>
