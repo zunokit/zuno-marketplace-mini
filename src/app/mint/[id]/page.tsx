@@ -11,6 +11,7 @@ import {
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { ethers } from "ethers";
+import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -131,40 +132,45 @@ export default function MintPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Skeleton className="h-8 w-32 mb-6" />
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-96" />
-          <Skeleton className="h-96" />
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <Skeleton className="h-8 w-32 mb-6" />
+          <div className="grid gap-6 md:grid-cols-2">
+            <Skeleton className="h-96" />
+            <Skeleton className="h-96" />
+          </div>
         </div>
-      </div>
+      </MainLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <p className="text-destructive">
-              Error loading collection: {error.message}
-            </p>
-            <Button
-              variant="outline"
-              className="mt-4"
-              onClick={() => router.back()}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Go Back
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <MainLayout>
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <Card className="border-destructive">
+            <CardContent className="pt-6">
+              <p className="text-destructive">
+                Error loading collection: {error.message}
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => router.back()}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Go Back
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </MainLayout>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
       {/* Back Button */}
       <Button
         variant="ghost"
@@ -415,7 +421,8 @@ export default function MintPage() {
             </Button>
           </CardFooter>
         </Card>
+        </div>
       </div>
-    </div>
+    </MainLayout>
   );
 }

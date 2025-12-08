@@ -22,9 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown } from "lucide-react";
+import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown, Tag } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo, useAuction } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
@@ -35,6 +35,15 @@ interface CollectionWithTokens {
   tokens: Array<{ tokenId: string; amount: number }>;
 }
 
+interface ListingItem {
+  id: string;
+  collectionAddress: string;
+  tokenId: string;
+  price: string;
+  endTime: number;
+  status: string;
+}
+
 function NFTCard({ 
   collectionAddress, 
   tokenId, 
@@ -42,6 +51,7 @@ function NFTCard({
   isSelected,
   onSelect,
   isInAuction,
+  isListed,
 }: { 
   collectionAddress: string;
   tokenId: string;
@@ -49,18 +59,20 @@ function NFTCard({
   isSelected: boolean;
   onSelect: (selected: boolean) => void;
   isInAuction?: boolean;
+  isListed?: boolean;
 }) {
   const { data: info } = useCollectionInfo(collectionAddress);
+  const isDisabled = isInAuction || isListed;
 
   return (
-    <Card className={`overflow-hidden transition-all ${isSelected ? 'ring-2 ring-primary' : ''} ${isInAuction ? 'opacity-60' : ''}`}>
+    <Card className={`overflow-hidden transition-all ${isSelected ? 'ring-2 ring-primary' : ''} ${isDisabled ? 'opacity-60' : ''}`}>
       <div className="relative">
         <div className="absolute top-2 left-2 z-10">
           <Checkbox 
             checked={isSelected} 
             onCheckedChange={onSelect}
             className="bg-background"
-            disabled={isInAuction}
+            disabled={isDisabled}
           />
         </div>
         {isInAuction && (
@@ -68,6 +80,14 @@ function NFTCard({
             <Badge variant="destructive" className="text-xs">
               <Gavel className="h-3 w-3 mr-1" />
               In Auction
+            </Badge>
+          </div>
+        )}
+        {isListed && !isInAuction && (
+          <div className="absolute top-2 right-2 z-10">
+            <Badge variant="secondary" className="text-xs bg-green-500 text-white">
+              <Tag className="h-3 w-3 mr-1" />
+              Listed
             </Badge>
           </div>
         )}
@@ -94,15 +114,20 @@ function CollectionGroup({
   onSelectToken,
   onSelectAll,
   auctionedNFTs,
+  listedNFTs,
 }: {
   collection: CollectionWithTokens;
   selectedTokens: Set<string>;
   onSelectToken: (tokenId: string, selected: boolean) => void;
   onSelectAll: (selected: boolean) => void;
   auctionedNFTs: Set<string>;
+  listedNFTs: Set<string>;
 }) {
   const { data: info } = useCollectionInfo(collection.address);
-  const availableTokens = collection.tokens.filter(t => !auctionedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`));
+  const availableTokens = collection.tokens.filter(t => 
+    !auctionedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`) &&
+    !listedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`)
+  );
   const allSelected = availableTokens.length > 0 && availableTokens.every(t => selectedTokens.has(`${collection.address}:${t.tokenId}`));
   const someSelected = availableTokens.some(t => selectedTokens.has(`${collection.address}:${t.tokenId}`));
 
@@ -131,7 +156,9 @@ function CollectionGroup({
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {collection.tokens.map((token) => {
-          const isInAuction = auctionedNFTs.has(`${collection.address.toLowerCase()}:${token.tokenId}`);
+          const key = `${collection.address.toLowerCase()}:${token.tokenId}`;
+          const isInAuction = auctionedNFTs.has(key);
+          const isListed = listedNFTs.has(key);
           return (
             <NFTCard
               key={`${collection.address}:${token.tokenId}`}
@@ -141,6 +168,7 @@ function CollectionGroup({
               isSelected={selectedTokens.has(`${collection.address}:${token.tokenId}`)}
               onSelect={(selected) => onSelectToken(token.tokenId, selected)}
               isInAuction={isInAuction}
+              isListed={isListed}
             />
           );
         })}
@@ -368,6 +396,174 @@ function AuctionModal({
   );
 }
 
+function ListingModal({
+  open,
+  onClose,
+  selectedTokens,
+  userCollections: _userCollections,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selectedTokens: Set<string>;
+  userCollections: CollectionWithTokens[];
+  onSuccess: () => void;
+}) {
+  const { listNFT, batchListNFT } = useExchange();
+  const [price, setPrice] = useState('0.1');
+  const [duration, setDuration] = useState('604800');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+
+  // Group selected tokens by collection for batch listing
+  const groupedByCollection = useMemo(() => {
+    const groups: Record<string, string[]> = {};
+    selectedTokens.forEach(key => {
+      const [collectionAddress, tokenId] = key.split(':');
+      if (!groups[collectionAddress]) {
+        groups[collectionAddress] = [];
+      }
+      groups[collectionAddress].push(tokenId);
+    });
+    return groups;
+  }, [selectedTokens]);
+
+  const collectionGroups = Object.entries(groupedByCollection);
+  const totalNFTs = selectedTokens.size;
+  const numTransactions = collectionGroups.length;
+
+  const handleCreateListings = async () => {
+    if (totalNFTs === 0) return;
+    
+    setIsProcessing(true);
+    setProgress({ current: 0, total: numTransactions });
+
+    try {
+      let completedTx = 0;
+      let completedNFTs = 0;
+
+      for (const [collectionAddress, tokenIds] of collectionGroups) {
+        try {
+          if (tokenIds.length === 1) {
+            // Single NFT - use listNFT
+            await listNFT.mutateAsync({
+              collectionAddress,
+              tokenId: tokenIds[0],
+              price,
+              duration: parseInt(duration),
+            });
+          } else {
+            // Multiple NFTs from same collection - use batchListNFT (1 tx)
+            const prices = tokenIds.map(() => price);
+            await batchListNFT.mutateAsync({
+              collectionAddress,
+              tokenIds,
+              prices,
+              duration: parseInt(duration),
+            });
+          }
+          completedTx++;
+          completedNFTs += tokenIds.length;
+          setProgress({ current: completedTx, total: numTransactions });
+          toast.success(`Listed ${tokenIds.length} NFT(s) from collection`);
+        } catch (err) {
+          toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+      }
+
+      if (completedNFTs === totalNFTs) {
+        toast.success(`All ${completedNFTs} NFTs listed in ${completedTx} transaction(s)!`);
+        onSuccess();
+      } else if (completedNFTs > 0) {
+        toast.warning(`${completedNFTs}/${totalNFTs} NFTs listed`);
+      }
+    } catch (err) {
+      toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const isBatchMode = totalNFTs > 1;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {isBatchMode ? `List ${selectedTokens.size} NFTs for Sale` : 'List NFT for Sale'}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isBatchMode && (
+          <div className="bg-muted/50 rounded-lg p-3 text-sm">
+            <p className="font-medium text-primary">
+              {numTransactions === 1 
+                ? '1 transaction (batch listing!)' 
+                : `${numTransactions} transactions (grouped by collection)`}
+            </p>
+            <p className="text-muted-foreground text-xs mt-1">
+              {totalNFTs} NFTs from {numTransactions} collection{numTransactions > 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Price (ETH)</Label>
+            <Input 
+              type="number" 
+              step="0.001" 
+              min="0"
+              value={price} 
+              onChange={(e) => setPrice(e.target.value)} 
+              placeholder="0.1"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Duration</Label>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="86400">1 Day</SelectItem>
+                <SelectItem value="259200">3 Days</SelectItem>
+                <SelectItem value="604800">7 Days</SelectItem>
+                <SelectItem value="1209600">14 Days</SelectItem>
+                <SelectItem value="2592000">30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isProcessing && (
+            <div className="bg-muted rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Processing...</span>
+              </div>
+              <div className="w-full bg-background rounded-full h-2">
+                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{progress.current} / {progress.total} completed</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={onClose} disabled={isProcessing}>Cancel</Button>
+          <Button onClick={handleCreateListings} disabled={isProcessing || !price || parseFloat(price) <= 0}>
+            {isProcessing ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Listing...</>
+            ) : (
+              <><Tag className="h-4 w-4 mr-2" />{isBatchMode ? `List ${totalNFTs} NFTs` : 'List NFT'}</>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CollectionCard({ address, type }: { address: string; type: "ERC721" | "ERC1155" }) {
   const { data: info, isLoading } = useCollectionInfo(address);
 
@@ -410,10 +606,12 @@ function MyNFTsTab() {
   const { address } = useAccount();
   const { data: allCollections, isLoading: loadingCollections, refetch } = useCreatedCollections();
   const { data: userAuctions, refetch: refetchAuctions } = useAuctionsBySeller(address, 1, 100);
+  const { data: userListings, refetch: refetchListings } = useListingsBySeller(address);
   const [userCollections, setUserCollections] = useState<CollectionWithTokens[]>([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<Set<string>>(new Set());
   const [auctionModalOpen, setAuctionModalOpen] = useState(false);
+  const [listingModalOpen, setListingModalOpen] = useState(false);
 
   const auctionedNFTs = useMemo(() => {
     const set = new Set<string>();
@@ -424,6 +622,18 @@ function MyNFTsTab() {
     }
     return set;
   }, [userAuctions]);
+
+  const listedNFTs = useMemo(() => {
+    const set = new Set<string>();
+    if (userListings) {
+      (userListings as Array<{ collectionAddress: string; tokenId: string; status: string }>)
+        .filter(l => l.status === 'active')
+        .forEach(listing => {
+          set.add(`${listing.collectionAddress.toLowerCase()}:${listing.tokenId}`);
+        });
+    }
+    return set;
+  }, [userListings]);
 
   useEffect(() => {
     if (!allCollections || !address) return;
@@ -454,12 +664,16 @@ function MyNFTsTab() {
   const totalNFTs = useMemo(() => userCollections.reduce((sum, c) => sum + c.tokens.length, 0), [userCollections]);
   const availableNFTs = useMemo(() => {
     return userCollections.reduce((sum, c) => {
-      return sum + c.tokens.filter(t => !auctionedNFTs.has(`${c.address.toLowerCase()}:${t.tokenId}`)).length;
+      return sum + c.tokens.filter(t => {
+        const key = `${c.address.toLowerCase()}:${t.tokenId}`;
+        return !auctionedNFTs.has(key) && !listedNFTs.has(key);
+      }).length;
     }, 0);
-  }, [userCollections, auctionedNFTs]);
+  }, [userCollections, auctionedNFTs, listedNFTs]);
 
   const handleSelectToken = (collectionAddress: string, tokenId: string, selected: boolean) => {
-    if (auctionedNFTs.has(`${collectionAddress.toLowerCase()}:${tokenId}`)) return;
+    const nftKey = `${collectionAddress.toLowerCase()}:${tokenId}`;
+    if (auctionedNFTs.has(nftKey) || listedNFTs.has(nftKey)) return;
     const key = `${collectionAddress}:${tokenId}`;
     setSelectedTokens(prev => {
       const next = new Set(prev);
@@ -472,7 +686,8 @@ function MyNFTsTab() {
     setSelectedTokens(prev => {
       const next = new Set(prev);
       collection.tokens.forEach(t => {
-        if (auctionedNFTs.has(`${collection.address.toLowerCase()}:${t.tokenId}`)) return;
+        const nftKey = `${collection.address.toLowerCase()}:${t.tokenId}`;
+        if (auctionedNFTs.has(nftKey) || listedNFTs.has(nftKey)) return;
         const key = `${collection.address}:${t.tokenId}`;
         if (selected) next.add(key); else next.delete(key);
       });
@@ -486,7 +701,8 @@ function MyNFTsTab() {
     } else {
       const all = new Set<string>();
       userCollections.forEach(c => c.tokens.forEach(t => {
-        if (!auctionedNFTs.has(`${c.address.toLowerCase()}:${t.tokenId}`)) {
+        const nftKey = `${c.address.toLowerCase()}:${t.tokenId}`;
+        if (!auctionedNFTs.has(nftKey) && !listedNFTs.has(nftKey)) {
           all.add(`${c.address}:${t.tokenId}`);
         }
       }));
@@ -502,9 +718,10 @@ function MyNFTsTab() {
         <p className="text-muted-foreground">
           {isLoading ? 'Loading...' : `${totalNFTs} NFTs in ${userCollections.length} collections`}
           {auctionedNFTs.size > 0 && ` (${auctionedNFTs.size} in auction)`}
+          {listedNFTs.size > 0 && ` (${listedNFTs.size} listed)`}
         </p>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchAuctions(); }}>
+          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchAuctions(); refetchListings(); }}>
             <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
           {availableNFTs > 0 && (
@@ -520,6 +737,10 @@ function MyNFTsTab() {
           <p className="font-medium">{selectedTokens.size} NFT(s) selected</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setSelectedTokens(new Set())}>Clear</Button>
+            <Button size="sm" variant="secondary" onClick={() => setListingModalOpen(true)}>
+              <Tag className="h-4 w-4 mr-2" />
+              {selectedTokens.size > 1 ? 'List All' : 'List for Sale'}
+            </Button>
             <Button size="sm" onClick={() => setAuctionModalOpen(true)}>
               <Gavel className="h-4 w-4 mr-2" />
               {selectedTokens.size > 1 ? 'Batch Auction' : 'Create Auction'}
@@ -534,6 +755,14 @@ function MyNFTsTab() {
         selectedTokens={selectedTokens}
         userCollections={userCollections}
         onSuccess={() => { setSelectedTokens(new Set()); setAuctionModalOpen(false); refetchAuctions(); }}
+      />
+
+      <ListingModal
+        open={listingModalOpen}
+        onClose={() => setListingModalOpen(false)}
+        selectedTokens={selectedTokens}
+        userCollections={userCollections}
+        onSuccess={() => { setSelectedTokens(new Set()); setListingModalOpen(false); refetchListings(); }}
       />
 
       {isLoading && (
@@ -551,6 +780,7 @@ function MyNFTsTab() {
           onSelectToken={(tokenId, selected) => handleSelectToken(collection.address, tokenId, selected)}
           onSelectAll={(selected) => handleSelectAllInCollection(collection, selected)}
           auctionedNFTs={auctionedNFTs}
+          listedNFTs={listedNFTs}
         />
       ))}
 
@@ -809,6 +1039,194 @@ function MyAuctionsTab() {
   );
 }
 
+function ListingCard({
+  listing,
+  isSelected,
+  onSelect,
+}: {
+  listing: { id: string; collectionAddress: string; tokenId: string; price: string; endTime: number; status: string };
+  isSelected: boolean;
+  onSelect: (selected: boolean) => void;
+}) {
+  const { data: info } = useCollectionInfo(listing.collectionAddress);
+  const timeLeft = Math.max(0, listing.endTime - Math.floor(Date.now() / 1000));
+  const days = Math.floor(timeLeft / 86400);
+  const hours = Math.floor((timeLeft % 86400) / 3600);
+
+  return (
+    <Card className={`overflow-hidden transition-all ${isSelected ? 'ring-2 ring-destructive' : ''}`}>
+      <div className="relative">
+        <div className="absolute top-2 left-2 z-10">
+          <Checkbox 
+            checked={isSelected} 
+            onCheckedChange={onSelect}
+            className="bg-background"
+          />
+        </div>
+        <div className="absolute top-2 right-2 z-10">
+          <Badge variant="outline" className="text-xs bg-background">
+            <Tag className="h-3 w-3 mr-1" />
+            Listed
+          </Badge>
+        </div>
+        <div className="h-28 bg-gradient-to-br from-green-500/20 to-green-500/5 flex items-center justify-center">
+          <span className="text-2xl font-bold text-green-500/30">#{listing.tokenId}</span>
+        </div>
+      </div>
+      <CardContent className="p-3">
+        <p className="text-sm font-medium truncate mb-1">{info?.name || 'Loading...'}</p>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {timeLeft > 0 ? (days > 0 ? `${days}d ${hours}h` : `${hours}h`) : 'Expired'}
+          </span>
+          <span className="font-medium text-foreground">{listing.price} ETH</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MyListingsTab() {
+  const { address } = useAccount();
+  const { data, isLoading, refetch } = useListingsBySeller(address);
+  const { cancelListing, batchCancelListing } = useExchange();
+  const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const userListings = useMemo(() => {
+    return (data || []) as Array<{ id: string; collectionAddress: string; tokenId: string; price: string; endTime: number; status: string }>;
+  }, [data]);
+
+  const activeListings = useMemo(() => {
+    return userListings.filter((l) => l.status === 'active');
+  }, [userListings]);
+
+  const handleSelectListing = (listingId: string, selected: boolean) => {
+    setSelectedListings(prev => {
+      const next = new Set(prev);
+      if (selected) next.add(listingId); else next.delete(listingId);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedListings.size === activeListings.length) {
+      setSelectedListings(new Set());
+    } else {
+      setSelectedListings(new Set(activeListings.map((l: ListingItem) => l.id)));
+    }
+  };
+
+  const handleCancelSelected = async () => {
+    if (selectedListings.size === 0) return;
+    
+    const toCancel = Array.from(selectedListings);
+    setIsProcessing(true);
+
+    try {
+      if (toCancel.length === 1) {
+        await cancelListing.mutateAsync({ listingId: toCancel[0] });
+        toast.success('Listing cancelled!');
+      } else {
+        await batchCancelListing.mutateAsync({ listingIds: toCancel });
+        toast.success(`${toCancel.length} listing(s) cancelled in 1 transaction!`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel listings');
+    }
+
+    setSelectedListings(new Set());
+    setIsProcessing(false);
+    refetch();
+  };
+
+  const handleCancelSingle = async (listingId: string) => {
+    try {
+      await cancelListing.mutateAsync({ listingId });
+      toast.success('Listing cancelled!');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to cancel listing');
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <p className="text-muted-foreground">
+          {isLoading ? 'Loading...' : `${activeListings.length} active listings`}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
+          {activeListings.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleSelectAll}>
+              {selectedListings.size === activeListings.length ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {selectedListings.size > 0 && (
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur border border-destructive/50 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <p className="font-medium text-destructive">{selectedListings.size} listing(s) selected</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setSelectedListings(new Set())}>Clear</Button>
+            <Button variant="destructive" size="sm" onClick={handleCancelSelected} disabled={isProcessing}>
+              {isProcessing ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Cancelling...</>
+              ) : (
+                <><XCircle className="h-4 w-4 mr-2" />Cancel {selectedListings.size} Listing{selectedListings.size > 1 ? 's' : ''} {selectedListings.size > 1 ? '(1 tx)' : ''}</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Loading your listings...</span>
+        </div>
+      )}
+
+      {!isLoading && activeListings.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {activeListings.map((listing: ListingItem) => (
+            <div key={listing.id} className="relative group">
+              <ListingCard
+                listing={listing}
+                isSelected={selectedListings.has(listing.id)}
+                onSelect={(selected) => handleSelectListing(listing.id, selected)}
+              />
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 rounded-lg">
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={() => handleCancelSingle(listing.id)}
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && activeListings.length === 0 && (
+        <div className="text-center py-12">
+          <Tag className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg text-muted-foreground mb-4">No active listings</p>
+          <Button asChild><Link href="/profile">List NFTs from My NFTs</Link></Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
 
@@ -841,6 +1259,10 @@ export default function ProfilePage() {
               <Package className="h-4 w-4" />
               My NFTs
             </TabsTrigger>
+            <TabsTrigger value="listings" className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+              My Listings
+            </TabsTrigger>
             <TabsTrigger value="auctions" className="flex items-center gap-2">
               <Gavel className="h-4 w-4" />
               My Auctions
@@ -853,6 +1275,10 @@ export default function ProfilePage() {
 
           <TabsContent value="nfts">
             <MyNFTsTab />
+          </TabsContent>
+
+          <TabsContent value="listings">
+            <MyListingsTab />
           </TabsContent>
 
           <TabsContent value="auctions">

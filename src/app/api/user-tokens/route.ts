@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const sdk = new ZunoSDK(defaultConfig);
-    const tokens = await sdk.collection.getUserMintedTokens(collection, user);
+    const tokens = await sdk.collection.getUserOwnedTokens(collection, user);
     return NextResponse.json(tokens);
   } catch {
     return NextResponse.json([], { status: 200 });

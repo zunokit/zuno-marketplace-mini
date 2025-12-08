@@ -14,14 +14,14 @@ import {
 } from "@/components/ui/sheet";
 import { ModeToggle } from "@/components/ui/mode-toggle";
 import { WalletConnectButton } from "@/components/wallet/WalletConnectButton";
-import { Palette, Gavel, Menu, Plus, User } from "lucide-react";
+import { Palette, Gavel, Menu, Plus, User, Store } from "lucide-react";
 
 const navigationItems = [
   {
-    title: "Profile",
-    href: "/profile",
-    icon: User,
-    description: "Your profile",
+    title: "Marketplace",
+    href: "/marketplace",
+    icon: Store,
+    description: "Buy NFTs",
   },
   {
     title: "Collections",
@@ -34,6 +34,12 @@ const navigationItems = [
     href: "/auctions",
     icon: Gavel,
     description: "Participate in auctions",
+  },
+  {
+    title: "Profile",
+    href: "/profile",
+    icon: User,
+    description: "Your profile",
   },
 ];
 

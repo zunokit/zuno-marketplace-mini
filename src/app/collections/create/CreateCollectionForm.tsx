@@ -44,7 +44,6 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
-import { envConfigManager } from "@/lib/utils/env-config";
 import Image from "next/image";
 
 // Form validation schema
@@ -82,6 +81,10 @@ const formSchema = z.object({
     return limit > 0 && limit <= 100;
   }, "Mint limit must be between 1 and 100"),
   allowlist: z.string().optional(),
+  allowlistDuration: z.string().refine((val) => {
+    const hours = parseInt(val);
+    return hours >= 0 && hours <= 168;
+  }, "Duration must be between 0 and 168 hours (7 days)"),
   baseTokenURI: z.string().url("Invalid URL").optional().or(z.literal("")),
   website: z.string().url("Invalid URL").optional().or(z.literal("")),
   twitter: z.string().optional(),
@@ -129,8 +132,9 @@ export default function CreateCollectionForm() {
       maxSupply: "10000",
       mintLimitPerWallet: "50",
       mintPrice: "10",
-      // Convert comma-separated allowlist to newline-separated for textarea
-      allowlist: envConfigManager.getAllowlistAddresses().join("\n"),
+      // Default allowlist from env (comma-separated -> newline-separated)
+      allowlist: (process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST || "").split(",").filter(Boolean).join("\n"),
+      allowlistDuration: "24",
       baseTokenURI: "https://api.example.com/metadata",
     },
   });
@@ -222,7 +226,8 @@ export default function CreateCollectionForm() {
         maxSupply: parseInt(params.maxSupply || "10000"),
         mintLimitPerWallet: parseInt(params.mintLimitPerWallet || "0"),
         publicMintPrice: params.mintPrice, // Same as mintPrice by default
-        allowlistStageDuration: 86400, // 24 hours default
+        // Only set allowlist duration if addresses provided, otherwise go straight to public
+        allowlistStageDuration: allowlistAddresses.length > 0 ? parseInt(data.allowlistDuration) * 3600 : 0,
         tokenURI: params.baseTokenURI || "",
       };
 
@@ -624,6 +629,32 @@ export default function CreateCollectionForm() {
               {errors.allowlist && (
                 <p className="text-sm text-destructive">
                   {errors.allowlist.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allowlistDuration">
+                Allowlist Duration (hours)
+                <span className="text-xs text-muted-foreground ml-2">
+                  (0-168 hours)
+                </span>
+              </Label>
+              <Input
+                id="allowlistDuration"
+                type="number"
+                min="0"
+                max="168"
+                placeholder="24"
+                {...register("allowlistDuration")}
+              />
+              <p className="text-xs text-muted-foreground">
+                How long the allowlist-only mint period lasts before public mint opens.
+                Only applies if allowlist addresses are provided.
+              </p>
+              {errors.allowlistDuration && (
+                <p className="text-sm text-destructive">
+                  {errors.allowlistDuration.message}
                 </p>
               )}
             </div>
