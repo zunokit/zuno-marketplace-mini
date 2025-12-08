@@ -1120,8 +1120,25 @@ function MyListingsTab() {
 
   const handleCancelSelected = async () => {
     if (selectedListings.size === 0) return;
-    
-    const toCancel = Array.from(selectedListings);
+
+    // Filter to only include active listings
+    const toCancel = Array.from(selectedListings).filter(listingId => {
+      const listing = activeListings.find(l => l.id === listingId);
+      return listing && listing.status === 'active';
+    });
+
+    if (toCancel.length === 0) {
+      toast.error('No active listings to cancel');
+      return;
+    }
+
+    // Validate listing IDs are bytes32 format (0x + 64 hex chars)
+    const invalidIds = toCancel.filter(id => !/^0x[a-fA-F0-9]{64}$/.test(id));
+    if (invalidIds.length > 0) {
+      toast.error(`Invalid listing ID format: ${invalidIds[0].slice(0, 10)}...`);
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -1133,7 +1150,9 @@ function MyListingsTab() {
         toast.success(`${toCancel.length} listing(s) cancelled in 1 transaction!`);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel listings');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to cancel listings';
+      toast.error(`Cancel failed: ${errorMsg}`);
+      console.error('Batch cancel error:', err);
     }
 
     setSelectedListings(new Set());
