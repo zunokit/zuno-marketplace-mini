@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ const navigationItems = [
 export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-x-hidden">
@@ -109,9 +111,20 @@ export function Header() {
           </Sheet>
 
           <Link href="/" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <Palette className="h-5 w-5 text-primary-foreground" />
-            </div>
+            {logoError ? (
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+                <Palette className="h-5 w-5 text-primary-foreground" />
+              </div>
+            ) : (
+              <Image
+                src="https://zunokit.github.io/zuno-marketplace-assets/images/zuno-logo.png"
+                alt="Zuno Logo"
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-lg"
+                onError={() => setLogoError(true)}
+              />
+            )}
             <span className="font-bold text-xl hidden sm:block">Zuno</span>
           </Link>
         </div>
