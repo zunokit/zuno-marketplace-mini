@@ -1,41 +1,19 @@
 /**
- * Environment Configuration
- * Centralized configuration for environment variables with type safety
- *
- * Priority: localStorage (runtime config) > process.env
+ * Environment Variables Helper
+ * Provides type-safe access to environment variables
  */
 
-import { envConfigManager } from "@/lib/utils/env-config";
-import { logger } from "@/lib/utils/logger";
-
-/**
- * Get environment configuration with runtime priority
- */
 export const ENV = {
-  // Application
-  NODE_ENV: process.env.NODE_ENV as "development" | "production" | "test",
+  // Chain configuration
+  DEFAULT_CHAIN_ID: parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337", 10),
 
-  // Blockchain - with runtime config priority
-  get DEFAULT_CHAIN_ID() {
-    return envConfigManager.getDefaultChainId();
-  },
+  // RPC URL (single URL for current network)
+  RPC_URL: process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545",
+
+  // Zuno API
+  ZUNO_API_URL: process.env.NEXT_PUBLIC_ZUNO_API_URL || "",
+  ZUNO_API_KEY: process.env.NEXT_PUBLIC_ZUNO_API_KEY || "",
+
+  // Optional: Default allowlist (comma-separated addresses)
+  DEFAULT_ALLOWLIST: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST || "",
 } as const;
-
-/**
- * Validate required environment variables
- */
-export function validateEnvironment() {
-  const isUsingStored = envConfigManager.isUsingStoredConfig();
-
-  // Log current mode
-  // Environment configuration loaded
-  logger.info(
-    "Environment configuration loaded",
-    {
-      message: `🔧 NFT Marketplace - Chain ID: ${ENV.DEFAULT_CHAIN_ID}${
-        isUsingStored ? " (Runtime Config)" : ""
-      }`,
-    },
-    { component: "Env", action: "validateEnvironment" }
-  );
-}

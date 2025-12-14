@@ -2,7 +2,7 @@
  * Utility Functions - Centralized Export
  */
 
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/lib/utils/sdk-logger";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -329,6 +329,7 @@ export const asyncUtils = {
   /**
    * Debounce function
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   debounce<T extends (...args: any[]) => any>(
     func: T,
     wait: number
@@ -343,6 +344,7 @@ export const asyncUtils = {
   /**
    * Throttle function
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   throttle<T extends (...args: any[]) => any>(
     func: T,
     limit: number

@@ -1,4 +1,5 @@
 "use client";
+import type { ReactNode } from "react";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { Sidebar } from "./Sidebar";
@@ -8,7 +9,7 @@ import { useAppSelector } from "@/lib/store/hooks";
 import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
   showSidebar?: boolean;
   sidebarCollapsed?: boolean;
@@ -23,12 +24,8 @@ export function MainLayout({
   const { isConnecting: walletConnecting } = useAppSelector(
     (state) => state.wallet
   );
-  const { loading: listingLoading } = useAppSelector((state) => state.listing);
-  const { loading: collectionsLoading } = useAppSelector(
-    (state) => state.collections
-  );
 
-  const isLoading = walletConnecting || listingLoading || collectionsLoading;
+  const isLoading = walletConnecting;
 
   return (
     <div className="min-h-screen flex flex-col">

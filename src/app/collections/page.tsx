@@ -1,11 +1,9 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
-import { logger } from "@/lib/utils/logger";
+
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/common/layout/MainLayout";
-import { CollectionsGrid } from "@/components/features/collection/CollectionsGrid";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -13,440 +11,197 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, TrendingUp, Filter, Grid3X3, List } from "lucide-react";
+import { Search, Filter, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
-import {
-  collectionQueryService,
-  type CollectionData,
-} from "@/lib/services/contracts/CollectionQueryService";
-import { marketplaceHubService } from "@/lib/services/contracts/MarketplaceHubService";
-import { web3Utils } from "@/lib/utils/web3";
-import { ZERO_ADDRESS } from "@/lib/constants";
+import { useCreatedCollections, useCollectionInfo } from "zuno-marketplace-sdk/react";
 
-const sortOptions = [
-  { value: "volume_desc", label: "Highest Volume" },
-  { value: "volume_asc", label: "Lowest Volume" },
-  { value: "floor_desc", label: "Highest Floor" },
-  { value: "floor_asc", label: "Lowest Floor" },
-  { value: "newest", label: "Recently Created" },
-  { value: "oldest", label: "Oldest First" },
-  { value: "name_asc", label: "A to Z" },
-  { value: "name_desc", label: "Z to A" },
-];
+function CollectionCard({ address, type }: { address: string; type: "ERC721" | "ERC1155" }) {
+  const { data: info, isLoading } = useCollectionInfo(address);
 
-const filterOptions = [
-  { value: "all", label: "All Collections" },
-  { value: "verified", label: "Verified Only" },
-  { value: "ERC721", label: "ERC721" },
-  { value: "ERC1155", label: "ERC1155" },
-];
+  if (isLoading) {
+    return (
+      <Card className="overflow-hidden">
+        <CardContent className="p-4">
+          <Skeleton className="h-32 w-full mb-4" />
+          <Skeleton className="h-6 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalMinted = parseInt(info?.totalSupply || "0");
+  const maxSupply = parseInt(info?.maxSupply || "0");
+  const progress = maxSupply > 0 ? (totalMinted / maxSupply) * 100 : 0;
+
+  return (
+    <Link href={`/collections/${address}`}>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+        <div className="h-32 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+          <span className="text-4xl font-bold text-primary/30">
+            {info?.symbol?.slice(0, 2) || "??"}
+          </span>
+        </div>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold truncate">{info?.name || "Unknown"}</h3>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+              {type}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3 truncate">
+            {info?.symbol || "---"}
+          </p>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Minted</span>
+              <span>{totalMinted} / {maxSupply || "∞"}</span>
+            </div>
+            {maxSupply > 0 && (
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Price</span>
+              <span>{info?.mintPrice || "0"} ETH</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
 export default function CollectionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState("volume_desc");
-  const [filterBy, setFilterBy] = useState("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [loading, setLoading] = useState(true);
-  const [collections, setCollections] = useState<CollectionData[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState("recent");
 
-  // Load collections on mount (client-side only)
-  useEffect(() => {
-    // Only run on client-side to avoid SSR issues
-    if (typeof window !== "undefined") {
-      loadCollections();
+  const { data: createdCollections, isLoading, error, refetch } = useCreatedCollections();
+
+  const filteredCollections = useMemo(() => {
+    if (!createdCollections) return [];
+    
+    let filtered = [...createdCollections];
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.address.toLowerCase().includes(query) ||
+        c.creator.toLowerCase().includes(query)
+      );
     }
-  }, []);
 
-  const loadCollections = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setCollections([]); // Clear existing collections
-
-      // Check if we're in browser environment
-      if (typeof window === "undefined") {
-        logger.warn("Not in browser environment", null, {
-          component: "CollectionsPage",
-          action: "loadCollections",
-        });
-        setError("Browser environment required for blockchain connection");
-        return;
-      }
-
-      // Initialize web3 and services
-      logger.info("Initializing Web3 provider", null, {
-        component: "CollectionsPage",
-        action: "loadCollections",
-      });
-      await web3Utils.initializeProvider();
-      const provider = web3Utils.getProvider();
-
-      if (!provider) {
-        logger.error("No Web3 provider available", null, {
-          component: "CollectionsPage",
-          action: "loadCollections",
-        });
-        setError(
-          "Web3 provider not available. Please connect your wallet to view collections."
-        );
-        return;
-      }
-
-      logger.success("Web3 provider initialized", null, {
-        component: "CollectionsPage",
-        action: "loadCollections",
-      });
-
-      // Initialize collection query service
-      logger.info("Initializing collection query service", null, {
-        component: "CollectionsPage",
-        action: "loadCollections",
-      });
-      await collectionQueryService.initialize(provider);
-
-      // Get all collections from blockchain
-      logger.info("Loading collections from blockchain", null, {
-        component: "CollectionsPage",
-        action: "loadCollections",
-      });
-      const blockchainCollections =
-        await collectionQueryService.getAllCollections();
-
-      logger.success(
-        `Found ${blockchainCollections.length} collections from blockchain`,
-        { count: blockchainCollections.length },
-        { component: "CollectionsPage", action: "loadCollections" }
-      );
-
-      // Debug: Check if collections are valid
-      const validCollections = blockchainCollections.filter(
-        (c) => c && c.address && c.name
-      );
-      logger.success(
-        `Valid collections: ${validCollections.length}`,
-        { validCount: validCollections.length },
-        { component: "CollectionsPage", action: "loadCollections" }
-      );
-
-      setCollections(blockchainCollections);
-
-      if (blockchainCollections.length === 0) {
-        // Check if contracts are deployed
-        const addresses = marketplaceHubService.getAddresses();
-        const contractsDeployed = addresses.erc721Factory !== ZERO_ADDRESS;
-
-        if (!contractsDeployed) {
-          setError(
-            "Marketplace contracts not deployed. Please deploy the contracts using 'zuno-marketplace-contracts' repository or switch to a network with deployed contracts."
-          );
-        } else {
-          setError(
-            "No collections found on blockchain. Try creating a collection first."
-          );
-        }
-      }
-    } catch (error) {
-      logger.error("Error loading collections", error, {
-        component: "CollectionsPage",
-        action: "loadCollections",
-      });
-
-      // Provide more helpful error messages
-      let errorMessage = "Failed to load collections from blockchain";
-      if (error instanceof Error) {
-        if (error.message.includes("MarketplaceHub not configured")) {
-          errorMessage = `Network Configuration Error: ${error.message}`;
-        } else if (error.message.includes("No contract deployed")) {
-          errorMessage = `Contract Deployment Error: ${error.message}`;
-        } else if (error.message.includes("Hub not initialized")) {
-          errorMessage = `Service Initialization Error: ${error.message}`;
-        } else {
-          errorMessage = `Error: ${error.message}`;
-        }
-      }
-
-      setError(errorMessage);
-      setCollections([]);
-    } finally {
-      setLoading(false);
+    if (sortBy === "recent") {
+      filtered.sort((a, b) => b.blockNumber - a.blockNumber);
     }
-  };
 
-  // Filter and sort collections
-  const filteredAndSortedCollections = useMemo(() => {
-    const filtered = collections.filter((collection) => {
-      // Search filter
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesName = collection.name.toLowerCase().includes(query);
-        const matchesSymbol = collection.symbol.toLowerCase().includes(query);
-        const matchesDescription = collection.description
-          ?.toLowerCase()
-          .includes(query);
-
-        if (!matchesName && !matchesSymbol && !matchesDescription) {
-          return false;
-        }
-      }
-
-      // Type/Verification filter
-      if (filterBy === "verified" && !collection.verified) {
-        return false;
-      }
-      if (filterBy === "ERC721" && collection.type !== "ERC721") {
-        return false;
-      }
-      if (filterBy === "ERC1155" && collection.type !== "ERC1155") {
-        return false;
-      }
-
-      return true;
-    });
-
-    // Sort collections
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "volume_desc":
-          return (
-            parseFloat(b.stats?.totalVolume || "0") -
-            parseFloat(a.stats?.totalVolume || "0")
-          );
-        case "volume_asc":
-          return (
-            parseFloat(a.stats?.totalVolume || "0") -
-            parseFloat(b.stats?.totalVolume || "0")
-          );
-        case "floor_desc":
-          return (
-            parseFloat(b.stats?.floorPrice || "0") -
-            parseFloat(a.stats?.floorPrice || "0")
-          );
-        case "floor_asc":
-          return (
-            parseFloat(a.stats?.floorPrice || "0") -
-            parseFloat(b.stats?.floorPrice || "0")
-          );
-        case "newest":
-          return (b.createdAt || 0) - (a.createdAt || 0);
-        case "oldest":
-          return (a.createdAt || 0) - (b.createdAt || 0);
-        case "name_asc":
-          return a.name.localeCompare(b.name);
-        case "name_desc":
-          return b.name.localeCompare(a.name);
-        default:
-          return 0;
-      }
-    });
-
-    logger.debug(
-      "Filtered collections",
-      { filtered },
-      { component: "CollectionsPage", action: "filterCollections" }
-    );
     return filtered;
-  }, [collections, searchQuery, sortBy, filterBy]);
+  }, [createdCollections, searchQuery, sortBy]);
 
   return (
     <MainLayout>
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Collections</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Discover amazing NFT collections from creators worldwide
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button asChild className="w-full sm:w-auto">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Explore Collections</h1>
+              <p className="text-muted-foreground">
+                {createdCollections?.length || 0} collections found on-chain
+              </p>
+            </div>
+            <Button asChild>
               <Link href="/collections/create">
                 <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Create Collection</span>
-                <span className="sm:hidden">Create</span>
+                Create Collection
               </Link>
+            </Button>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search by address or creator..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Recently Created</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => refetch()}>
+              Refresh
             </Button>
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex flex-col gap-3 sm:gap-4">
-          {/* Search Bar */}
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search collections..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full"
-            />
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading collections from blockchain...</span>
           </div>
+        )}
 
-          {/* Filters Row */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            {/* Filter */}
-            <Select value={filterBy} onValueChange={setFilterBy}>
-              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px]">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by..." />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* Sort */}
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full sm:w-[140px] md:w-[180px]">
-                <TrendingUp className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Sort by..." />
-              </SelectTrigger>
-              <SelectContent>
-                {sortOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            {/* View Mode */}
-            <div className="flex items-center gap-1 border rounded-md ml-auto">
-              <Button
-                variant={viewMode === "grid" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("grid")}
-                className="px-2 sm:px-3"
-              >
-                <Grid3X3 className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "list" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setViewMode("list")}
-                className="px-2 sm:px-3"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-            </div>
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-12">
+            <p className="text-lg text-red-500 mb-4">Failed to load collections</p>
+            <p className="text-muted-foreground mb-4">{(error as Error).message}</p>
+            <Button onClick={() => refetch()}>Retry</Button>
           </div>
-        </div>
+        )}
 
-        {/* Results Summary */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {loading
-              ? "Loading collections from blockchain..."
-              : `${filteredAndSortedCollections.length} collections found`}
-            {!loading && collections.length > 0 && (
-              <span className="ml-2 text-green-600">
-                ✅ Live from blockchain
-              </span>
-            )}
-          </p>
-
-          {(searchQuery || filterBy !== "all") && (
-            <div className="flex items-center gap-2">
-              {searchQuery && (
-                <Badge variant="secondary" className="gap-1">
-                  Search: {searchQuery}
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="ml-1 hover:bg-muted rounded-full"
-                  >
-                    ×
-                  </button>
-                </Badge>
-              )}
-              {filterBy !== "all" && (
-                <Badge variant="secondary" className="gap-1">
-                  Filter:{" "}
-                  {filterOptions.find((f) => f.value === filterBy)?.label}
-                  <button
-                    onClick={() => setFilterBy("all")}
-                    className="ml-1 hover:bg-muted rounded-full"
-                  >
-                    ×
-                  </button>
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Error State */}
-      {error && (
-        <div className="text-center py-12">
-          <div className="text-yellow-600 mb-4">⚠️</div>
-          <h3 className="text-lg font-semibold mb-2">{error}</h3>
-          <Button onClick={loadCollections} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      )}
-
-      {/* Collections Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-3">
-              <Skeleton className="h-40 sm:h-48 w-full rounded-lg" />
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-4 w-1/2" />
-              <div className="flex gap-2">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-8 w-16" />
+        {/* Collections Grid */}
+        {!isLoading && !error && (
+          <>
+            {filteredCollections.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredCollections.map((collection) => (
+                  <CollectionCard
+                    key={collection.address}
+                    address={collection.address}
+                    type={collection.type}
+                  />
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
-      ) : filteredAndSortedCollections.length > 0 ? (
-        <CollectionsGrid
-          collections={filteredAndSortedCollections}
-          viewMode={viewMode}
-        />
-      ) : (
-        <div className="flex flex-col items-center justify-center py-12">
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">
-              {collections.length === 0
-                ? "No collections available"
-                : "No collections found"}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {collections.length === 0
-                ? "No collections have been created on this blockchain yet. Be the first to create one!"
-                : "Try adjusting your search or filter criteria"}
-            </p>
-            {collections.length === 0 ? (
-              <Button asChild>
-                <Link href="/collections/create">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create First Collection
-                </Link>
-              </Button>
             ) : (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchQuery("");
-                  setFilterBy("all");
-                }}
-              >
-                Clear Filters
-              </Button>
+              <div className="text-center py-12">
+                <p className="text-lg text-muted-foreground mb-4">
+                  {searchQuery 
+                    ? "No collections found matching your search" 
+                    : "No collections available yet"}
+                </p>
+                {searchQuery ? (
+                  <Button variant="outline" onClick={() => setSearchQuery("")}>
+                    Clear Search
+                  </Button>
+                ) : (
+                  <Button asChild>
+                    <Link href="/collections/create">Create First Collection</Link>
+                  </Button>
+                )}
+              </div>
             )}
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </MainLayout>
   );
 }

@@ -3,6 +3,9 @@
  * Uses the clean CreateCollectionForm component
  */
 
+// Prevent static generation - requires wallet context
+export const dynamic = "force-dynamic";
+
 import { MainLayout } from '@/components/common/layout/MainLayout'
 import CreateCollectionForm from './CreateCollectionForm'
 
