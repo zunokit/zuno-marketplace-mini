@@ -10,9 +10,9 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 
 ## Key Architecture Principles
 
-### 0. Zuno Marketplace SDK Integration (v1.1.5)
+### 0. Zuno Marketplace SDK Integration (v2.1.0-beta-claude.1)
 
-**IMPORTANT**: This project uses the official `zuno-marketplace-sdk` package (v1.1.5) for all blockchain interactions.
+**IMPORTANT**: This project uses the official `zuno-marketplace-sdk` package (v2.1.0-beta-claude.1) for all blockchain interactions.
 
 **SDK Features**:
 - Built-in Wagmi & React Query integration
@@ -21,7 +21,10 @@ Zuno Marketplace is a production-ready NFT marketplace built with Next.js 15, Ty
 - Standardized transaction responses with `{ tx: TransactionReceipt, ...data }` format
 - Complete query methods and mutation methods
 - Standardized naming: `collectionAddress` (not `nftAddress`)
-- Production-ready Logger System with structured logging (v1.1.5+)
+- Production-ready Logger System with structured logging
+- DevTools component for debugging (ZunoDevTools)
+- WagmiProviderSync for automatic wallet/signer synchronization
+- LogStore and TransactionStore for centralized state management
 
 **Hook Usage**:
 ```typescript
@@ -47,11 +50,12 @@ if (listNFT.isError) return <Error error={listNFT.error} />;
 ```
 
 **Migration Status**:
-- ✅ SDK updated to v1.1.5 (from v1.0.2 → v1.1.3 → v1.1.4 → v1.1.5)
+- ✅ SDK updated to v2.1.0-beta-claude.1 (from v1.0.2 → v1.1.3 → v1.1.4 → v1.1.5 → v2.1.0-beta-claude.1)
 - ✅ All custom services removed (`exchangeService`, `collectionService`, `auctionService`)
 - ✅ All components migrated to SDK hooks
 - ✅ Redux store simplified (only wallet and notification slices remain)
-- ✅ Full SDK v1.1.5 API usage (query methods, standardized responses, unified API endpoint, logger system)
+- ✅ Full SDK v2.x API usage (query methods, standardized responses, unified API endpoint, logger system)
+- ✅ WagmiProviderSync replaces WagmiSignerSync for wallet synchronization
 
 **SDK Documentation**: See `E:\zuno-marketplace-sdk\docs\API.md`
 
@@ -71,7 +75,7 @@ if (listNFT.isError) return <Error error={listNFT.error} />;
 - **AuctionModule** - English and Dutch auction support
 - **CollectionModule** - NFT collection creation and minting
 
-**Key SDK Features (v1.1.5)**:
+**Key SDK Features (v2.1.0-beta-claude.1)**:
 - **React Query Integration**: Automatic caching, refetching, and optimistic updates
 - **Wagmi Integration**: Seamless wallet connection and provider management
 - **Type Safety**: Full TypeScript support with strict mode
@@ -80,6 +84,8 @@ if (listNFT.isError) return <Error error={listNFT.error} />;
 - **Query Methods**: Imperative data fetching alongside hooks
 - **Unified API Endpoint**: Single `apiUrl` configuration (removed `abisUrl`)
 - **Production Logger**: Structured logging with multiple levels, auto-logging, and custom logger support
+- **DevTools**: Built-in ZunoDevTools component for debugging transactions, cache, and logs
+- **LogStore & TransactionStore**: Centralized stores for logs and transaction history with subscribers
 
 **Usage Pattern**:
 ```typescript
@@ -92,7 +98,7 @@ const { data: listings } = useListings(address, page, size); // For queries
 // New: await listNFT.mutateAsync(params)
 ```
 
-### 3. SDK Logger System (v1.1.5+)
+### 3. SDK Logger System (v2.1.0+)
 
 **Production-Ready Logging** - The SDK includes a built-in logger system for debugging and monitoring:
 
