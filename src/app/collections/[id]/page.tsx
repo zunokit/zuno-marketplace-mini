@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCollectionInfo, useZuno, useCollection, useIsAllowlistOnly } from "zuno-marketplace-sdk/react";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
+import { ethers } from "ethers";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -85,18 +86,53 @@ export default function CollectionDetailPage() {
     window.open(explorerUrl, "_blank");
   };
 
+  /**
+   * Validate and normalize Ethereum address
+   * @returns normalized checksummed address or null if invalid
+   */
+  const normalizeAddress = (address: string): string | null => {
+    try {
+      return ethers.getAddress(address.trim());
+    } catch {
+      // Try lowercase normalization
+      try {
+        return ethers.getAddress(address.trim().toLowerCase());
+      } catch {
+        return null;
+      }
+    }
+  };
+
   const handleAddToAllowlist = async () => {
     if (!allowlistAddresses.trim()) {
       toast.error("Please enter addresses");
       return;
     }
 
-    const addresses = allowlistAddresses
+    const rawAddresses = allowlistAddresses
       .split(/[\n,]/)
       .map(addr => addr.trim())
       .filter(addr => addr.length > 0);
 
-    if (addresses.length === 0) {
+    // Validate and normalize all addresses
+    const normalizedAddresses: string[] = [];
+    const invalidAddresses: string[] = [];
+
+    for (const addr of rawAddresses) {
+      const normalized = normalizeAddress(addr);
+      if (normalized) {
+        normalizedAddresses.push(normalized);
+      } else {
+        invalidAddresses.push(addr);
+      }
+    }
+
+    if (invalidAddresses.length > 0) {
+      toast.error(`Invalid addresses: ${invalidAddresses.slice(0, 3).join(", ")}${invalidAddresses.length > 3 ? ` and ${invalidAddresses.length - 3} more` : ""}`);
+      return;
+    }
+
+    if (normalizedAddresses.length === 0) {
       toast.error("No valid addresses found");
       return;
     }
@@ -105,9 +141,9 @@ export default function CollectionDetailPage() {
     try {
       await addToAllowlist.mutateAsync({
         collectionAddress,
-        addresses,
+        addresses: normalizedAddresses,
       });
-      toast.success(`Added ${addresses.length} address(es) to allowlist!`);
+      toast.success(`Added ${normalizedAddresses.length} address(es) to allowlist!`);
       setAllowlistAddresses("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add addresses");
@@ -122,12 +158,30 @@ export default function CollectionDetailPage() {
       return;
     }
 
-    const addresses = removeAddresses
+    const rawAddresses = removeAddresses
       .split(/[\n,]/)
       .map(addr => addr.trim())
       .filter(addr => addr.length > 0);
 
-    if (addresses.length === 0) {
+    // Validate and normalize all addresses
+    const normalizedAddresses: string[] = [];
+    const invalidAddresses: string[] = [];
+
+    for (const addr of rawAddresses) {
+      const normalized = normalizeAddress(addr);
+      if (normalized) {
+        normalizedAddresses.push(normalized);
+      } else {
+        invalidAddresses.push(addr);
+      }
+    }
+
+    if (invalidAddresses.length > 0) {
+      toast.error(`Invalid addresses: ${invalidAddresses.slice(0, 3).join(", ")}${invalidAddresses.length > 3 ? ` and ${invalidAddresses.length - 3} more` : ""}`);
+      return;
+    }
+
+    if (normalizedAddresses.length === 0) {
       toast.error("No valid addresses found");
       return;
     }
@@ -136,9 +190,9 @@ export default function CollectionDetailPage() {
     try {
       await removeFromAllowlist.mutateAsync({
         collectionAddress,
-        addresses,
+        addresses: normalizedAddresses,
       });
-      toast.success(`Removed ${addresses.length} address(es) from allowlist!`);
+      toast.success(`Removed ${normalizedAddresses.length} address(es) from allowlist!`);
       setRemoveAddresses("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove addresses");
@@ -153,12 +207,20 @@ export default function CollectionDetailPage() {
       return;
     }
 
+    // Validate and normalize the address client-side first
+    const normalizedAddress = normalizeAddress(checkAddress);
+    if (!normalizedAddress) {
+      toast.error("Invalid Ethereum address format");
+      setCheckResult(null);
+      return;
+    }
+
     setIsChecking(true);
     setCheckResult(null);
     try {
       const result = await sdk.collection.isInAllowlist(
         collectionAddress,
-        checkAddress.trim()
+        normalizedAddress
       );
       setCheckResult(result);
       toast.success(result ? "Address is in allowlist ✓" : "Address not in allowlist");
