@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { MainLayout } from "@/components/common/layout/MainLayout";
@@ -14,16 +17,15 @@ import {
   Loader2, AlertCircle, CheckCircle, XCircle 
 } from "lucide-react";
 import Link from "next/link";
-import { useAuction, useAuctionDetails, useDutchAuctionPrice, usePendingRefund } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
+import { useAuction, useAuctionDetails, useDutchAuctionPrice, usePendingRefund, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
 
 export default function AuctionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const auctionId = params.id as string;
-  
-  const { address, isConnected } = useAccount();
+
+  const { address, isConnected } = useWallet();
   const { data: auction, isLoading, error, refetch } = useAuctionDetails(auctionId);
   const { data: currentPrice } = useDutchAuctionPrice(
     auction?.type === 'dutch' ? auctionId : undefined

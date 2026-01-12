@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -24,9 +27,8 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown, Tag } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller, useWallet } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
-import { useAccount } from "wagmi";
 import { toast } from "sonner";
 
 interface CollectionWithTokens {
@@ -603,7 +605,7 @@ function CollectionCard({ address, type }: { address: string; type: "ERC721" | "
 }
 
 function MyNFTsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data: allCollections, isLoading: loadingCollections, refetch } = useCreatedCollections();
   const { data: userAuctions, refetch: refetchAuctions } = useAuctionsBySeller(address, 1, 100);
   const { data: userListings, refetch: refetchListings } = useListingsBySeller(address);
@@ -796,7 +798,7 @@ function MyNFTsTab() {
 }
 
 function MyCollectionsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data: allCollections, isLoading, refetch } = useCreatedCollections();
 
   const myCollections = useMemo(() => {
@@ -905,7 +907,7 @@ function AuctionCard({
 }
 
 function MyAuctionsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data: userAuctions, isLoading, refetch } = useAuctionsBySeller(address, 1, 100);
   const { cancelAuction, batchCancelAuction } = useAuction();
   const [selectedAuctions, setSelectedAuctions] = useState<Set<string>>(new Set());
@@ -1088,7 +1090,7 @@ function ListingCard({
 }
 
 function MyListingsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data, isLoading, refetch } = useListingsBySeller(address);
   const { cancelListing, batchCancelListing } = useExchange();
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
@@ -1247,7 +1249,7 @@ function MyListingsTab() {
 }
 
 export default function ProfilePage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
 
   if (!isConnected) {
     return (

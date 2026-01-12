@@ -1,9 +1,11 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCollectionInfo, useZuno, useCollection, useIsAllowlistOnly } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
+import { useCollectionInfo, useZuno, useCollection, useIsAllowlistOnly, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,7 @@ import Link from "next/link";
 export default function CollectionDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { address: userAddress } = useAccount();
+  const { address: userAddress } = useWallet();
   const collectionAddress = params.id as string;
   const { data: collection, isLoading, error } = useCollectionInfo(collectionAddress);
   const sdk = useZuno();

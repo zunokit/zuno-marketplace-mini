@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -7,8 +10,8 @@ import {
   useCollection,
   useIsInAllowlist,
   useIsAllowlistOnly,
+  useWallet,
 } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { ethers } from "ethers";
 import { MainLayout } from "@/components/common/layout/MainLayout";
@@ -54,7 +57,7 @@ export default function MintPage() {
     refetch,
   } = useCollectionInfo(collectionAddress);
   const { batchMintERC721, batchMintERC1155 } = useCollection();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
   const { data: isInAllowlist } = useIsInAllowlist(collectionAddress, address);
   const { data: isAllowlistOnly } = useIsAllowlistOnly(collectionAddress);
 

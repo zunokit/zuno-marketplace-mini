@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useZuno } from "zuno-marketplace-sdk/react";
+import { useZuno, isBrowser } from "zuno-marketplace-sdk/react";
 import type { Auction } from "zuno-marketplace-sdk";
 
 /**
@@ -46,6 +46,9 @@ export function useActiveAuctions(page = 1, pageSize = 20) {
 
       return { items, total, page, pageSize, hasMore: start + pageSize < total };
     },
+    enabled: isBrowser(),
+    initialData: { items: [], total: 0, page, pageSize, hasMore: false },
+    staleTime: 30000,
   });
 }
 
@@ -93,6 +96,8 @@ export function useAuctionsBySeller(seller?: string, page = 1, pageSize = 20) {
 
       return { items, total, page, pageSize, hasMore: start + pageSize < total };
     },
-    enabled: !!seller,
+    enabled: isBrowser() && !!seller,
+    initialData: { items: [], total: 0, page, pageSize, hasMore: false },
+    staleTime: 30000,
   });
 }

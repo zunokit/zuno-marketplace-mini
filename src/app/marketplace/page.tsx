@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -17,8 +20,7 @@ import {
   Search,
   XCircle
 } from "lucide-react";
-import { useCollectionInfo, useExchange, useCreatedCollections, useZuno } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
+import { useCollectionInfo, useExchange, useCreatedCollections, useZuno, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -123,7 +125,7 @@ function ListingCard({ listing, onBuy, isBuying, currentUser, isSelected, onSele
 }
 
 export default function MarketplacePage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
   const sdk = useZuno();
   const [searchFilter, setSearchFilter] = useState("");
   const [buyingId, setBuyingId] = useState<string | null>(null);
