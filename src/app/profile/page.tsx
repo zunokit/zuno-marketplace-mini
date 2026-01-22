@@ -889,7 +889,7 @@ function MyNFTsTab() {
         onClose={() => setAuctionModalOpen(false)}
         selectedTokens={selectedTokens}
         userCollections={userCollections}
-        onSuccess={async () => { await refetchAuctions(); setSelectedTokens(new Set()); setAuctionModalOpen(false); }}
+        onSuccess={() => { setSelectedTokens(new Set()); setAuctionModalOpen(false); }}
       />
 
       <ListingModal
@@ -897,7 +897,7 @@ function MyNFTsTab() {
         onClose={() => setListingModalOpen(false)}
         selectedTokens={selectedTokens}
         userCollections={userCollections}
-        onSuccess={async () => { await refetchListings(); setSelectedTokens(new Set()); setListingModalOpen(false); }}
+        onSuccess={() => { setSelectedTokens(new Set()); setListingModalOpen(false); }}
       />
 
       {isLoading && (
