@@ -7,15 +7,15 @@ export interface ParsedEvent {
   address: string;
   blockNumber: number;
   transactionHash: string;
-  args: any;
+  args: Record<string, unknown>;
   timestamp: number;
 }
 
 export interface EventSubscription {
   id: string;
-  contract: any; // ethers.Contract
+  contract: unknown; // ethers.Contract
   event: string;
-  filter?: any;
+  filter?: Record<string, unknown>;
   callback: (event: ParsedEvent) => void;
   unsubscribe: () => void;
 }

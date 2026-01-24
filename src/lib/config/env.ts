@@ -5,23 +5,15 @@
 
 export const ENV = {
   // Chain configuration
-  DEFAULT_CHAIN_ID: parseInt(
-    process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337",
-    10
-  ),
+  DEFAULT_CHAIN_ID: parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337", 10),
 
-  // Contract addresses
-  USER_HUB_LOCAL: process.env.NEXT_PUBLIC_USER_HUB_LOCAL || "",
-
-  // RPC URLs
-  RPC_URL_LOCAL: process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "",
-  RPC_URL_SEPOLIA: process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA || "",
-  RPC_URL_MAINNET: process.env.NEXT_PUBLIC_RPC_URL_MAINNET || "",
-
-  // Allowlist
-  DEFAULT_ALLOWLIST: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST || "",
+  // RPC URL (single URL for current network)
+  RPC_URL: process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545",
 
   // Zuno API
   ZUNO_API_URL: process.env.NEXT_PUBLIC_ZUNO_API_URL || "",
   ZUNO_API_KEY: process.env.NEXT_PUBLIC_ZUNO_API_KEY || "",
+
+  // Optional: Default allowlist (comma-separated addresses)
+  DEFAULT_ALLOWLIST: process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST || "",
 } as const;

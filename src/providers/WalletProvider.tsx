@@ -15,10 +15,7 @@ import React, {
 } from "react";
 import { ethers } from "ethers";
 import { toast } from "sonner";
-import { logger } from "@/lib/utils/logger";
-import { envConfigManager } from "@/lib/utils/env-config";
-import { ProviderFactory } from "@/lib/services/web3/provider-factory";
-import { initializeServices } from "@/lib/services/contracts";
+import { logger } from "@/lib/utils/sdk-logger";
 
 // ============================================================================
 // Types & Interfaces
@@ -47,7 +44,6 @@ interface WalletContextType extends WalletState {
 // ============================================================================
 
 const STORAGE_KEY = "wallet_connection_v2";
-const RECONNECT_TIMEOUT = 3000;
 const MAX_RECONNECT_ATTEMPTS = 3;
 
 // ============================================================================
@@ -225,7 +221,7 @@ class WalletService {
       throw new Error("No Web3 wallet detected. Please install MetaMask.");
     }
 
-    return ProviderFactory.createBrowserProvider();
+    return new ethers.BrowserProvider(window.ethereum);
   }
 
   static async requestConnection(
@@ -299,7 +295,7 @@ class WalletService {
   }
 
   static validateNetwork(currentChainId: number): boolean {
-    const expectedChainId = envConfigManager.getDefaultChainId();
+    const expectedChainId = parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337", 10);
     return currentChainId === expectedChainId;
   }
 
@@ -313,9 +309,9 @@ class WalletService {
       await provider.send("wallet_switchEthereumChain", [
         { chainId: hexChainId },
       ]);
-    } catch (error: any) {
+    } catch (error) {
       // Chain not added to wallet, try to add it
-      if (error.code === 4902) {
+      if ((error as { code?: number }).code === 4902) {
         throw new Error(
           `Chain ${targetChainId} not configured in wallet. Please add it manually.`
         );
@@ -348,13 +344,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       if (accounts[0] !== state.account) {
         // Account changed, update state and refresh balance
-        refreshBalance();
+        if (state.provider && accounts[0]) {
+          state.provider.getBalance(accounts[0]).then(balance => {
+            dispatch({
+              type: ActionType.UPDATE_BALANCE,
+              payload: ethers.formatEther(balance),
+            });
+          }).catch(err => {
+            logger.error("Failed to refresh balance on account change", err);
+          });
+        }
         if (state.chainId) {
           WalletStorage.save(accounts[0], state.chainId);
         }
       }
     },
-    [state.account, state.chainId]
+    [state.account, state.chainId, state.provider]
   );
 
   const handleChainChanged = useCallback((newChainIdHex: string) => {
@@ -362,9 +367,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: ActionType.UPDATE_CHAIN, payload: newChainId });
 
     if (!WalletService.validateNetwork(newChainId)) {
-      toast.warning(
-        `Network mismatch. Please switch to chain ${envConfigManager.getDefaultChainId()}`
-      );
+      const expectedChainId = process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337";
+      toast.warning(`Network mismatch. Please switch to chain ${expectedChainId}`);
     }
 
     // Reload page to ensure clean state
@@ -389,7 +393,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       // Validate network
       if (!WalletService.validateNetwork(connectionData.chainId)) {
-        const expectedChainId = envConfigManager.getDefaultChainId();
+        const expectedChainId = parseInt(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337", 10);
         
         const shouldSwitch = window.confirm(
           `You're on the wrong network (Chain ID: ${connectionData.chainId}).\n` +
@@ -410,10 +414,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       WalletStorage.save(connectionData.account, connectionData.chainId);
 
-      // Initialize all contract services
-      logger.startTimer("services-init");
-      await initializeServices(provider, connectionData.signer);
-      logger.endTimer("services-init", "Contract services initialized");
+      // SDK services are automatically initialized by ZunoProvider
+      logger.info("Wallet connected - SDK services ready");
 
       toast.success(`Connected to ${connectionData.account.slice(0, 6)}...${connectionData.account.slice(-4)}`);
 
@@ -421,9 +423,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         account: connectionData.account,
         chainId: connectionData.chainId,
       });
-    } catch (error: any) {
-      const errorMessage = error.message || "Failed to connect wallet";
-      dispatch({ type: ActionType.CONNECT_ERROR, payload: error });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to connect wallet";
+      dispatch({ type: ActionType.CONNECT_ERROR, payload: error instanceof Error ? error : new Error(errorMessage) });
       toast.error(errorMessage);
       logger.error("Connection failed", error);
     }
@@ -445,8 +447,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       try {
         await WalletService.switchNetwork(state.provider, targetChainId);
         toast.success(`Switched to chain ${targetChainId}`);
-      } catch (error: any) {
-        toast.error(error.message || "Failed to switch network");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to switch network");
         throw error;
       }
     },
@@ -475,16 +477,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!window.ethereum) return;
 
-    const ethereum = window.ethereum as any;
+    const ethereum = window.ethereum;
 
-    ethereum.on("accountsChanged", handleAccountsChanged);
-    ethereum.on("chainChanged", handleChainChanged);
-    ethereum.on("disconnect", handleDisconnect);
+    const accountsHandler = (accounts: unknown) => handleAccountsChanged(accounts as string[]);
+    const chainHandler = (chainId: unknown) => handleChainChanged(chainId as string);
+    const disconnectHandler = () => handleDisconnect();
+
+    ethereum.on("accountsChanged", accountsHandler);
+    ethereum.on("chainChanged", chainHandler);
+    ethereum.on("disconnect", disconnectHandler);
 
     return () => {
-      ethereum.removeListener("accountsChanged", handleAccountsChanged);
-      ethereum.removeListener("chainChanged", handleChainChanged);
-      ethereum.removeListener("disconnect", handleDisconnect);
+      ethereum.removeListener("accountsChanged", accountsHandler);
+      ethereum.removeListener("chainChanged", chainHandler);
+      ethereum.removeListener("disconnect", disconnectHandler);
     };
   }, [handleAccountsChanged, handleChainChanged, handleDisconnect]);
 
@@ -503,13 +509,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           payload: connectionData,
         });
 
-        // Initialize contract services on auto-reconnect
-        try {
-          await initializeServices(connectionData.provider, connectionData.signer);
-          logger.info("Auto-reconnected to wallet with services initialized");
-        } catch (error) {
-          logger.error("Failed to initialize services on auto-reconnect", error);
-        }
+        // SDK services are automatically initialized by ZunoProvider
+        logger.info("Auto-reconnected to wallet with SDK services ready");
       }
     };
 
@@ -520,6 +521,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       clearTimeout(timeoutId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
   // Refresh balance periodically
@@ -557,13 +559,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 // Custom Hook
 // ============================================================================
 
+// Default context value for SSR/prerendering
+const defaultContextValue: WalletContextType = {
+  ...initialState,
+  connect: async () => {},
+  disconnect: () => {},
+  switchNetwork: async () => {},
+  refreshBalance: async () => {},
+};
+
 export function useWallet(): WalletContextType {
   const context = useContext(WalletContext);
-  
+
+  // Return default value during SSR/prerendering instead of throwing
   if (!context) {
-    throw new Error("useWallet must be used within WalletProvider");
+    return defaultContextValue;
   }
-  
+
   return context;
 }
 

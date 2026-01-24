@@ -12,7 +12,22 @@
       "Bash(cat:*)",
       "Bash(tree:*)",
       "Bash(forge test:*)",
-      "Bash(npm run extract-abis:*)"
+      "Bash(npm run extract-abis:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git fetch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(dir:*)",
+      "Bash(npm install)",
+      "Bash(npm run type-check)",
+      "Bash(findstr:*)",
+      "Bash(ls -la \"E:\\zuno-marketplace-sdk\\src\"\" | grep -E \"^d \")"
     ],
     "deny": [],
     "ask": []

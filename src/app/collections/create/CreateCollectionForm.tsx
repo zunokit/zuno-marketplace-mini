@@ -6,14 +6,14 @@
 "use client";
 
 import { useState } from "react";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/lib/utils/sdk-logger";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { ethers } from "ethers";
-import { useCollection } from "@/hooks/use-collection";
-import { useWallet } from "@/providers/WalletProvider";
+import { useCollection, useWallet } from "zuno-marketplace-sdk/react";
+import type { CollectionParams } from "zuno-marketplace-sdk";
 import { TokenType, CreateCollectionParams } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,21 +34,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import {
   Loader2,
-  Upload,
-  AlertCircle,
   CheckCircle2,
   Wallet,
   Image as ImageIcon,
-  Settings,
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
-import { envConfigManager } from "@/lib/utils/env-config";
+import Image from "next/image";
 
 // Form validation schema
 const formSchema = z.object({
@@ -85,6 +81,10 @@ const formSchema = z.object({
     return limit > 0 && limit <= 100;
   }, "Mint limit must be between 1 and 100"),
   allowlist: z.string().optional(),
+  allowlistDuration: z.string().refine((val) => {
+    const hours = parseInt(val);
+    return hours >= 0 && hours <= 168;
+  }, "Duration must be between 0 and 168 hours (7 days)"),
   baseTokenURI: z.string().url("Invalid URL").optional().or(z.literal("")),
   website: z.string().url("Invalid URL").optional().or(z.literal("")),
   twitter: z.string().optional(),
@@ -107,8 +107,9 @@ const CATEGORIES = [
 
 export default function CreateCollectionForm() {
   const router = useRouter();
-  const { isConnected, account } = useWallet();
-  const { createCollection, isLoading } = useCollection();
+  const { isConnected } = useWallet();
+  const { createERC721, createERC1155, addToAllowlist, setAllowlistOnly } = useCollection();
+  const isLoading = createERC721.isPending || createERC1155.isPending;
   const [logoImage, setLogoImage] = useState<string>("");
   const [bannerImage, setBannerImage] = useState<string>("");
 
@@ -131,8 +132,9 @@ export default function CreateCollectionForm() {
       maxSupply: "10000",
       mintLimitPerWallet: "50",
       mintPrice: "10",
-      // Convert comma-separated allowlist to newline-separated for textarea
-      allowlist: envConfigManager.getAllowlistAddresses().join("\n"),
+      // Default allowlist from env (comma-separated -> newline-separated)
+      allowlist: (process.env.NEXT_PUBLIC_DEFAULT_ALLOWLIST || "").split(",").filter(Boolean).join("\n"),
+      allowlistDuration: "24",
       baseTokenURI: "https://api.example.com/metadata",
     },
   });
@@ -213,12 +215,56 @@ export default function CreateCollectionForm() {
         discord: data.discord,
       };
 
-      // Create collection
-      const collectionAddress = await createCollection(params);
+      // Create collection - use SDK's CollectionParams type
+      let result;
+      const collectionParams: CollectionParams = {
+        name: params.name,
+        symbol: params.symbol,
+        description: params.description,
+        mintPrice: params.mintPrice,
+        royaltyFee: Math.round(parseFloat(params.royaltyFee || "0") * 100), // Convert % to basis points
+        maxSupply: parseInt(params.maxSupply || "10000"),
+        mintLimitPerWallet: parseInt(params.mintLimitPerWallet || "0"),
+        publicMintPrice: params.mintPrice, // Same as mintPrice by default
+        // Only set allowlist duration if addresses provided, otherwise go straight to public
+        allowlistStageDuration: allowlistAddresses.length > 0 ? parseInt(data.allowlistDuration) * 3600 : 0,
+        tokenURI: params.baseTokenURI || "",
+      };
+
+      if (params.tokenType === "ERC721") {
+        result = await createERC721.mutateAsync(collectionParams);
+      } else {
+        result = await createERC1155.mutateAsync(collectionParams);
+      }
+
+      const collectionAddress = result.address;
+
+      // Add addresses to allowlist if provided
+      if (allowlistAddresses.length > 0) {
+        toast.info("Adding addresses to allowlist...");
+        try {
+          await addToAllowlist.mutateAsync({ 
+            collectionAddress, 
+            addresses: allowlistAddresses 
+          });
+          
+          // Enable allowlist-only mode so only allowlisted users can mint
+          await setAllowlistOnly.mutateAsync({ 
+            collectionAddress, 
+            enabled: true 
+          });
+          
+          toast.success(`${allowlistAddresses.length} addresses added to allowlist`);
+        } catch (err) {
+          toast.error("Failed to configure allowlist", {
+            description: (err as Error).message,
+          });
+        }
+      }
 
       // Redirect to collection page
       router.push(`/collections/${collectionAddress}`);
-    } catch (error: any) {
+    } catch (error) {
       logger.error("Failed to create collection", error, {
         component: "CreateCollectionForm",
         action: "createCollection",
@@ -256,7 +302,9 @@ export default function CreateCollectionForm() {
         <CardContent>
           <Tabs
             value={tokenType}
-            onValueChange={(value) => setValue("tokenType", value as any)}
+            onValueChange={(value) =>
+              setValue("tokenType", value as "ERC721" | "ERC1155")
+            }
           >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="ERC721">
@@ -392,10 +440,13 @@ export default function CreateCollectionForm() {
               <div className="border-2 border-dashed rounded-lg p-4 text-center">
                 {logoImage ? (
                   <div className="space-y-2">
-                    <img
+                    <Image
+                      width={100}
+                      height={100}
                       src={logoImage}
                       alt="Logo"
                       className="w-32 h-32 object-cover rounded-lg mx-auto"
+                      unoptimized
                     />
                     <Button
                       type="button"
@@ -435,7 +486,9 @@ export default function CreateCollectionForm() {
               <div className="border-2 border-dashed rounded-lg p-4 text-center">
                 {bannerImage ? (
                   <div className="space-y-2">
-                    <img
+                    <Image
+                      width={1400}
+                      height={400}
                       src={bannerImage}
                       alt="Banner"
                       className="w-full h-32 object-cover rounded-lg"
@@ -579,6 +632,32 @@ export default function CreateCollectionForm() {
                 </p>
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="allowlistDuration">
+                Allowlist Duration (hours)
+                <span className="text-xs text-muted-foreground ml-2">
+                  (0-168 hours)
+                </span>
+              </Label>
+              <Input
+                id="allowlistDuration"
+                type="number"
+                min="0"
+                max="168"
+                placeholder="24"
+                {...register("allowlistDuration")}
+              />
+              <p className="text-xs text-muted-foreground">
+                How long the allowlist-only mint period lasts before public mint opens.
+                Only applies if allowlist addresses are provided.
+              </p>
+              {errors.allowlistDuration && (
+                <p className="text-sm text-destructive">
+                  {errors.allowlistDuration.message}
+                </p>
+              )}
+            </div>
           </div>
 
           <Separator />
@@ -644,7 +723,12 @@ export default function CreateCollectionForm() {
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading}>
+        <Button
+          type="submit"
+          disabled={
+            isLoading || createERC721.isPending || createERC1155.isPending
+          }
+        >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

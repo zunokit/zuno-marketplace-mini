@@ -1,27 +1,25 @@
 /**
  * Web3 Utilities
- * Centralized Web3/Ethereum utilities using MarketplaceHub pattern
+ * Centralized Web3/Ethereum utilities
  */
 
 import { ethers, BrowserProvider, JsonRpcProvider } from "ethers";
-import { initializeServices } from "@/lib/services/contracts";
-import { envConfigManager } from "@/lib/utils/env-config";
-import { ProviderFactory } from "@/lib/services/web3/provider-factory";
-import { logger } from "./logger";
+import { logger } from "./sdk-logger";
 
 export class Web3Utils {
   private provider: BrowserProvider | JsonRpcProvider | null = null;
   private signer: ethers.Signer | null = null;
 
   /**
-   * Initialize provider and all contract services
+   * Initialize provider
+   * Note: SDK services are automatically initialized by ZunoProvider
    */
   async initializeProvider(): Promise<void> {
     try {
       // Check for MetaMask or other Web3 provider
       if (typeof window !== "undefined" && window.ethereum) {
         try {
-          this.provider = ProviderFactory.createBrowserProvider();
+          this.provider = new ethers.BrowserProvider(window.ethereum);
           await this.provider.send("eth_requestAccounts", []);
           this.signer = await this.provider.getSigner();
         } catch (error) {
@@ -41,17 +39,7 @@ export class Web3Utils {
         this.initializeFallbackProvider();
       }
 
-      // Initialize all contract services with Hub pattern
-      if (this.provider) {
-        await initializeServices(this.provider, this.signer || undefined);
-      } else {
-        logger.warn("Provider not initialized, skipping service initialization", null, {
-          component: "Web3Utils",
-          action: "initializeProvider",
-        });
-      }
-
-      logger.success("Web3 and contract services initialized", null, {
+      logger.info("Web3 provider initialized - SDK services handled by ZunoProvider", null, {
         component: "Web3Utils",
         action: "initializeProvider",
       });
@@ -71,36 +59,12 @@ export class Web3Utils {
    * Initialize fallback JSON-RPC provider for read-only operations
    */
   private initializeFallbackProvider(): void {
-    const chainIdNum = envConfigManager.getDefaultChainId();
-    const chainId = chainIdNum.toString();
-    let rpcUrl = "";
-
-    // Determine RPC URL based on chain ID
-    switch (chainId) {
-      case "31337": // Local development
-        rpcUrl =
-          process.env.NEXT_PUBLIC_RPC_URL_LOCAL || "http://127.0.0.1:8545";
-        break;
-      case "1": // Ethereum Mainnet
-        rpcUrl =
-          process.env.NEXT_PUBLIC_RPC_URL_MAINNET ||
-          "https://eth-mainnet.alchemyapi.io/v2/YOUR-API-KEY";
-        break;
-      case "11155111": // Sepolia Testnet
-        rpcUrl =
-          process.env.NEXT_PUBLIC_RPC_URL_SEPOLIA ||
-          "https://sepolia.infura.io/v3/YOUR-PROJECT-ID";
-        break;
-      default:
-        throw new Error(`Unsupported chain ID: ${chainId}`);
-    }
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || "http://127.0.0.1:8545";
+    const chainId = process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337";
 
     logger.info(
       `Connecting to RPC: ${rpcUrl} (Chain ID: ${chainId})`,
-      {
-        rpcUrl,
-        chainId,
-      },
+      { rpcUrl, chainId },
       { component: "Web3Utils", action: "initializeFallbackProvider" }
     );
     this.provider = new JsonRpcProvider(rpcUrl);
@@ -130,7 +94,7 @@ export class Web3Utils {
     }
 
     try {
-      this.provider = ProviderFactory.createBrowserProvider();
+      this.provider = new ethers.BrowserProvider(window.ethereum);
       await this.provider.send("eth_requestAccounts", []);
       this.signer = await this.provider.getSigner();
       logger.success("MetaMask connected for transactions", null, {
@@ -173,7 +137,7 @@ export class Web3Utils {
     try {
       const balance = await this.provider.getBalance(accountAddress);
       return ethers.formatEther(balance);
-    } catch (error) {
+    } catch {
       throw new Error("Failed to get balance");
     }
   }
@@ -205,8 +169,8 @@ export class Web3Utils {
         method: "wallet_switchEthereumChain",
         params: [{ chainId }],
       });
-    } catch (error: any) {
-      if (error.code === 4902) {
+    } catch (error) {
+      if ((error as { code?: number }).code === 4902) {
         throw new Error("Network not added to wallet");
       }
       throw new Error("Failed to switch network");
@@ -249,7 +213,7 @@ export class Web3Utils {
   /**
    * Get contract instance
    */
-  getContract(address: string, abi: any[]): ethers.Contract {
+  getContract(address: string, abi: ethers.InterfaceAbi): ethers.Contract {
     if (!this.provider) throw new Error("Provider not initialized");
     return new ethers.Contract(address, abi, this.signer || this.provider);
   }
@@ -264,7 +228,7 @@ export class Web3Utils {
     if (!this.provider) throw new Error("Provider not initialized");
     try {
       return await this.provider.waitForTransaction(txHash, confirmations);
-    } catch (error) {
+    } catch {
       throw new Error("Failed to wait for transaction");
     }
   }
@@ -281,7 +245,7 @@ export class Web3Utils {
         data,
         value: value || BigInt(0),
       });
-    } catch (error) {
+    } catch {
       throw new Error("Failed to estimate gas");
     }
   }
@@ -294,7 +258,7 @@ export class Web3Utils {
     try {
       const feeData = await this.provider.getFeeData();
       return feeData.gasPrice || BigInt(0);
-    } catch (error) {
+    } catch {
       throw new Error("Failed to get gas price");
     }
   }
@@ -314,6 +278,10 @@ export const web3Utils = new Web3Utils();
 // Window ethereum type declaration
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: {
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on: (event: string, callback: (...args: unknown[]) => void) => void;
+      removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
+    };
   }
 }

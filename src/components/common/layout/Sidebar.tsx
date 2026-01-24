@@ -1,10 +1,9 @@
 'use client'
-import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
+
 import { Separator } from '@/components/ui/separator'
 import {
   Tooltip,
@@ -12,22 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { 
-  Store, 
-  Palette, 
-  Gavel, 
-  Package, 
-  TrendingUp, 
-  User, 
-  Settings,
-  Plus,
-  Heart,
-  Clock,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react'
+import { Palette, Gavel, Plus, ChevronLeft, ChevronRight, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAppSelector } from '@/lib/store/hooks'
 
 interface SidebarProps {
   collapsed?: boolean
@@ -36,10 +21,10 @@ interface SidebarProps {
 
 const navigationItems = [
   {
-    title: 'Marketplace',
-    href: '/marketplace',
-    icon: Store,
-    description: 'Browse all NFTs',
+    title: 'Profile',
+    href: '/profile',
+    icon: User,
+    description: 'Your profile',
   },
   {
     title: 'Collections',
@@ -53,65 +38,25 @@ const navigationItems = [
     icon: Gavel,
     description: 'Live auctions',
   },
-  {
-    title: 'Bundles',
-    href: '/bundles',
-    icon: Package,
-    description: 'NFT bundles',
-  },
-  {
-    title: 'Analytics',
-    href: '/analytics',
-    icon: TrendingUp,
-    description: 'Market insights',
-  },
 ]
 
 const createItems = [
   {
     title: 'Create Collection',
     href: '/collections/create',
-    icon: Palette,
-  },
-  {
-    title: 'Mint NFT',
-    href: '/nft/mint',
     icon: Plus,
   },
   {
-    title: 'Start Auction',
+    title: 'Create Auction',
     href: '/auctions/create',
     icon: Gavel,
   },
 ]
 
-const userItems = [
-  {
-    title: 'Profile',
-    href: '/profile',
-    icon: User,
-  },
-  {
-    title: 'Favorites',
-    href: '/profile/favorites',
-    icon: Heart,
-  },
-  {
-    title: 'Activity',
-    href: '/profile/activity',
-    icon: Clock,
-  },
-  {
-    title: 'Settings',
-    href: '/profile/settings',
-    icon: Settings,
-  },
-]
+
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const pathname = usePathname()
-  const wallet = useAppSelector((state) => state.wallet)
-  const notifications = useAppSelector((state) => state.notifications)
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col">
@@ -241,69 +186,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             </nav>
           </div>
 
-          {/* User Section - Only show if wallet connected */}
-          {wallet.isConnected && (
-            <div>
-              {!collapsed && (
-                <h3 className="mb-3 text-sm font-medium text-muted-foreground">
-                  Account
-                </h3>
-              )}
-              <nav className="space-y-1">
-                {userItems.map((item) => {
-                  const isActive = pathname === item.href
-                  const showBadge = item.href === '/profile/activity' && notifications.unreadCount > 0
-                  
-                  const NavItem = (
-                    <Button
-                      variant={isActive ? 'default' : 'ghost'}
-                      className={cn(
-                        "w-full justify-start relative",
-                        collapsed && "px-2",
-                        !collapsed && "px-3"
-                      )}
-                      asChild
-                    >
-                      <Link href={item.href}>
-                        <item.icon className={cn("h-4 w-4", !collapsed && "mr-2")} />
-                        {!collapsed && item.title}
-                        {showBadge && !collapsed && (
-                          <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
-                            {notifications.unreadCount}
-                          </Badge>
-                        )}
-                        {showBadge && collapsed && (
-                          <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full" />
-                        )}
-                      </Link>
-                    </Button>
-                  )
 
-                  if (collapsed) {
-                    return (
-                      <TooltipProvider key={item.href}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            {NavItem}
-                          </TooltipTrigger>
-                          <TooltipContent side="right">
-                            <p>{item.title}</p>
-                            {showBadge && (
-                              <p className="text-xs text-muted-foreground">
-                                {notifications.unreadCount} new notifications
-                              </p>
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )
-                  }
-
-                  return <div key={item.href}>{NavItem}</div>
-                })}
-              </nav>
-            </div>
-          )}
         </div>
       </ScrollArea>
     </div>

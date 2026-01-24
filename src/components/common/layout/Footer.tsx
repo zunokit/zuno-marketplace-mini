@@ -14,7 +14,6 @@ import {
 
 const footerLinks = {
   marketplace: [
-    { label: "Browse", href: "/marketplace" },
     { label: "Collections", href: "/collections" },
     { label: "Auctions", href: "/auctions" },
     { label: "Analytics", href: "/analytics" },

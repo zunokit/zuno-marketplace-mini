@@ -1,631 +1,207 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useWallet } from "@/providers/WalletProvider";
-import { ethers } from "ethers";
-import { logger } from "@/lib/utils/logger";
-import {
-  collectionService,
-  listingHistoryTrackerService,
-  nftMetadataService,
-  userHubService
-} from "@/lib/services/contracts";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { useState, useMemo } from "react";
+import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Grid,
-  List,
-  Search,
-  Filter,
-  Plus,
-  CheckCircle,
-  TrendingUp,
-  Users,
-  Package,
-  DollarSign,
-  Info,
-  ExternalLink,
-  Copy,
-  Loader2,
-  ShieldCheck,
-  Star,
-  Zap,
-  Image as ImageIcon
-} from "lucide-react";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, Filter, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { toast } from "sonner";
-import { formatEther } from "ethers";
+import { useCreatedCollections, useCollectionInfo } from "zuno-marketplace-sdk/react";
 
-interface Collection {
-  address: string;
-  name: string;
-  symbol: string;
-  owner: string;
-  tokenType: "ERC721" | "ERC1155";
-  isVerified: boolean;
-  metadata?: {
-    description?: string;
-    image?: string;
-    website?: string;
-    twitter?: string;
-  };
-  stats?: {
-    totalSupply: number;
-    floorPrice: bigint;
-    totalVolume: bigint;
-    totalSales: number;
-    averagePrice: bigint;
-    activeListings: number;
-  };
+function CollectionCard({ address, type }: { address: string; type: "ERC721" | "ERC1155" }) {
+  const { data: info, isLoading } = useCollectionInfo(address);
+
+  if (isLoading) {
+    return (
+      <Card className="overflow-hidden">
+        <CardContent className="p-4">
+          <Skeleton className="h-32 w-full mb-4" />
+          <Skeleton className="h-6 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalMinted = parseInt(info?.totalSupply || "0");
+  const maxSupply = parseInt(info?.maxSupply || "0");
+  const progress = maxSupply > 0 ? (totalMinted / maxSupply) * 100 : 0;
+
+  return (
+    <Link href={`/collections/${address}`}>
+      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
+        <div className="h-32 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+          <span className="text-4xl font-bold text-primary/30">
+            {info?.symbol?.slice(0, 2) || "??"}
+          </span>
+        </div>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold truncate">{info?.name || "Unknown"}</h3>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+              {type}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3 truncate">
+            {info?.symbol || "---"}
+          </p>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Minted</span>
+              <span>{totalMinted} / {maxSupply || "∞"}</span>
+            </div>
+            {maxSupply > 0 && (
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Price</span>
+              <span>{info?.mintPrice || "0"} ETH</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
 }
 
 export default function CollectionsPage() {
-  const { account: address, isConnected } = useWallet();
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterVerified, setFilterVerified] = useState(false);
-  const [sortBy, setSortBy] = useState<"volume" | "floor" | "sales">("volume");
-  
-  // Verification dialog
-  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
-  const [verificationData, setVerificationData] = useState({
-    website: "",
-    twitter: "",
-    description: ""
-  });
-  const [verifying, setVerifying] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("recent");
 
-  useEffect(() => {
-    fetchCollections();
-  }, []);
+  const { data: createdCollections, isLoading, error, refetch } = useCreatedCollections();
 
-  const fetchCollections = async () => {
-    try {
-      setLoading(true);
-      logger.info("Fetching collections from blockchain", null, {
-        component: "CollectionsPage",
-        action: "fetchCollections"
-      });
-
-      // Get factory addresses
-      const erc721FactoryAddr = await userHubService.getERC721Factory();
-      const erc1155FactoryAddr = await userHubService.getERC1155Factory();
-      
-      // Get factory contracts
-      const erc721Factory = await collectionService.getERC721FactoryContract();
-      const erc1155Factory = await collectionService.getERC1155FactoryContract();
-
-      // Get created collections from events
-      const erc721Filter = erc721Factory.filters.CollectionCreated();
-      const erc1155Filter = erc1155Factory.filters.CollectionCreated();
-      
-      const [erc721Events, erc1155Events] = await Promise.all([
-        erc721Factory.queryFilter(erc721Filter),
-        erc1155Factory.queryFilter(erc1155Filter)
-      ]);
-
-      // Process collections
-      const collectionPromises = [
-        ...erc721Events.map(async (event) => {
-          const collectionAddress = (event as any).args?.[0];
-          if (!collectionAddress) return null;
-          return fetchCollectionData(collectionAddress, "ERC721");
-        }),
-        ...erc1155Events.map(async (event) => {
-          const collectionAddress = (event as any).args?.[0];
-          if (!collectionAddress) return null;
-          return fetchCollectionData(collectionAddress, "ERC1155");
-        })
-      ];
-
-      const collectionData = (await Promise.all(collectionPromises))
-        .filter(c => c !== null) as Collection[];
-
-      // Sort collections
-      const sorted = sortCollections(collectionData, sortBy);
-      setCollections(sorted);
-      
-      logger.success(`Fetched ${sorted.length} collections`, null, {
-        component: "CollectionsPage",
-        action: "fetchCollections"
-      });
-    } catch (error) {
-      logger.error("Failed to fetch collections", error, {
-        component: "CollectionsPage",
-        action: "fetchCollections"
-      });
-      setCollections([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCollectionData = async (
-    collectionAddress: string,
-    tokenType: "ERC721" | "ERC1155"
-  ): Promise<Collection | null> => {
-    try {
-      // Get collection contract
-      const contract = new ethers.Contract(
-        collectionAddress,
-        ["function name() view returns (string)",
-         "function symbol() view returns (string)",
-         "function owner() view returns (address)",
-         "function totalSupply() view returns (uint256)"],
-        await collectionService.getProvider()
+  const filteredCollections = useMemo(() => {
+    if (!createdCollections) return [];
+    
+    let filtered = [...createdCollections];
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(c => 
+        c.address.toLowerCase().includes(query) ||
+        c.creator.toLowerCase().includes(query)
       );
-
-      const [name, symbol, owner] = await Promise.all([
-        contract.name(),
-        contract.symbol(),
-        contract.owner()
-      ]);
-
-      // Get metadata
-      const metadata = await nftMetadataService.getCollectionMetadata(collectionAddress);
-
-      // Get collection stats from history tracker
-      let stats;
-      try {
-        const historyTracker = await listingHistoryTrackerService.getHistoryTrackerContract();
-        const collectionStats = await historyTracker.collectionStats(collectionAddress);
-        
-        stats = {
-          totalSupply: 0, // Will update below
-          floorPrice: collectionStats.floorPrice,
-          totalVolume: collectionStats.totalVolume,
-          totalSales: Number(collectionStats.totalSales),
-          averagePrice: collectionStats.averagePrice,
-          activeListings: Number(collectionStats.activeListings)
-        };
-
-        // Try to get total supply
-        try {
-          const supply = await contract.totalSupply();
-          stats.totalSupply = Number(supply);
-        } catch {}
-      } catch (error) {
-        logger.warn("Failed to fetch collection stats", error, {
-          component: "CollectionsPage",
-          action: "fetchCollectionData",
-          collection: collectionAddress
-        });
-      }
-
-      // Check verification status
-      const isVerified = await collectionService.isCollectionVerified(collectionAddress);
-
-      return {
-        address: collectionAddress,
-        name,
-        symbol,
-        owner,
-        tokenType,
-        isVerified,
-        metadata: metadata ? {
-          description: metadata.description,
-          image: metadata.image,
-          website: metadata.external_link,
-          twitter: (metadata as any).twitter_username || (metadata as any).twitter
-        } : undefined,
-        stats
-      };
-    } catch (error) {
-      logger.warn("Failed to fetch collection data", error, {
-        component: "CollectionsPage",
-        action: "fetchCollectionData",
-        collection: collectionAddress
-      });
-      return null;
     }
-  };
 
-  const sortCollections = (collections: Collection[], sortBy: string): Collection[] => {
-    return [...collections].sort((a, b) => {
-      switch (sortBy) {
-        case "volume":
-          return Number(b.stats?.totalVolume || 0n) - Number(a.stats?.totalVolume || 0n);
-        case "floor":
-          return Number(b.stats?.floorPrice || 0n) - Number(a.stats?.floorPrice || 0n);
-        case "sales":
-          return (b.stats?.totalSales || 0) - (a.stats?.totalSales || 0);
-        default:
-          return 0;
-      }
-    });
-  };
-
-  const handleRequestVerification = async () => {
-    if (!selectedCollection || !isConnected) return;
-
-    try {
-      setVerifying(true);
-      logger.info("Requesting collection verification", {
-        collection: selectedCollection.address
-      }, {
-        component: "CollectionsPage",
-        action: "handleRequestVerification"
-      });
-
-      const verificationFee = ethers.parseEther("0.01"); // Example fee
-      
-      const txHash = await collectionService.requestVerification(
-        selectedCollection.address,
-        {
-          description: verificationData.description,
-          website: verificationData.website,
-          twitter: verificationData.twitter
-        }
-      );
-
-      // Transaction hash is returned directly
-      toast.success("Verification request submitted!");
-      setVerifyDialogOpen(false);
-      setSelectedCollection(null);
-      
-      // Reset form
-      setVerificationData({
-        website: "",
-        twitter: "",
-        description: ""
-      });
-    } catch (error: any) {
-      logger.error("Failed to request verification", error, {
-        component: "CollectionsPage",
-        action: "handleRequestVerification"
-      });
-      toast.error(error.message || "Failed to submit verification request");
-    } finally {
-      setVerifying(false);
+    if (sortBy === "recent") {
+      filtered.sort((a, b) => b.blockNumber - a.blockNumber);
     }
-  };
 
-  const filteredCollections = collections.filter(collection => {
-    const matchesSearch = collection.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         collection.symbol.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesVerified = !filterVerified || collection.isVerified;
-    return matchesSearch && matchesVerified;
-  });
-
-  const CollectionCard = ({ collection }: { collection: Collection }) => (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <div className="relative aspect-square bg-gray-100">
-        {collection.metadata?.image ? (
-          <img
-            src={collection.metadata.image}
-            alt={collection.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ImageIcon className="w-12 h-12 text-gray-400" />
-          </div>
-        )}
-        {collection.isVerified && (
-          <div className="absolute top-2 right-2">
-            <Badge className="bg-blue-500">
-              <ShieldCheck className="w-3 h-3 mr-1" />
-              Verified
-            </Badge>
-          </div>
-        )}
-        <Badge 
-          variant="secondary" 
-          className="absolute top-2 left-2"
-        >
-          {collection.tokenType}
-        </Badge>
-      </div>
-      
-      <CardContent className="p-4">
-        <h3 className="font-semibold text-lg mb-2">{collection.name}</h3>
-        <p className="text-sm text-gray-500 mb-4">{collection.symbol}</p>
-        
-        {collection.stats && (
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <div>
-              <p className="text-xs text-gray-500">Floor Price</p>
-              <p className="font-medium">
-                {collection.stats.floorPrice > 0n
-                  ? `${formatEther(collection.stats.floorPrice)} ETH`
-                  : "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Volume</p>
-              <p className="font-medium">
-                {formatEther(collection.stats.totalVolume)} ETH
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Items</p>
-              <p className="font-medium">{collection.stats.totalSupply || "—"}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Sales</p>
-              <p className="font-medium">{collection.stats.totalSales}</p>
-            </div>
-          </div>
-        )}
-        
-        <div className="flex gap-2">
-          <Link href={`/collections/${collection.address}`} className="flex-1">
-            <Button variant="outline" className="w-full">
-              View Collection
-            </Button>
-          </Link>
-          {!collection.isVerified && collection.owner === address && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => {
-                setSelectedCollection(collection);
-                setVerifyDialogOpen(true);
-              }}
-            >
-              <ShieldCheck className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
+    return filtered;
+  }, [createdCollections, searchQuery, sortBy]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">NFT Collections</h1>
-            <p className="text-gray-600">Explore and create NFT collections</p>
-          </div>
-          
-          <Link href="/collections/create">
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Collection
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold mb-2">Explore Collections</h1>
+              <p className="text-muted-foreground">
+                {createdCollections?.length || 0} collections found on-chain
+              </p>
+            </div>
+            <Button asChild>
+              <Link href="/collections/create">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Collection
+              </Link>
             </Button>
-          </Link>
-        </div>
-        
-        {/* Filters */}
-        <div className="flex gap-4 flex-wrap">
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Search collections..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by address or creator..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
-          </div>
-          
-          <select
-            className="px-4 py-2 border rounded-md"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-          >
-            <option value="volume">Sort by Volume</option>
-            <option value="floor">Sort by Floor Price</option>
-            <option value="sales">Sort by Sales</option>
-          </select>
-          
-          <Button
-            variant={filterVerified ? "default" : "outline"}
-            onClick={() => setFilterVerified(!filterVerified)}
-          >
-            <ShieldCheck className="w-4 h-4 mr-2" />
-            Verified Only
-          </Button>
-          
-          <div className="flex gap-2">
-            <Button
-              variant={viewMode === "grid" ? "default" : "outline"}
-              size="icon"
-              onClick={() => setViewMode("grid")}
-            >
-              <Grid className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "default" : "outline"}
-              size="icon"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="w-4 h-4" />
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Recently Created</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={() => refetch()}>
+              Refresh
             </Button>
           </div>
         </div>
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading collections from blockchain...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-12">
+            <p className="text-lg text-red-500 mb-4">Failed to load collections</p>
+            <p className="text-muted-foreground mb-4">{(error as Error).message}</p>
+            <Button onClick={() => refetch()}>Retry</Button>
+          </div>
+        )}
+
+        {/* Collections Grid */}
+        {!isLoading && !error && (
+          <>
+            {filteredCollections.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredCollections.map((collection) => (
+                  <CollectionCard
+                    key={collection.address}
+                    address={collection.address}
+                    type={collection.type}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-lg text-muted-foreground mb-4">
+                  {searchQuery 
+                    ? "No collections found matching your search" 
+                    : "No collections available yet"}
+                </p>
+                {searchQuery ? (
+                  <Button variant="outline" onClick={() => setSearchQuery("")}>
+                    Clear Search
+                  </Button>
+                ) : (
+                  <Button asChild>
+                    <Link href="/collections/create">Create First Collection</Link>
+                  </Button>
+                )}
+              </div>
+            )}
+          </>
+        )}
       </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin" />
-        </div>
-      ) : filteredCollections.length > 0 ? (
-        viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredCollections.map(collection => (
-              <CollectionCard key={collection.address} collection={collection} />
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredCollections.map(collection => (
-              <Card key={collection.address}>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                      {collection.metadata?.image ? (
-                        <img
-                          src={collection.metadata.image}
-                          alt={collection.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ImageIcon className="w-8 h-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-lg">{collection.name}</h3>
-                        {collection.isVerified && (
-                          <Badge className="bg-blue-500">
-                            <ShieldCheck className="w-3 h-3 mr-1" />
-                            Verified
-                          </Badge>
-                        )}
-                        <Badge variant="secondary">{collection.tokenType}</Badge>
-                      </div>
-                      <p className="text-sm text-gray-500 mb-2">{collection.symbol}</p>
-                      {collection.metadata?.description && (
-                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                          {collection.metadata.description}
-                        </p>
-                      )}
-                    </div>
-                    
-                    {collection.stats && (
-                      <div className="grid grid-cols-4 gap-4">
-                        <div className="text-center">
-                          <p className="text-xs text-gray-500">Floor</p>
-                          <p className="font-medium">
-                            {collection.stats.floorPrice > 0n
-                              ? `${formatEther(collection.stats.floorPrice)} ETH`
-                              : "—"}
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs text-gray-500">Volume</p>
-                          <p className="font-medium">
-                            {formatEther(collection.stats.totalVolume)} ETH
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs text-gray-500">Items</p>
-                          <p className="font-medium">{collection.stats.totalSupply || "—"}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-xs text-gray-500">Sales</p>
-                          <p className="font-medium">{collection.stats.totalSales}</p>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="flex gap-2">
-                      <Link href={`/collections/${collection.address}`}>
-                        <Button variant="outline">View</Button>
-                      </Link>
-                      {!collection.isVerified && collection.owner === address && (
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedCollection(collection);
-                            setVerifyDialogOpen(true);
-                          }}
-                        >
-                          Verify
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )
-      ) : (
-        <Card className="p-8 text-center">
-          <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-          <p className="text-gray-500">No collections found</p>
-        </Card>
-      )}
-
-      {/* Verification Dialog */}
-      <Dialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Request Verification</DialogTitle>
-            <DialogDescription>
-              Submit your collection for verification to get the verified badge
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedCollection && (
-            <div className="space-y-4">
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  Verification fee: 0.01 ETH
-                </AlertDescription>
-              </Alert>
-              
-              <div>
-                <Label htmlFor="website">Website</Label>
-                <Input
-                  id="website"
-                  placeholder="https://..."
-                  value={verificationData.website}
-                  onChange={(e) => setVerificationData({...verificationData, website: e.target.value})}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="twitter">Twitter</Label>
-                <Input
-                  id="twitter"
-                  placeholder="@username"
-                  value={verificationData.twitter}
-                  onChange={(e) => setVerificationData({...verificationData, twitter: e.target.value})}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <textarea
-                  id="description"
-                  className="w-full p-2 border rounded-md"
-                  rows={4}
-                  placeholder="Describe your collection..."
-                  value={verificationData.description}
-                  onChange={(e) => setVerificationData({...verificationData, description: e.target.value})}
-                />
-              </div>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setVerifyDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleRequestVerification} disabled={verifying || !isConnected}>
-              {verifying ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <ShieldCheck className="w-4 h-4 mr-2" />
-                  Submit for Verification
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </MainLayout>
   );
 }
