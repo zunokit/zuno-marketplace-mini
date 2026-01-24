@@ -23,6 +23,7 @@ import {
 import { useCollectionInfo, useExchange, useCreatedCollections, useZuno, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { handleSdkError } from "@/lib/utils/error-handler";
 
 interface Listing {
   id: string;
@@ -187,7 +188,7 @@ export default function MarketplacePage() {
       toast.success("NFT purchased successfully!");
       handleRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to purchase NFT");
+      handleSdkError(err, "Failed to purchase NFT");
     } finally {
       setBuyingId(null);
     }
@@ -230,7 +231,7 @@ export default function MarketplacePage() {
       setSelectedListings(new Set());
       handleRefresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to batch buy NFTs");
+      handleSdkError(err, "Failed to batch buy NFTs");
     } finally {
       setIsBatchBuying(false);
     }

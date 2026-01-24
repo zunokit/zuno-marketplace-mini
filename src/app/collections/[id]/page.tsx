@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useCollectionInfo, useZuno, useCollection, useIsAllowlistOnly, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -112,7 +113,7 @@ export default function CollectionDetailPage() {
       toast.success(`Added ${addresses.length} address(es) to allowlist!`);
       setAllowlistAddresses("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add addresses");
+      handleSdkError(err, "Failed to add addresses");
     } finally {
       setIsProcessing(false);
     }
@@ -143,7 +144,7 @@ export default function CollectionDetailPage() {
       toast.success(`Removed ${addresses.length} address(es) from allowlist!`);
       setRemoveAddresses("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to remove addresses");
+      handleSdkError(err, "Failed to remove addresses");
     } finally {
       setIsProcessing(false);
     }
@@ -165,7 +166,7 @@ export default function CollectionDetailPage() {
       setCheckResult(result);
       toast.success(result ? "Address is in allowlist ✓" : "Address not in allowlist");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to check address");
+      handleSdkError(err, "Failed to check address");
     } finally {
       setIsChecking(false);
     }
@@ -181,7 +182,7 @@ export default function CollectionDetailPage() {
       setAllowlistOnlyMode(!allowlistOnlyMode);
       toast.success(`Allowlist-only mode ${!allowlistOnlyMode ? "enabled" : "disabled"}!`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update mode");
+      handleSdkError(err, "Failed to update mode");
     } finally {
       setIsLoadingAllowlistMode(false);
     }

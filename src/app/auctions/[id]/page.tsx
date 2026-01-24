@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useAuction, useAuctionDetails, useDutchAuctionPrice, usePendingRefund, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 
 export default function AuctionDetailPage() {
   const params = useParams();
@@ -89,7 +90,7 @@ export default function AuctionDetailPage() {
       toast.success("Purchase successful!");
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to purchase");
+      handleSdkError(err, "Failed to purchase");
     } finally {
       setIsProcessing(false);
     }
@@ -102,7 +103,7 @@ export default function AuctionDetailPage() {
       toast.success("Auction cancelled");
       router.push("/auctions");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to cancel");
+      handleSdkError(err, "Failed to cancel");
     } finally {
       setIsProcessing(false);
     }
@@ -115,7 +116,7 @@ export default function AuctionDetailPage() {
       toast.success("Auction settled!");
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to settle");
+      handleSdkError(err, "Failed to settle");
     } finally {
       setIsProcessing(false);
     }
@@ -128,7 +129,7 @@ export default function AuctionDetailPage() {
       toast.success(`Withdrawn ${pendingRefund} ETH successfully!`);
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to withdraw");
+      handleSdkError(err, "Failed to withdraw");
     } finally {
       setIsProcessing(false);
     }

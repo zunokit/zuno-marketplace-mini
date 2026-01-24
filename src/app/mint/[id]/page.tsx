@@ -14,6 +14,7 @@ import {
 } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
 import { ethers } from "ethers";
+import { handleSdkError } from "@/lib/utils/error-handler";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,9 +124,7 @@ export default function MintPage() {
       refetch();
       setQuantity(1);
     } catch (err) {
-      toast.error("Failed to mint NFT", {
-        description: (err as Error).message || "Unknown error",
-      });
+      handleSdkError(err, "Failed to mint NFT");
     } finally {
       setIsMinting(false);
     }

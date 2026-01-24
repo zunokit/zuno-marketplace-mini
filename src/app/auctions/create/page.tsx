@@ -15,6 +15,7 @@ import { ArrowLeft, Gavel, TrendingDown, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useAuction, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 
 export default function CreateAuctionPage() {
   const router = useRouter();
@@ -70,7 +71,7 @@ export default function CreateAuctionPage() {
         router.push(`/auctions/${result.auctionId}`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create auction");
+      handleSdkError(error, "Failed to create auction");
     } finally {
       setIsSubmitting(false);
     }

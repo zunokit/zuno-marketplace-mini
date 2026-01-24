@@ -30,6 +30,7 @@ import Link from "next/link";
 import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller, useWallet } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 
 interface CollectionWithTokens {
   address: string;
@@ -289,7 +290,7 @@ function AuctionModal({
           const tokenList = group.tokenIds.length > 3 
             ? `${group.tokenIds.slice(0, 3).join(', ')}...` 
             : group.tokenIds.join(', ');
-          toast.error(`Failed for collection tokens [${tokenList}]: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          handleSdkError(err, `Failed for collection tokens [${tokenList}]`);
         }
       }
 
@@ -301,7 +302,7 @@ function AuctionModal({
         onSuccess();
       }
     } catch (err) {
-      toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      handleSdkError(err, 'Failed to batch mint');
     } finally {
       setIsProcessing(false);
     }
@@ -571,7 +572,7 @@ function ListingModal({
           setProgress({ current: completedTx, total: numTransactions });
           toast.success(`Listed ${tokens.length} NFT(s) from collection`);
         } catch (err) {
-          toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          handleSdkError(err, 'Failed to list NFTs');
         }
       }
 
@@ -582,7 +583,7 @@ function ListingModal({
         toast.warning(`${completedNFTs}/${totalNFTs} NFTs listed`);
       }
     } catch (err) {
-      toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      handleSdkError(err, 'Failed to batch mint');
     } finally {
       setIsProcessing(false);
     }
@@ -1077,7 +1078,7 @@ function MyAuctionsTab() {
       const { cancelledCount } = await batchCancelAuction.mutateAsync(toCancel);
       toast.success(`${cancelledCount} auction(s) cancelled in 1 transaction!`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel auctions');
+      handleSdkError(err, 'Failed to cancel auctions');
     }
 
     setSelectedAuctions(new Set());
@@ -1091,7 +1092,7 @@ function MyAuctionsTab() {
       toast.success('Auction cancelled!');
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel auction');
+      handleSdkError(err, 'Failed to cancel auction');
     }
   };
 
@@ -1301,7 +1302,7 @@ function MyListingsTab() {
       toast.success('Listing cancelled!');
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel listing');
+      handleSdkError(err, 'Failed to cancel listing');
     }
   };
 
