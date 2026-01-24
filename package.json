@@ -70,7 +70,7 @@
     "vaul": "^1.1.2",
     "wagmi": "^2.18.0",
     "zod": "^4.1.11",
-    "zuno-marketplace-sdk": "file:../zuno-marketplace-sdk"
+    "zuno-marketplace-sdk": "file:..\\zuno-marketplace-sdk"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -4,6 +4,7 @@ import StoreProvider from "@/lib/store/StoreProvider";
 import { ZunoProvider, ZunoDevTools, WagmiProviderSync } from "zuno-marketplace-sdk/react";
 import { defaultConfig, validateSDKConfig } from "@/lib/config/zuno-sdk";
 import { logger } from "@/lib/utils/sdk-logger";
+import { shouldLogError } from "@/lib/utils/error-handler";
 
 export default function AppProvider({
   children,
@@ -47,7 +48,11 @@ export default function AppProvider({
         reconnectDelay={500}
         clearOnDisconnect={true}
         onSync={() => logger.info("Wallet signer synced", { component: "WagmiProviderSync" })}
-        onError={(error) => logger.error("Wallet sync error", error, { component: "WagmiProviderSync" })}
+        onError={(error) => {
+          if (shouldLogError(error)) {
+            logger.error("Wallet sync error", error, { component: "WagmiProviderSync" });
+          }
+        }}
       />
       <StoreProvider>
         {children}
