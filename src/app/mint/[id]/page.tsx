@@ -61,6 +61,9 @@ export default function MintPage() {
   const { data: isInAllowlist } = useIsInAllowlist(collectionAddress, address);
   const { data: isAllowlistOnly } = useIsAllowlistOnly(collectionAddress);
 
+  // Collection owner is exempt from allowlist requirement
+  const isOwner = address?.toLowerCase() === collection?.owner?.toLowerCase();
+
   const [quantity, setQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
 
@@ -93,8 +96,8 @@ export default function MintPage() {
       return;
     }
 
-    // Check allowlist if collection is in allowlist-only mode
-    if (isAllowlistOnly && !isInAllowlist) {
+    // Check allowlist if collection is in allowlist-only mode (owner exempt)
+    if (isAllowlistOnly && !isInAllowlist && !isOwner) {
       toast.error("You are not in the allowlist", {
         description:
           "This collection only allows allowlisted addresses to mint.",
@@ -372,7 +375,7 @@ export default function MintPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
             {/* Allowlist Status */}
-            {isAllowlistOnly && (
+            {isAllowlistOnly && !isOwner && (
               <div
                 className={`p-3 rounded-lg mb-4 ${
                   isInAllowlist
@@ -397,6 +400,18 @@ export default function MintPage() {
               </div>
             )}
 
+            {/* Owner Badge */}
+            {isOwner && (
+              <div className="p-3 rounded-lg mb-4 bg-blue-500/10 border border-blue-500/30">
+                <p className="text-sm font-medium text-blue-500">
+                  ✓ You are the collection owner
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  You can mint regardless of allowlist status.
+                </p>
+              </div>
+            )}
+
             <Button
               className="w-full h-12 text-lg"
               onClick={handleMint}
@@ -404,7 +419,7 @@ export default function MintPage() {
                 isMinting ||
                 !isConnected ||
                 remaining <= 0 ||
-                (isAllowlistOnly && !isInAllowlist)
+                (isAllowlistOnly && !isInAllowlist && !isOwner)
               }
             >
               {isMinting ? (
@@ -416,7 +431,7 @@ export default function MintPage() {
                 "Sold Out"
               ) : !isConnected ? (
                 "Connect Wallet to Mint"
-              ) : isAllowlistOnly && !isInAllowlist ? (
+              ) : isAllowlistOnly && !isInAllowlist && !isOwner ? (
                 "Not in Allowlist"
               ) : (
                 `Mint ${quantity} NFT${quantity > 1 ? "s" : ""}`
