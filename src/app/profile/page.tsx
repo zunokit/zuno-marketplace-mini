@@ -775,20 +775,57 @@ function MyNFTsTab() {
     if (!allCollections || !address) return;
 
     const fetchUserTokens = async () => {
+      console.log('=== Profile: fetchUserTokens START ===', {
+        collectionsCount: allCollections.length,
+        address,
+        timestamp: new Date().toISOString()
+      });
       setIsLoadingTokens(true);
       const results: CollectionWithTokens[] = [];
 
       for (const col of allCollections) {
         try {
+          console.log(`[Profile] Fetching tokens for collection:`, {
+            address: col.address,
+            type: col.type
+          });
+          const startTime = Date.now();
           const res = await fetch(`/api/user-tokens?collection=${col.address}&user=${address}`);
+          const duration = Date.now() - startTime;
+          console.log(`[Profile] API response for ${col.address}:`, {
+            ok: res.ok,
+            status: res.status,
+            durationMs: duration
+          });
+
           if (res.ok) {
             const tokens = await res.json();
+            console.log(`[Profile] Tokens received for ${col.address}:`, {
+              count: tokens.length,
+              tokens
+            });
             if (tokens.length > 0) {
               results.push({ address: col.address, type: col.type, tokens });
             }
+          } else {
+            console.warn(`[Profile] API not OK for ${col.address}`);
           }
-        } catch { /* Skip */ }
+        } catch (error) {
+          console.error(`[Profile] Error fetching tokens for ${col.address}:`, {
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
       }
+
+      console.log('=== Profile: fetchUserTokens COMPLETE ===', {
+        collectionsWithTokens: results.length,
+        totalTokens: results.reduce((sum, c) => sum + c.tokens.length, 0),
+        collections: results.map(r => ({
+          address: r.address,
+          tokensCount: r.tokens.length
+        })),
+        timestamp: new Date().toISOString()
+      });
 
       setUserCollections(results);
       setIsLoadingTokens(false);
