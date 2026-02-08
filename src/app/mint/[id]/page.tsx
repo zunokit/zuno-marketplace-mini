@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -7,10 +10,11 @@ import {
   useCollection,
   useIsInAllowlist,
   useIsAllowlistOnly,
+  useWallet,
 } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { ethers } from "ethers";
+import { handleSdkError } from "@/lib/utils/error-handler";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,9 +58,12 @@ export default function MintPage() {
     refetch,
   } = useCollectionInfo(collectionAddress);
   const { batchMintERC721, batchMintERC1155 } = useCollection();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
   const { data: isInAllowlist } = useIsInAllowlist(collectionAddress, address);
   const { data: isAllowlistOnly } = useIsAllowlistOnly(collectionAddress);
+
+  // Collection owner is exempt from allowlist requirement
+  const isOwner = address?.toLowerCase() === collection?.owner?.toLowerCase();
 
   const [quantity, setQuantity] = useState(1);
   const [isMinting, setIsMinting] = useState(false);
@@ -90,8 +97,8 @@ export default function MintPage() {
       return;
     }
 
-    // Check allowlist if collection is in allowlist-only mode
-    if (isAllowlistOnly && !isInAllowlist) {
+    // Check allowlist if collection is in allowlist-only mode (owner exempt)
+    if (isAllowlistOnly && !isInAllowlist && !isOwner) {
       toast.error("You are not in the allowlist", {
         description:
           "This collection only allows allowlisted addresses to mint.",
@@ -117,9 +124,7 @@ export default function MintPage() {
       refetch();
       setQuantity(1);
     } catch (err) {
-      toast.error("Failed to mint NFT", {
-        description: (err as Error).message || "Unknown error",
-      });
+      handleSdkError(err, "Failed to mint NFT");
     } finally {
       setIsMinting(false);
     }
@@ -369,7 +374,7 @@ export default function MintPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
             {/* Allowlist Status */}
-            {isAllowlistOnly && (
+            {isAllowlistOnly && !isOwner && (
               <div
                 className={`p-3 rounded-lg mb-4 ${
                   isInAllowlist
@@ -394,6 +399,18 @@ export default function MintPage() {
               </div>
             )}
 
+            {/* Owner Badge */}
+            {isOwner && (
+              <div className="p-3 rounded-lg mb-4 bg-blue-500/10 border border-blue-500/30">
+                <p className="text-sm font-medium text-blue-500">
+                  ✓ You are the collection owner
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  You can mint regardless of allowlist status.
+                </p>
+              </div>
+            )}
+
             <Button
               className="w-full h-12 text-lg"
               onClick={handleMint}
@@ -401,7 +418,7 @@ export default function MintPage() {
                 isMinting ||
                 !isConnected ||
                 remaining <= 0 ||
-                (isAllowlistOnly && !isInAllowlist)
+                (isAllowlistOnly && !isInAllowlist && !isOwner)
               }
             >
               {isMinting ? (
@@ -413,7 +430,7 @@ export default function MintPage() {
                 "Sold Out"
               ) : !isConnected ? (
                 "Connect Wallet to Mint"
-              ) : isAllowlistOnly && !isInAllowlist ? (
+              ) : isAllowlistOnly && !isInAllowlist && !isOwner ? (
                 "Not in Allowlist"
               ) : (
                 `Mint ${quantity} NFT${quantity > 1 ? "s" : ""}`

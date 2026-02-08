@@ -44,6 +44,7 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 import Image from "next/image";
 
 // Form validation schema
@@ -256,9 +257,7 @@ export default function CreateCollectionForm() {
           
           toast.success(`${allowlistAddresses.length} addresses added to allowlist`);
         } catch (err) {
-          toast.error("Failed to configure allowlist", {
-            description: (err as Error).message,
-          });
+          handleSdkError(err, "Failed to configure allowlist");
         }
       }
 

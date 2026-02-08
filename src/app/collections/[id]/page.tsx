@@ -1,33 +1,69 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useCollectionInfo, useZuno } from "zuno-marketplace-sdk/react";
+import { useCollectionInfo, useZuno, useCollection, useIsAllowlistOnly, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Package, 
-  DollarSign, 
-  Percent, 
-  Users, 
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Package,
+  DollarSign,
+  Percent,
+  Users,
   User,
   Hash,
   ExternalLink,
   Coins,
-  FolderOpen
+  FolderOpen,
+  Shield,
+  UserPlus,
+  UserMinus,
+  Loader2,
+  Check,
+  X
 } from "lucide-react";
 import Link from "next/link";
 
 export default function CollectionDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { address: userAddress } = useWallet();
   const collectionAddress = params.id as string;
   const { data: collection, isLoading, error } = useCollectionInfo(collectionAddress);
   const sdk = useZuno();
+  const { addToAllowlist, removeFromAllowlist, setAllowlistOnly } = useCollection();
+  const { data: isAllowlistOnlyFromHook } = useIsAllowlistOnly(collectionAddress);
+
+  const [allowlistAddresses, setAllowlistAddresses] = useState("");
+  const [removeAddresses, setRemoveAddresses] = useState("");
+  const [checkAddress, setCheckAddress] = useState("");
+  const [isChecking, setIsChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<boolean | null>(null);
+  const [allowlistOnlyMode, setAllowlistOnlyMode] = useState(false);
+  const [isLoadingAllowlistMode, setIsLoadingAllowlistMode] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const isOwner = collection?.owner?.toLowerCase() === userAddress?.toLowerCase();
+
+  // Sync allowlist-only mode from hook
+  useEffect(() => {
+    if (isAllowlistOnlyFromHook !== undefined) {
+      setAllowlistOnlyMode(isAllowlistOnlyFromHook);
+    }
+  }, [isAllowlistOnlyFromHook]);
 
   const handleMint = () => {
     router.push(`/mint/${collectionAddress}`);
@@ -36,7 +72,7 @@ export default function CollectionDetailPage() {
   const handleViewExplorer = () => {
     const config = sdk.getConfig();
     const network = config.network;
-    
+
     let explorerUrl = "";
     if (network === "mainnet" || network === 1) {
       explorerUrl = `https://etherscan.io/address/${collectionAddress}`;
@@ -48,8 +84,108 @@ export default function CollectionDetailPage() {
     } else {
       explorerUrl = `https://etherscan.io/address/${collectionAddress}`;
     }
-    
+
     window.open(explorerUrl, "_blank");
+  };
+
+  const handleAddToAllowlist = async () => {
+    if (!allowlistAddresses.trim()) {
+      toast.error("Please enter addresses");
+      return;
+    }
+
+    const addresses = allowlistAddresses
+      .split(/[\n,]/)
+      .map(addr => addr.trim())
+      .filter(addr => addr.length > 0);
+
+    if (addresses.length === 0) {
+      toast.error("No valid addresses found");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await addToAllowlist.mutateAsync({
+        collectionAddress,
+        addresses,
+      });
+      toast.success(`Added ${addresses.length} address(es) to allowlist!`);
+      setAllowlistAddresses("");
+    } catch (err) {
+      handleSdkError(err, "Failed to add addresses");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRemoveFromAllowlist = async () => {
+    if (!removeAddresses.trim()) {
+      toast.error("Please enter addresses");
+      return;
+    }
+
+    const addresses = removeAddresses
+      .split(/[\n,]/)
+      .map(addr => addr.trim())
+      .filter(addr => addr.length > 0);
+
+    if (addresses.length === 0) {
+      toast.error("No valid addresses found");
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await removeFromAllowlist.mutateAsync({
+        collectionAddress,
+        addresses,
+      });
+      toast.success(`Removed ${addresses.length} address(es) from allowlist!`);
+      setRemoveAddresses("");
+    } catch (err) {
+      handleSdkError(err, "Failed to remove addresses");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCheckAllowlist = async () => {
+    if (!checkAddress.trim()) {
+      toast.error("Please enter an address");
+      return;
+    }
+
+    setIsChecking(true);
+    setCheckResult(null);
+    try {
+      const result = await sdk.collection.isInAllowlist(
+        collectionAddress,
+        checkAddress.trim()
+      );
+      setCheckResult(result);
+      toast.success(result ? "Address is in allowlist ✓" : "Address not in allowlist");
+    } catch (err) {
+      handleSdkError(err, "Failed to check address");
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleToggleAllowlistOnly = async () => {
+    setIsLoadingAllowlistMode(true);
+    try {
+      await setAllowlistOnly.mutateAsync({
+        collectionAddress,
+        enabled: !allowlistOnlyMode,
+      });
+      setAllowlistOnlyMode(!allowlistOnlyMode);
+      toast.success(`Allowlist-only mode ${!allowlistOnlyMode ? "enabled" : "disabled"}!`);
+    } catch (err) {
+      handleSdkError(err, "Failed to update mode");
+    } finally {
+      setIsLoadingAllowlistMode(false);
+    }
   };
 
   if (isLoading) {
@@ -96,6 +232,12 @@ export default function CollectionDetailPage() {
         <div className="flex items-center gap-3 mb-2">
           <h1 className="text-3xl font-bold">{collection?.name || "Collection"}</h1>
           <Badge variant="secondary">{collection?.tokenType}</Badge>
+          {allowlistOnlyMode && (
+            <Badge variant="outline" className="border-primary text-primary">
+              <Shield className="h-3 w-3 mr-1" />
+              Allowlist Only
+            </Badge>
+          )}
         </div>
         <p className="text-muted-foreground font-mono text-sm">{collectionAddress}</p>
         {collection?.description && (
@@ -204,7 +346,7 @@ export default function CollectionDetailPage() {
       </div>
 
       {/* Actions */}
-      <Card>
+      <Card className="mb-8">
         <CardHeader>
           <CardTitle>Actions</CardTitle>
         </CardHeader>
@@ -223,8 +365,160 @@ export default function CollectionDetailPage() {
             <ExternalLink className="mr-2 h-4 w-4" />
             View on Explorer
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Allowlist Management - Owner Only */}
+      {isOwner && (
+        <Card className="border-primary/20">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                <CardTitle>Allowlist Management</CardTitle>
+                <Badge variant="secondary">Owner Only</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="allowlist-mode" className="text-sm">
+                  Allowlist-Only Mode
+                </Label>
+                <Switch
+                  id="allowlist-mode"
+                  checked={allowlistOnlyMode}
+                  onCheckedChange={handleToggleAllowlistOnly}
+                  disabled={isLoadingAllowlistMode}
+                />
+              </div>
+            </div>
+            <CardDescription>
+              Manage who can mint from this collection. Allowlist-only mode restricts minting to allowlisted addresses only.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Add to Allowlist */}
+            <div className="space-y-2">
+              <Label htmlFor="add-addresses" className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Add Addresses to Allowlist
+              </Label>
+              <Textarea
+                id="add-addresses"
+                placeholder="Enter addresses (one per line or comma-separated)&#10;0x1234...&#10;0x5678..."
+                value={allowlistAddresses}
+                onChange={(e) => setAllowlistAddresses(e.target.value)}
+                className="font-mono text-sm min-h-[100px]"
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Max 100 addresses per batch
+                </p>
+                <Button
+                  onClick={handleAddToAllowlist}
+                  disabled={isProcessing || !allowlistAddresses.trim()}
+                  size="sm"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Add to Allowlist
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Remove from Allowlist */}
+            <div className="space-y-2">
+              <Label htmlFor="remove-addresses" className="flex items-center gap-2">
+                <UserMinus className="h-4 w-4" />
+                Remove Addresses from Allowlist
+              </Label>
+              <Textarea
+                id="remove-addresses"
+                placeholder="Enter addresses to remove (one per line or comma-separated)"
+                value={removeAddresses}
+                onChange={(e) => setRemoveAddresses(e.target.value)}
+                className="font-mono text-sm min-h-[100px]"
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleRemoveFromAllowlist}
+                  disabled={isProcessing || !removeAddresses.trim()}
+                  variant="destructive"
+                  size="sm"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Removing...
+                    </>
+                  ) : (
+                    <>
+                      <UserMinus className="mr-2 h-4 w-4" />
+                      Remove from Allowlist
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Check Address */}
+            <div className="space-y-2">
+              <Label htmlFor="check-address" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Check Allowlist Status
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="check-address"
+                  placeholder="0x..."
+                  value={checkAddress}
+                  onChange={(e) => setCheckAddress(e.target.value)}
+                  className="font-mono text-sm"
+                />
+                <Button
+                  onClick={handleCheckAllowlist}
+                  disabled={isChecking || !checkAddress.trim()}
+                  variant="outline"
+                  size="sm"
+                >
+                  {isChecking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Check"
+                  )}
+                </Button>
+              </div>
+              {checkResult !== null && (
+                <div
+                  className={`flex items-center gap-2 text-sm p-2 rounded ${
+                    checkResult
+                      ? "bg-green-500/10 text-green-600"
+                      : "bg-red-500/10 text-red-600"
+                  }`}
+                >
+                  {checkResult ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Address is in allowlist
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4" />
+                      Address not in allowlist
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
+      )}
       </div>
     </MainLayout>
   );

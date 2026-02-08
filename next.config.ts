@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
         hostname: "zunokit.github.io",
         port: "",
         pathname: "/zuno-marketplace-assets/**",
+        search: "",
       },
     ],
   },

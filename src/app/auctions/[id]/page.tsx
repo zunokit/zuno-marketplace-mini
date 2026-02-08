@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { MainLayout } from "@/components/common/layout/MainLayout";
@@ -14,16 +17,16 @@ import {
   Loader2, AlertCircle, CheckCircle, XCircle 
 } from "lucide-react";
 import Link from "next/link";
-import { useAuction, useAuctionDetails, useDutchAuctionPrice, usePendingRefund } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
+import { useAuction, useAuctionDetails, useDutchAuctionPrice, usePendingRefund, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 
 export default function AuctionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const auctionId = params.id as string;
-  
-  const { address, isConnected } = useAccount();
+
+  const { address, isConnected } = useWallet();
   const { data: auction, isLoading, error, refetch } = useAuctionDetails(auctionId);
   const { data: currentPrice } = useDutchAuctionPrice(
     auction?.type === 'dutch' ? auctionId : undefined
@@ -87,7 +90,7 @@ export default function AuctionDetailPage() {
       toast.success("Purchase successful!");
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to purchase");
+      handleSdkError(err, "Failed to purchase");
     } finally {
       setIsProcessing(false);
     }
@@ -100,7 +103,7 @@ export default function AuctionDetailPage() {
       toast.success("Auction cancelled");
       router.push("/auctions");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to cancel");
+      handleSdkError(err, "Failed to cancel");
     } finally {
       setIsProcessing(false);
     }
@@ -113,7 +116,7 @@ export default function AuctionDetailPage() {
       toast.success("Auction settled!");
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to settle");
+      handleSdkError(err, "Failed to settle");
     } finally {
       setIsProcessing(false);
     }
@@ -126,7 +129,7 @@ export default function AuctionDetailPage() {
       toast.success(`Withdrawn ${pendingRefund} ETH successfully!`);
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to withdraw");
+      handleSdkError(err, "Failed to withdraw");
     } finally {
       setIsProcessing(false);
     }

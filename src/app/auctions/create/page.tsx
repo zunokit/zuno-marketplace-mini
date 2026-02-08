@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MainLayout } from "@/components/common/layout/MainLayout";
@@ -10,13 +13,13 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, Gavel, TrendingDown, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useAuction } from "zuno-marketplace-sdk/react";
-import { useAccount } from "wagmi";
+import { useAuction, useWallet } from "zuno-marketplace-sdk/react";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 
 export default function CreateAuctionPage() {
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
   const { createEnglishAuction, createDutchAuction } = useAuction();
 
   const [auctionType, setAuctionType] = useState<"english" | "dutch">("english");
@@ -68,7 +71,7 @@ export default function CreateAuctionPage() {
         router.push(`/auctions/${result.auctionId}`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create auction");
+      handleSdkError(error, "Failed to create auction");
     } finally {
       setIsSubmitting(false);
     }

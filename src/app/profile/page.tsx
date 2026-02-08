@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to avoid SSR issues with wagmi/query
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/components/common/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -24,10 +27,10 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Package, RefreshCw, Gavel, Palette, User, XCircle, Clock, TrendingDown, Tag } from "lucide-react";
 import Link from "next/link";
-import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller } from "zuno-marketplace-sdk/react";
+import { useCreatedCollections, useCollectionInfo, useAuction, useExchange, useListingsBySeller, useWallet } from "zuno-marketplace-sdk/react";
 import { useAuctionsBySeller } from "@/hooks/useAuctionQueries";
-import { useAccount } from "wagmi";
 import { toast } from "sonner";
+import { handleSdkError } from "@/lib/utils/error-handler";
 
 interface CollectionWithTokens {
   address: string;
@@ -287,7 +290,7 @@ function AuctionModal({
           const tokenList = group.tokenIds.length > 3 
             ? `${group.tokenIds.slice(0, 3).join(', ')}...` 
             : group.tokenIds.join(', ');
-          toast.error(`Failed for collection tokens [${tokenList}]: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          handleSdkError(err, `Failed for collection tokens [${tokenList}]`);
         }
       }
 
@@ -299,7 +302,7 @@ function AuctionModal({
         onSuccess();
       }
     } catch (err) {
-      toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      handleSdkError(err, 'Failed to batch mint');
     } finally {
       setIsProcessing(false);
     }
@@ -396,6 +399,74 @@ function AuctionModal({
   );
 }
 
+// Helper to get token info from userCollections
+function getTokenInfo(
+  collectionAddress: string,
+  tokenId: string,
+  userCollections: CollectionWithTokens[]
+): { amount: number; isERC1155: boolean } {
+  const collection = userCollections.find(c => c.address.toLowerCase() === collectionAddress.toLowerCase());
+  const token = collection?.tokens.find(t => t.tokenId === tokenId);
+  return {
+    amount: token?.amount || 1,
+    isERC1155: collection?.type === 'ERC1155'
+  };
+}
+
+// Checkbox card for amount selection
+function AmountCheckboxCard({
+  collectionAddress,
+  tokenId,
+  totalAmount,
+  selectedAmount,
+  onAmountChange,
+}: {
+  collectionAddress: string;
+  tokenId: string;
+  totalAmount: number;
+  selectedAmount: number;
+  onAmountChange: (amount: number) => void;
+}) {
+  const { data: info } = useCollectionInfo(collectionAddress);
+
+  return (
+    <Card className="p-3">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+          <Palette className="h-5 w-5 text-primary/40" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{info?.name || 'Unknown'}</p>
+          <p className="text-xs text-muted-foreground font-mono">#{tokenId}</p>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground mb-2">
+        Available: <span className="font-medium text-foreground">{totalAmount}</span>
+      </p>
+      <div className="grid grid-cols-5 gap-1">
+        {Array.from({ length: Math.min(totalAmount, 10) }, (_, i) => (
+          <button
+            key={i}
+            onClick={() => onAmountChange(i + 1)}
+            className={`h-8 rounded text-xs font-medium transition-colors ${
+              i < selectedAmount
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-muted text-muted-foreground hover:bg-muted/70'
+            }`}
+          >
+            {i + 1}
+          </button>
+        ))}
+      </div>
+      {totalAmount > 10 && (
+        <p className="text-xs text-muted-foreground mt-1 text-center">
+          Showing 1-10 of {totalAmount}
+        </p>
+      )}
+    </Card>
+  );
+}
+
 function ListingModal({
   open,
   onClose,
@@ -415,18 +486,36 @@ function ListingModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
+  // State for ERC1155 amount selection: Map<tokenKey, selectedAmount>
+  const [selectedAmounts, setSelectedAmounts] = useState<Record<string, number>>({});
+
   // Group selected tokens by collection for batch listing
   const groupedByCollection = useMemo(() => {
-    const groups: Record<string, string[]> = {};
+    const groups: Record<string, Array<{ tokenId: string; amount: number; isERC1155: boolean }>> = {};
     selectedTokens.forEach(key => {
       const [collectionAddress, tokenId] = key.split(':');
       if (!groups[collectionAddress]) {
         groups[collectionAddress] = [];
       }
-      groups[collectionAddress].push(tokenId);
+      const { amount, isERC1155 } = getTokenInfo(collectionAddress, tokenId, _userCollections);
+      groups[collectionAddress].push({ tokenId, amount, isERC1155 });
     });
     return groups;
-  }, [selectedTokens]);
+  }, [selectedTokens, _userCollections]);
+
+  // Initialize selected amounts when modal opens
+  useEffect(() => {
+    if (open) {
+      const initialAmounts: Record<string, number> = {};
+      selectedTokens.forEach(key => {
+        const [collectionAddress, tokenId] = key.split(':');
+        const { amount, isERC1155 } = getTokenInfo(collectionAddress, tokenId, _userCollections);
+        // For ERC1155, default to full amount; for ERC721, always 1
+        initialAmounts[key] = isERC1155 ? amount : 1;
+      });
+      setSelectedAmounts(initialAmounts);
+    }
+  }, [open, selectedTokens, _userCollections]);
 
   const collectionGroups = Object.entries(groupedByCollection);
   const totalNFTs = selectedTokens.size;
@@ -434,7 +523,7 @@ function ListingModal({
 
   const handleCreateListings = async () => {
     if (totalNFTs === 0) return;
-    
+
     setIsProcessing(true);
     setProgress({ current: 0, total: numTransactions });
 
@@ -442,32 +531,48 @@ function ListingModal({
       let completedTx = 0;
       let completedNFTs = 0;
 
-      for (const [collectionAddress, tokenIds] of collectionGroups) {
+      for (const [collectionAddress, tokens] of collectionGroups) {
         try {
-          if (tokenIds.length === 1) {
+          if (tokens.length === 1) {
             // Single NFT - use listNFT
+            const token = tokens[0];
+            const tokenKey = `${collectionAddress}:${token.tokenId}`;
+            const selectedAmount = selectedAmounts[tokenKey] || token.amount;
+
             await listNFT.mutateAsync({
               collectionAddress,
-              tokenId: tokenIds[0],
+              tokenId: token.tokenId,
               price,
               duration: parseInt(duration),
+              ...(token.isERC1155 && { amount: selectedAmount.toString() }),
             });
+            completedNFTs += selectedAmount;
           } else {
             // Multiple NFTs from same collection - use batchListNFT (1 tx)
-            const prices = tokenIds.map(() => price);
+            const tokenIds = tokens.map(t => t.tokenId);
+            const prices = tokens.map(() => price);
+            const amounts = tokens.map(t => {
+              const tokenKey = `${collectionAddress}:${t.tokenId}`;
+              return (selectedAmounts[tokenKey] || t.amount).toString();
+            });
+
+            // Check if any token is ERC1155
+            const hasERC1155 = tokens.some(t => t.isERC1155);
+
             await batchListNFT.mutateAsync({
               collectionAddress,
               tokenIds,
               prices,
               duration: parseInt(duration),
+              ...(hasERC1155 && { amounts }),
             });
+            completedNFTs += tokens.length;
           }
           completedTx++;
-          completedNFTs += tokenIds.length;
           setProgress({ current: completedTx, total: numTransactions });
-          toast.success(`Listed ${tokenIds.length} NFT(s) from collection`);
+          toast.success(`Listed ${tokens.length} NFT(s) from collection`);
         } catch (err) {
-          toast.error(`Failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+          handleSdkError(err, 'Failed to list NFTs');
         }
       }
 
@@ -478,7 +583,7 @@ function ListingModal({
         toast.warning(`${completedNFTs}/${totalNFTs} NFTs listed`);
       }
     } catch (err) {
-      toast.error(`Error: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      handleSdkError(err, 'Failed to batch mint');
     } finally {
       setIsProcessing(false);
     }
@@ -498,8 +603,8 @@ function ListingModal({
         {isBatchMode && (
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <p className="font-medium text-primary">
-              {numTransactions === 1 
-                ? '1 transaction (batch listing!)' 
+              {numTransactions === 1
+                ? '1 transaction (batch listing!)'
                 : `${numTransactions} transactions (grouped by collection)`}
             </p>
             <p className="text-muted-foreground text-xs mt-1">
@@ -508,15 +613,46 @@ function ListingModal({
           </div>
         )}
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+          {/* ERC1155 Amount Selection */}
+          {Array.from(selectedTokens).filter(key => {
+            const [collectionAddress, tokenId] = key.split(':');
+            const { isERC1155 } = getTokenInfo(collectionAddress, tokenId, _userCollections);
+            return isERC1155;
+          }).length > 0 && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">ERC1155 Amount Selection</Label>
+              {Array.from(selectedTokens)
+                .filter(key => {
+                  const [collectionAddress, tokenId] = key.split(':');
+                  const { isERC1155 } = getTokenInfo(collectionAddress, tokenId, _userCollections);
+                  return isERC1155;
+                })
+                .map(key => {
+                  const [collectionAddress, tokenId] = key.split(':');
+                  const { amount } = getTokenInfo(collectionAddress, tokenId, _userCollections);
+                  return (
+                    <AmountCheckboxCard
+                      key={key}
+                      collectionAddress={collectionAddress}
+                      tokenId={tokenId}
+                      totalAmount={amount}
+                      selectedAmount={selectedAmounts[key] || amount}
+                      onAmountChange={(newAmount) => setSelectedAmounts(prev => ({ ...prev, [key]: newAmount }))}
+                    />
+                  );
+                })}
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Price (ETH)</Label>
-            <Input 
-              type="number" 
-              step="0.001" 
+            <Input
+              type="number"
+              step="0.001"
               min="0"
-              value={price} 
-              onChange={(e) => setPrice(e.target.value)} 
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
               placeholder="0.1"
             />
           </div>
@@ -603,7 +739,7 @@ function CollectionCard({ address, type }: { address: string; type: "ERC721" | "
 }
 
 function MyNFTsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data: allCollections, isLoading: loadingCollections, refetch } = useCreatedCollections();
   const { data: userAuctions, refetch: refetchAuctions } = useAuctionsBySeller(address, 1, 100);
   const { data: userListings, refetch: refetchListings } = useListingsBySeller(address);
@@ -754,7 +890,7 @@ function MyNFTsTab() {
         onClose={() => setAuctionModalOpen(false)}
         selectedTokens={selectedTokens}
         userCollections={userCollections}
-        onSuccess={() => { setSelectedTokens(new Set()); setAuctionModalOpen(false); refetchAuctions(); }}
+        onSuccess={() => { setSelectedTokens(new Set()); setAuctionModalOpen(false); }}
       />
 
       <ListingModal
@@ -762,7 +898,7 @@ function MyNFTsTab() {
         onClose={() => setListingModalOpen(false)}
         selectedTokens={selectedTokens}
         userCollections={userCollections}
-        onSuccess={() => { setSelectedTokens(new Set()); setListingModalOpen(false); refetchListings(); }}
+        onSuccess={() => { setSelectedTokens(new Set()); setListingModalOpen(false); }}
       />
 
       {isLoading && (
@@ -796,7 +932,7 @@ function MyNFTsTab() {
 }
 
 function MyCollectionsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data: allCollections, isLoading, refetch } = useCreatedCollections();
 
   const myCollections = useMemo(() => {
@@ -905,7 +1041,7 @@ function AuctionCard({
 }
 
 function MyAuctionsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data: userAuctions, isLoading, refetch } = useAuctionsBySeller(address, 1, 100);
   const { cancelAuction, batchCancelAuction } = useAuction();
   const [selectedAuctions, setSelectedAuctions] = useState<Set<string>>(new Set());
@@ -942,7 +1078,7 @@ function MyAuctionsTab() {
       const { cancelledCount } = await batchCancelAuction.mutateAsync(toCancel);
       toast.success(`${cancelledCount} auction(s) cancelled in 1 transaction!`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel auctions');
+      handleSdkError(err, 'Failed to cancel auctions');
     }
 
     setSelectedAuctions(new Set());
@@ -956,7 +1092,7 @@ function MyAuctionsTab() {
       toast.success('Auction cancelled!');
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel auction');
+      handleSdkError(err, 'Failed to cancel auction');
     }
   };
 
@@ -1088,7 +1224,7 @@ function ListingCard({
 }
 
 function MyListingsTab() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const { data, isLoading, refetch } = useListingsBySeller(address);
   const { cancelListing, batchCancelListing } = useExchange();
   const [selectedListings, setSelectedListings] = useState<Set<string>>(new Set());
@@ -1120,8 +1256,25 @@ function MyListingsTab() {
 
   const handleCancelSelected = async () => {
     if (selectedListings.size === 0) return;
-    
-    const toCancel = Array.from(selectedListings);
+
+    // Filter to only include active listings
+    const toCancel = Array.from(selectedListings).filter(listingId => {
+      const listing = activeListings.find(l => l.id === listingId);
+      return listing && listing.status === 'active';
+    });
+
+    if (toCancel.length === 0) {
+      toast.error('No active listings to cancel');
+      return;
+    }
+
+    // Validate listing IDs are bytes32 format (0x + 64 hex chars)
+    const invalidIds = toCancel.filter(id => !/^0x[a-fA-F0-9]{64}$/.test(id));
+    if (invalidIds.length > 0) {
+      toast.error(`Invalid listing ID format: ${invalidIds[0].slice(0, 10)}...`);
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -1133,7 +1286,9 @@ function MyListingsTab() {
         toast.success(`${toCancel.length} listing(s) cancelled in 1 transaction!`);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel listings');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to cancel listings';
+      toast.error(`Cancel failed: ${errorMsg}`);
+      console.error('Batch cancel error:', err);
     }
 
     setSelectedListings(new Set());
@@ -1147,7 +1302,7 @@ function MyListingsTab() {
       toast.success('Listing cancelled!');
       refetch();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to cancel listing');
+      handleSdkError(err, 'Failed to cancel listing');
     }
   };
 
@@ -1228,7 +1383,7 @@ function MyListingsTab() {
 }
 
 export default function ProfilePage() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useWallet();
 
   if (!isConnected) {
     return (

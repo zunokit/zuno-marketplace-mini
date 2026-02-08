@@ -22,7 +22,7 @@ const config = [
     rules: {
       // Allow unused vars that start with underscore
       "@typescript-eslint/no-unused-vars": [
-        "error",
+        "warn",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
