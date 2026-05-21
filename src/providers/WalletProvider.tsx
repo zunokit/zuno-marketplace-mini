@@ -16,6 +16,7 @@ import React, {
 import { ethers } from "ethers";
 import { toast } from "sonner";
 import { logger } from "@/lib/utils/sdk-logger";
+import { buildChainSwitchMessage } from "@/lib/utils/chain-display";
 
 // ============================================================================
 // Types & Interfaces
@@ -366,9 +367,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const newChainId = parseInt(newChainIdHex, 16);
     dispatch({ type: ActionType.UPDATE_CHAIN, payload: newChainId });
 
-    if (!WalletService.validateNetwork(newChainId)) {
-      const expectedChainId = process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337";
-      toast.warning(`Network mismatch. Please switch to chain ${expectedChainId}`);
+    const isSupported = WalletService.validateNetwork(newChainId);
+    const expectedChainId = parseInt(
+      process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || "31337",
+      10,
+    );
+    const message = buildChainSwitchMessage(
+      newChainId,
+      isSupported,
+      Number.isFinite(expectedChainId) ? expectedChainId : undefined,
+    );
+
+    // Notify the user explicitly. Previously the success case was
+    // silent, which made wallet UI feel unresponsive after switching.
+    if (message.variant === "supported") {
+      toast.success(message.title, { description: message.description });
+    } else {
+      toast.warning(message.title, { description: message.description });
     }
 
     // Reload page to ensure clean state
